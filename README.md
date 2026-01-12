@@ -30,27 +30,36 @@
 
 ## Installation
 
-### Prerequisites
+### One-line Install (macOS/Linux)
 
-- [Bun](https://bun.sh) (for building from source)
+```sh
+curl -fsSL https://raw.githubusercontent.com/jellydn/ai-cli-switcher/main/install.sh | sh
+```
+
+### Homebrew (macOS/Linux)
+
+```sh
+brew install jellydn/tap/ai
+```
+
+### Windows
+
+Download the latest `ai-windows-x64.exe` from [Releases](https://github.com/jellydn/ai-cli-switcher/releases) and add to your PATH.
 
 ### Build from Source
 
-```bash
-# Clone and install dependencies
-git clone https://github.com/jellydn/ai-cli-router
-cd ai-cli-router
-bun install
+Requires [Bun](https://bun.sh):
 
-# Build the executable
+```bash
+git clone https://github.com/jellydn/ai-cli-switcher
+cd ai-cli-switcher
+bun install
 bun run build
 ```
 
 This produces a standalone executable at `dist/ai`.
 
-### Install to PATH
-
-Symlink the executable to a directory in your PATH:
+### Manual Install
 
 ```bash
 # Option 1: Symlink to /usr/local/bin (requires sudo)
@@ -59,7 +68,6 @@ sudo ln -sf "$(pwd)/dist/ai" /usr/local/bin/ai
 # Option 2: Symlink to ~/.local/bin (no sudo required)
 mkdir -p ~/.local/bin
 ln -sf "$(pwd)/dist/ai" ~/.local/bin/ai
-# Make sure ~/.local/bin is in your PATH
 ```
 
 Verify installation:
