@@ -1,0 +1,24 @@
+{
+  "name": "ai-cli-router",
+  "version": "0.1.0",
+  "description": "A quick launcher CLI to switch between AI coding assistants using fuzzy search",
+  "module": "src/index.ts",
+  "type": "module",
+  "private": true,
+  "bin": {
+    "ai": "./dist/ai"
+  },
+  "scripts": {
+    "dev": "bun run src/index.ts",
+    "build": "bun build src/index.ts --compile --outfile dist/ai",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "fuse.js": "^7.1.0"
+  }
+}

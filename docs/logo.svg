@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 120" width="400" height="120">
+  <defs>
+    <linearGradient id="mainGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#6366f1;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#8b5cf6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#a855f7;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="accentGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#06b6d4;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#3b82f6;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background rounded rectangle -->
+  <rect x="10" y="10" width="380" height="100" rx="16" fill="url(#mainGradient)" opacity="0.1"/>
+
+  <!-- Left: AI Icon with arrows -->
+  <g transform="translate(35, 30)">
+    <!-- AI Text -->
+    <text x="0" y="38" font-family="Arial, sans-serif" font-size="36" font-weight="bold" fill="url(#mainGradient)">AI</text>
+
+    <!-- Router arrows - circular flow -->
+    <g transform="translate(70, 20)">
+      <!-- Top arrow pointing right -->
+      <path d="M 0,0 L 20,0 L 25,-5 M 20,0 L 25,5" stroke="url(#accentGradient)" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+
+      <!-- Right arrow pointing down -->
+      <path d="M 30,10 L 30,30 L 25,35 M 30,30 L 35,35" stroke="url(#accentGradient)" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+
+      <!-- Bottom arrow pointing left -->
+      <path d="M 30,40 L 10,40 L 5,35 M 10,40 L 5,45" stroke="url(#accentGradient)" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+
+      <!-- Left arrow pointing up -->
+      <path d="M 0,30 L 0,10 L -5,15 M 0,10 L 5,15" stroke="url(#accentGradient)" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+
+      <!-- Center dot -->
+      <circle cx="15" cy="20" r="4" fill="url(#mainGradient)"/>
+    </g>
+  </g>
+
+  <!-- Right: Text -->
+  <g transform="translate(160, 32)">
+    <text x="0" y="25" font-family="Arial, sans-serif" font-size="28" font-weight="bold" fill="#1f2937">CLI Router</text>
+    <text x="0" y="50" font-family="Arial, sans-serif" font-size="12" fill="#6b7280">Switch between AI assistants instantly</text>
+  </g>
+
+  <!-- Tag badge -->
+  <g transform="translate(330, 70)">
+    <rect x="0" y="0" width="50" height="20" rx="10" fill="url(#accentGradient)" opacity="0.2"/>
+    <text x="25" y="14" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="url(#accentGradient)" text-anchor="middle">⚡ FAST</text>
+  </g>
+</svg>

@@ -1,0 +1,126 @@
+{
+  "project": "AI CLI Router",
+  "branchName": "ralph/ai-cli-router",
+  "description": "A quick launcher CLI tool called 'ai' that allows users to switch between different AI coding assistants using fuzzy search",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Initialize project structure with Bun",
+      "description": "As a developer, I need the project scaffolded so I can start building.",
+      "acceptanceCriteria": [
+        "Initialize Bun project with TypeScript",
+        "Set up src/ directory structure with index.ts entry point",
+        "Configure tsconfig.json for Bun",
+        "Add build script in package.json to produce executable",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "Create config file structure",
+      "description": "As a user, I want a config file to define my AI tools and aliases.",
+      "acceptanceCriteria": [
+        "Config file location: ~/.config/ai-router/config.json",
+        "Define TypeScript types for config schema (tools, aliases, templates)",
+        "Creates default config on first run if missing",
+        "Validates config and shows helpful errors",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "Auto-detect installed AI CLIs",
+      "description": "As a user, I want the tool to find my installed AI assistants automatically.",
+      "acceptanceCriteria": [
+        "Detects: claude, opencode, amp, ccs (using which or command -v)",
+        "For ccs, detect available profiles from ~/.ccs/config.json",
+        "Merges auto-detected tools with config-defined tools",
+        "Config-defined tools take precedence over auto-detected",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "Implement fuzzy search selection",
+      "description": "As a user, I want to type partial names to quickly filter and select a tool.",
+      "acceptanceCriteria": [
+        "Running 'ai' shows interactive fuzzy search prompt",
+        "Typing filters the list in real-time",
+        "Arrow keys navigate, Enter selects",
+        "Esc or Ctrl+C cancels",
+        "Shows tool name and description in list",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-005",
+      "title": "Support direct tool invocation",
+      "description": "As a user, I want to skip the menu by passing the tool name directly.",
+      "acceptanceCriteria": [
+        "'ai claude' launches Claude directly",
+        "'ai g' launches the tool aliased to 'g'",
+        "Fuzzy matches if exact match not found (e.g., 'ai cl' → claude)",
+        "Shows error if multiple fuzzy matches with no clear winner",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-006",
+      "title": "Support command templates",
+      "description": "As a user, I want to define command shortcuts that include prompts or arguments.",
+      "acceptanceCriteria": [
+        "Config supports templates with command and description",
+        "Templates can include $@ for pass-through arguments",
+        "'ai summarize main.ts' expands template with arguments",
+        "Templates shown in fuzzy search with different indicator",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-007",
+      "title": "Pass through arguments to selected tool",
+      "description": "As a user, I want to pass additional arguments to the AI tool.",
+      "acceptanceCriteria": [
+        "'ai claude --help' passes --help to claude",
+        "Arguments after tool name are forwarded to the spawned process",
+        "Works with both direct invocation and fuzzy selection",
+        "Typecheck passes"
+      ],
+      "priority": 7,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-008",
+      "title": "Create install/setup script and README",
+      "description": "As a user, I want easy installation to get started quickly.",
+      "acceptanceCriteria": [
+        "'bun run build' produces single executable in dist/",
+        "README.md includes installation and usage instructions",
+        "Instructions for symlinking to /usr/local/bin/ai",
+        "Typecheck passes"
+      ],
+      "priority": 8,
+      "passes": true,
+      "notes": ""
+    }
+  ]
+}

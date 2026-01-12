@@ -1,0 +1,58 @@
+{
+  "tools": [
+    {
+      "name": "claude",
+      "command": "claude",
+      "description": "Anthropic Claude CLI",
+      "aliases": [
+        "c"
+      ]
+    },
+    {
+      "name": "opencode",
+      "command": "opencode",
+      "description": "OpenCode AI assistant",
+      "aliases": [
+        "o",
+        "oc"
+      ]
+    },
+    {
+      "name": "amp",
+      "command": "amp",
+      "description": "AI coding assistant by Modular",
+      "aliases": [
+        "a"
+      ]
+    }
+  ],
+  "templates": [
+    {
+      "name": "summarize",
+      "command": "claude --print --model haiku 'Summarize the following file: $@'",
+      "description": "Summarize a file with Claude",
+      "aliases": [
+        "sum",
+        "summary"
+      ]
+    },
+    {
+      "name": "review",
+      "command": "amp -x 'Review this code: $@'",
+      "description": "Code review with Amp",
+      "aliases": [
+        "rev",
+        "code-review"
+      ]
+    },
+    {
+      "name": "commit-zen",
+      "command": "opencode run --model opencode/big-pickle --agent plan 'Review the following changes and generate a concise git commit message: $@'",
+      "description": "Generate commit message with OpenCode",
+      "aliases": [
+        "commit",
+        "commit-message"
+      ]
+    }
+  ]
+}

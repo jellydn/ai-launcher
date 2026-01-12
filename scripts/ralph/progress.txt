@@ -1,0 +1,124 @@
+# AI CLI Router - Progress Log
+
+## Codebase Patterns
+
+- Use `bun run typecheck` to verify TypeScript
+- Use `bun run build` to compile to single executable at `dist/ai`
+- Entry point is `src/index.ts`
+- Config lives at `~/.config/ai-router/config.json`
+- Types in `src/types.ts`, config logic in `src/config.ts`
+- Detection logic in `src/detect.ts` - uses `which` to check command availability
+- CCS profiles are in `~/.ccs/config.json` under `profiles` key
+- Fuzzy search UI in `src/fuzzy-select.ts` - uses fuse.js for matching
+- Use non-null assertion `!` for array indexing in strict mode when bounds are verified
+- Use `--` separator pattern to pass args to fuzzy-selected tool (e.g., `ai -- --help`)
+
+---
+
+## 2026-01-12 - US-001
+Thread: https://ampcode.com/threads/T-019baf41-f5fe-7570-9df5-eb676c7282d5
+- Initialized Bun project with TypeScript
+- Created src/ directory with index.ts entry point
+- Configured tsconfig.json for bundler mode with strict settings
+- Added package.json with dev, build, and typecheck scripts
+- **Learnings for future iterations:**
+  - `bun build --compile` creates single executable
+  - `bun init -y` creates default template, move index.ts to src/ manually
+---
+
+## 2026-01-12 - US-002
+Thread: https://ampcode.com/threads/T-019baf44-cc70-71be-8cd6-0f44a2418b78
+- Created config file structure at ~/.config/ai-router/config.json
+- Defined TypeScript types in src/types.ts (Tool, Template, Config interfaces)
+- Created src/config.ts with loadConfig, validateConfig, formatValidationErrors
+- Default config created on first run with empty tools/templates arrays
+- Validation errors show field path and helpful messages
+- Files changed: src/types.ts (new), src/config.ts (new), src/index.ts (updated)
+- **Learnings for future iterations:**
+  - TypeScript strict mode catches unused imports - import only what's needed
+  - Use Record<string, unknown> for type-safe unknown object validation
+  - Validation should show the config path for easy debugging
+---
+
+## 2026-01-12 - US-003
+Thread: https://ampcode.com/threads/T-019baf46-dc58-7062-b811-a8b4d974e75c
+- Created src/detect.ts with auto-detection for AI CLI tools
+- Detects claude, opencode, amp, ccs using `which` command
+- Parses CCS profiles from ~/.ccs/config.json (profiles are under the `profiles` key)
+- mergeTools() ensures config-defined tools take precedence over auto-detected
+- Files changed: src/detect.ts (new), src/index.ts (updated)
+- **Learnings for future iterations:**
+  - CCS config structure: `{ "profiles": { "glm": "path", ... } }` - profiles are nested, not top-level
+  - Use `spawnSync` from child_process with `which` for command detection
+  - Merge by both name and command to avoid duplicates
+---
+
+## 2026-01-12 - US-004
+Thread: https://ampcode.com/threads/T-019baf48-f9f3-72ea-9f28-18bfc87a5bd4
+- Implemented fuzzy search selection UI using fuse.js
+- Interactive terminal UI with real-time filtering
+- Arrow keys for navigation, Enter to select, Esc/Ctrl+C to cancel
+- Shows tool name, description, and [T] indicator for templates
+- Files changed: src/fuzzy-select.ts (new), src/index.ts (updated), package.json (fuse.js dep)
+- **Learnings for future iterations:**
+  - fuse.js is lightweight and works well for fuzzy matching
+  - ANSI escape codes: CSI sequences for cursor control, colors
+  - Need non-null assertion `!` for array indexing with strict TypeScript
+  - stdin.setRawMode(true) enables character-by-character input
+---
+
+## 2026-01-12 - US-005
+Thread: https://ampcode.com/threads/T-019baf4b-8fe5-74dd-833e-acd90729b988
+- Implemented direct tool invocation with `ai <toolname>`
+- Created src/lookup.ts with findToolByName() function
+- Lookup priority: exact name match → alias match → fuzzy match
+- Ambiguity detection: shows error when multiple fuzzy matches have similar scores
+- Extra CLI args passed through to the tool (e.g., `ai claude --help`)
+- Files changed: src/lookup.ts (new), src/index.ts (updated)
+- **Learnings for future iterations:**
+  - toLookupItems() includes aliases for lookup, toSelectableItems() is for display only
+  - Fuse.js score difference threshold of 0.1 works well for ambiguity detection
+  - process.argv.slice(2) gets CLI args after bun and script path
+---
+
+## 2026-01-12 - US-006
+Thread: https://ampcode.com/threads/T-019baf4d-81be-7789-a659-ee48c5b75df1
+- Implemented $@ template expansion for command templates
+- Updated launchTool() in src/index.ts to handle $@ replacement
+- Templates with $@ get args substituted; regular tools append args
+- [T] indicator already implemented in fuzzy-select.ts
+- Files changed: src/index.ts (updated)
+- **Learnings for future iterations:**
+  - Templates already supported in config, just needed $@ expansion in launchTool
+  - Filter empty strings after split to avoid issues with multiple spaces
+  - command.includes("$@") check determines expansion vs append behavior
+---
+
+## 2026-01-12 - US-007
+Thread: https://ampcode.com/threads/T-019baf4f-32cd-77b8-9ebb-e62d9566496b
+- Implemented `--` separator for passing args through fuzzy selection
+- Direct invocation args already worked: `ai claude --help`
+- New pattern: `ai -- --help` opens fuzzy select, passes --help to chosen tool
+- Also supports: `ai claude -- --help` for explicit separator with direct tool
+- Files changed: src/index.ts (updated)
+- **Learnings for future iterations:**
+  - Using `--` as separator follows Unix convention for separating options from arguments
+  - Check dashIndex !== -1 to detect presence of separator
+  - args.indexOf("--") finds first occurrence in CLI args array
+---
+
+## 2026-01-12 - US-008
+Thread: https://ampcode.com/threads/T-019baf51-4f6d-7698-8e42-c355454318f4
+- Verified build produces single executable at dist/ai (~57MB)
+- Rewrote README.md with comprehensive documentation
+- Installation: build from source with `bun run build`
+- Symlink instructions for both /usr/local/bin (sudo) and ~/.local/bin (no sudo)
+- Usage: interactive mode, direct invocation, argument passing, templates
+- Config documentation with examples
+- Files changed: README.md (rewritten)
+- **Learnings for future iterations:**
+  - Bun --compile bundles runtime into executable (~57MB)
+  - Provide both sudo and non-sudo install options for flexibility
+  - Always verify installation with a simple command like `ai --help`
+---
+
