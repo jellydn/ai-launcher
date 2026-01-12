@@ -23,7 +23,7 @@
 - **⚡ Direct Invocation**: Skip the menu with `ai <toolname>` or fuzzy matching
 - **🏷️ Aliases**: Define short aliases for frequently used tools (e.g., `ai c` for claude)
 - **📋 Templates**: Create command shortcuts with `$@` argument/stdin placeholders
-- **👤 CCS Profiles**: Automatically detects CCS profiles from `~/.ccs/config.json`
+- **👤 CCS Profiles**: Automatically detects CCS profiles via `ccs api list`
 - **🔒 Security**: Built-in command validation and injection prevention
 - **🌍 Cross-Platform**: Works on macOS, Linux, and Windows
 - **⚙️ Configuration**: User-defined tools override auto-detection
@@ -212,7 +212,7 @@ The following CLIs are auto-detected if installed and available in PATH:
 - `claude` - Anthropic Claude CLI
 - `opencode` - OpenCode AI assistant
 - `amp` - Sourcegraph Amp CLI
-- `ccs` - **Claude Code Switch** (with profile detection from `~/.ccs/config.json`)
+- `ccs` - **Claude Code Switch** (with profile detection via `ccs api list`)
 
 **Precedence Rules:**
 
@@ -221,7 +221,7 @@ The following CLIs are auto-detected if installed and available in PATH:
 3. Tools with same name or command are de-duplicated
 
 **CCS Profile Auto-Detection:**
-If `~/.ccs/config.json` exists, each profile becomes available as `ccs:profile-name`.
+Runs `ccs api list` to detect active profiles. Each profile with `[OK]` status becomes available as `ccs:<profile-name>`.
 
 ## 🛠️ Development
 

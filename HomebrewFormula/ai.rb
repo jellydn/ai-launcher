@@ -45,6 +45,6 @@ class Ai < Formula
   end
 
   test do
-    assert_match "ai-cli-router", shell_output("#{bin}/ai --help 2>&1", 0)
+    assert_match "launcher", shell_output("#{bin}/ai --help 2>&1", 0)
   end
 end
