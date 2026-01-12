@@ -1,6 +1,6 @@
 # AGENTS.md
 
-This document provides guidelines for agentic coding agents working on this codebase.
+Guidelines for agentic coding agents working on this codebase.
 
 ## Project Overview
 
@@ -13,8 +13,9 @@ This document provides guidelines for agentic coding agents working on this code
 | `bun run dev` | Run in development mode |
 | `bun run build` | Build standalone executable to `dist/ai` |
 | `bun run typecheck` | TypeScript type checking (strict mode) |
+| `bun test` | Run all unit tests |
+| `bun test <file>` | Run specific test file |
 | `bun run src/index.ts <tool>` | Test with specific tool |
-| `bun test` | Run unit tests |
 
 ## Code Style Guidelines
 
@@ -30,17 +31,16 @@ This document provides guidelines for agentic coding agents working on this code
 
 | Type | Convention | Example |
 |------|------------|---------|
-| Interfaces | PascalCase | `Tool`, `Config`, `SelectionResult` |
-| Functions/variables | camelCase | `detectTools`, `mergeTools`, `filteredItems` |
+| Interfaces | PascalCase | `Tool`, `Config` |
+| Functions/variables | camelCase | `detectTools`, `filteredItems` |
 | Constants | UPPER_SNAKE_CASE | `CONFIG_PATH`, `KNOWN_TOOLS` |
-| Boolean variables | is/has/should prefix | `isValid`, `hasAlias`, `shouldExit` |
+| Boolean variables | is/has/should prefix | `isValid`, `hasAlias` |
 | Type files | kebab-case | `fuzzy-select.ts` |
 
 ### Imports
 
 - Use `node:` prefix for built-in modules: `import { spawnSync } from "node:child_process"`
 - Separate type imports: `import type { Tool } from "./types"`
-- Use path aliases over relative paths when possible: `@/types` instead of `../../types`
 - Group imports: external libraries first, then types, then internal modules
 
 ### TypeScript
@@ -53,16 +53,9 @@ This document provides guidelines for agentic coding agents working on this code
 - `noUnusedLocals` and `noUnusedParameters` - remove unused code
 
 ```typescript
-// ✅ Good
 export function detectInstalledTools(): Tool[] {
   const detected: Tool[] = [];
-  // ...
   return detected;
-}
-
-// ❌ Bad - no explicit return type
-export function detectInstalledTools() {
-  // ...
 }
 ```
 
@@ -71,40 +64,17 @@ export function detectInstalledTools() {
 - 2-space indentation
 - No comments unless explaining non-obvious logic
 - Prefer readable one-liners for simple operations
-- Use helper variables for complex expressions:
-
-```typescript
-// ✅ Good
-const hasActivePremium = user.subscription.status === "active";
-if (hasActivePremium) {
-  // logic
-}
-
-// ❌ Bad - complex inline expression
-if (user.subscription.status === "active" && user.subscription.expiresAt > new Date()) {
-  // logic
-}
-```
+- Use helper variables for complex expressions
 
 ### Guard Clauses
 
 Move preconditions to the top and return early:
 
 ```typescript
-// ✅ Good
 function processTool(tool: Tool | null) {
   if (!tool) return;
   if (!tool.command) return;
   // main logic
-}
-
-// ❌ Bad - nested conditions
-function processTool(tool: Tool | null) {
-  if (tool) {
-    if (tool.command) {
-      // main logic
-    }
-  }
 }
 ```
 
@@ -119,7 +89,6 @@ interface ConfigValidationError {
   message: string;
 }
 
-// Catch pattern
 main().catch((err) => {
   console.error(err instanceof Error ? err.message : err);
   process.exit(1);
@@ -131,18 +100,6 @@ main().catch((err) => {
 - Validate all commands with regex patterns before execution
 - Sanitize user input for shell commands
 - Use allowlist patterns, not denylists
-
-## Cursor Rules
-
-From `.cursor/rules/use-bun-instead-of-node-vite-npm-pnpm.mdc`:
-
-- Use `bun <file>` instead of `node <file>` or `ts-node <file>`
-- Use `bun test` instead of `jest` or `vitest`
-- Use `bun build <file.ts>` for bundling
-- Use `bun install` for dependencies
-- Use `bun run <script>` for npm scripts
-- Bun automatically loads `.env` - don't use dotenv
-- Prefer `Bun.file()` over `node:fs` readFile/writeFile
 
 ## Architecture
 
@@ -171,11 +128,11 @@ src/
 Write tests that give confidence to change:
 - Test behavior, not implementation details
 - Focus on user-facing functionality
-- No tests currently exist - add tests for new features
+- Add tests for new features in `<module>.test.ts` files
 
 ## Development Workflow
 
 1. Run `bun run typecheck` after changes - must pass with no errors
-2. Test manually with `bun run dev` or direct invocation
+2. Test with `bun test` (or specific test file)
 3. Build with `bun run build` before committing
 4. Keep changes small and reversible
