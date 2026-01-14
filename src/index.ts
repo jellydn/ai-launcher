@@ -2,7 +2,7 @@
 
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
-import { chmod, rename, unlink, readFile } from "node:fs/promises";
+import { access, chmod, rename, unlink, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { loadConfig } from "./config";
@@ -11,6 +11,7 @@ import { fuzzySelect, toSelectableItems } from "./fuzzy-select";
 import { findToolByName, toLookupItems } from "./lookup";
 import { getColoredLogo } from "./logo";
 import { createHash } from "node:crypto";
+import { gte as semverGte } from "semver";
 import { VERSION } from "./version";
 
 interface GitHubAsset {
@@ -140,7 +141,7 @@ async function upgrade() {
     const release = (await response.json()) as GitHubRelease;
     const latestVersion = release.tag_name.replace(/^v/, "");
 
-    if (VERSION >= latestVersion) {
+    if (semverGte(VERSION, latestVersion)) {
       console.log(`✓ Already on the latest version v${VERSION}`);
       process.exit(0);
     }
@@ -178,6 +179,7 @@ async function upgrade() {
       if (checksumResponse.ok) {
         const checksumText = await checksumResponse.text();
         const lines = checksumText.split("\n");
+        let checksumVerified = false;
         for (const line of lines) {
           if (line.includes(artifact)) {
             const [expectedChecksum] = line.split(/\s+/);
@@ -192,8 +194,13 @@ async function upgrade() {
               process.exit(1);
             }
             console.log("✓ Checksum verified");
+            checksumVerified = true;
             break;
           }
+        }
+        if (!checksumVerified) {
+          console.warn(`⚠️  Could not find checksum for ${artifact} in checksums.txt`);
+          console.warn("Proceeding without checksum verification...");
         }
       }
     }
@@ -210,15 +217,32 @@ async function upgrade() {
 
     console.log(`Installing to: ${binaryPath}`);
 
+    const backupPath = `${binaryPath}.backup`;
+    let needsRestore = false;
+
     try {
       await chmod(tempBinaryPath, 0o755);
-      const backupPath = `${binaryPath}.backup`;
+      needsRestore = true;
       await rename(binaryPath, backupPath);
+      needsRestore = false;
       await rename(tempBinaryPath, binaryPath);
       await unlink(backupPath);
     } catch (error) {
       console.error(`❌ Failed to install: ${error instanceof Error ? error.message : error}`);
-      await unlink(tempBinaryPath);
+
+      try {
+        if (needsRestore) {
+          await rename(backupPath, binaryPath);
+        }
+      } catch (restoreError) {
+        console.error(`⚠️  Failed to restore backup: ${restoreError instanceof Error ? restoreError.message : restoreError}`);
+      }
+
+      try {
+        await unlink(tempBinaryPath);
+      } catch (cleanupError) {
+      }
+
       process.exit(1);
     }
 
@@ -229,17 +253,12 @@ async function upgrade() {
   }
 }
 
-async function writeFile(filePath: string, data: Buffer) {
-  const fs = await import("node:fs/promises");
-  return fs.writeFile(filePath, data);
-}
-
 async function findBinaryPath(): Promise<string | null> {
-  const homeDir = process.env.HOME ?? "";
-  const possiblePaths = [
-    join(homeDir, ".local/bin/ai"),
-    "/usr/local/bin/ai",
-  ];
+  const possiblePaths = ["/usr/local/bin/ai"];
+
+  if (process.env.HOME) {
+    possiblePaths.unshift(join(process.env.HOME, ".local/bin/ai"));
+  }
 
   if (process.execPath.endsWith("/ai")) {
     possiblePaths.unshift(process.execPath);
@@ -247,7 +266,7 @@ async function findBinaryPath(): Promise<string | null> {
 
   for (const path of possiblePaths) {
     try {
-      await readFile(path);
+      await access(path);
       return path;
     } catch {
       continue;

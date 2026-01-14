@@ -16,9 +16,11 @@
   },
   "devDependencies": {
     "@types/bun": "latest",
+    "@types/semver": "^7.7.1",
     "typescript": "^5"
   },
   "dependencies": {
-    "fuse.js": "^7.1.0"
+    "fuse.js": "^7.1.0",
+    "semver": "^7.6.0"
   }
 }
