@@ -10,7 +10,7 @@ import { detectInstalledTools, mergeTools } from "./detect";
 import { fuzzySelect, toSelectableItems } from "./fuzzy-select";
 import { findToolByName, toLookupItems } from "./lookup";
 import { getColoredLogo } from "./logo";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { gte as semverGte } from "semver";
 import { VERSION } from "./version";
 
@@ -158,7 +158,7 @@ async function upgrade() {
 
     const downloadUrl = asset.browser_download_url;
 
-    const tempBinaryPath = join(tmpdir(), `ai-new-${Date.now()}`);
+    const tempBinaryPath = join(tmpdir(), `ai-new-${randomUUID()}`);
 
     console.log(`Downloading from: ${downloadUrl}`);
 
@@ -222,10 +222,10 @@ async function upgrade() {
 
     try {
       await chmod(tempBinaryPath, 0o755);
-      needsRestore = true;
       await rename(binaryPath, backupPath);
-      needsRestore = false;
+      needsRestore = true;
       await rename(tempBinaryPath, binaryPath);
+      needsRestore = false;
       await unlink(backupPath);
     } catch (error) {
       console.error(`❌ Failed to install: ${error instanceof Error ? error.message : error}`);
