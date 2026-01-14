@@ -78,7 +78,7 @@ function detectCcsProfiles(): Tool[] {
   }
 }
 
-function detectCliProxyProfiles(): Tool[] {
+export function detectCliProxyProfiles(): Tool[] {
   return CLI_PROXY_PROVIDERS.map((provider) => ({
     name: `ccs:${provider.name}`,
     command: `ccs ${provider.name}`,
@@ -86,8 +86,6 @@ function detectCliProxyProfiles(): Tool[] {
     authType: "oauth",
   }));
 }
-
-export { detectCliProxyProfiles };
 
 export function detectInstalledTools(): Tool[] {
   const detected: Tool[] = [];
