@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
+import { execSync } from "node:child_process";
 import {
 	access,
 	chmod,
@@ -26,6 +27,14 @@ interface GitHubRelease {
 }
 
 async function findBinaryPath(): Promise<string | null> {
+	try {
+		const pathFromWhich = execSync("which ai", { encoding: "utf-8" }).trim();
+		if (pathFromWhich) {
+			await access(pathFromWhich);
+			return pathFromWhich;
+		}
+	} catch {}
+
 	const possiblePaths = ["/usr/local/bin/ai"];
 
 	if (process.env.HOME) {
