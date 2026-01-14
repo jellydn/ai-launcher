@@ -12,6 +12,9 @@ import { join } from "node:path";
 import { gte as semverGte } from "semver";
 import { VERSION } from "./version";
 
+const GITHUB_RELEASES_URL =
+	"https://api.github.com/repos/jellydn/ai-cli-switcher/releases/latest";
+
 interface GitHubAsset {
 	name: string;
 	browser_download_url: string;
@@ -44,16 +47,20 @@ async function findBinaryPath(): Promise<string | null> {
 }
 
 export async function upgrade() {
-	const os = process.platform === "darwin" ? "darwin" : "linux";
+	if (process.platform !== "darwin" && process.platform !== "linux") {
+		console.error("❌ Upgrade is only supported on macOS and Linux");
+		console.error(`   Detected platform: ${process.platform}`);
+		process.exit(1);
+	}
+
+	const os = process.platform;
 	const arch = process.arch === "arm64" ? "arm64" : "x64";
 	const artifact = `ai-${os}-${arch}`;
 
 	console.log(`Checking for updates...`);
 
 	try {
-		const response = await fetch(
-			"https://api.github.com/repos/jellydn/ai-cli-switcher/releases/latest",
-		);
+		const response = await fetch(GITHUB_RELEASES_URL);
 
 		if (!response.ok) {
 			console.error(
@@ -168,9 +175,9 @@ export async function upgrade() {
 				if (needsRestore) {
 					await rename(backupPath, binaryPath);
 				}
-			} catch (restoreError) {
+			} catch (_restoreError) {
 				console.error(
-					`⚠️  Failed to restore backup: ${restoreError instanceof Error ? restoreError.message : restoreError}`,
+					`⚠️  Failed to restore backup: ${_restoreError instanceof Error ? _restoreError.message : _restoreError}`,
 				);
 			}
 
