@@ -7,6 +7,16 @@ const KNOWN_TOOLS: Array<{ name: string; command: string; description: string }>
   { name: "amp", command: "amp", description: "Sourcegraph Amp CLI" },
 ];
 
+const CLI_PROXY_PROVIDERS: Array<{ name: string; description: string }> = [
+  { name: "gemini", description: "Google Gemini (OAuth)" },
+  { name: "codex", description: "OpenAI Codex (OAuth)" },
+  { name: "agy", description: "Antigravity (OAuth)" },
+  { name: "qwen", description: "Qwen Code (OAuth)" },
+  { name: "iflow", description: "Iflow (OAuth)" },
+  { name: "kiro", description: "Kiro (OAuth)" },
+  { name: "ghcp", description: "GitHub Copilot (OAuth)" },
+];
+
 function validateCommandName(command: string): boolean {
   const safePattern = /^[a-zA-Z0-9._-]+$/;
   return safePattern.test(command) && command.length > 0 && command.length <= 100;
@@ -61,11 +71,23 @@ function detectCcsProfiles(): Tool[] {
       name: `ccs:${profile}`,
       command: `ccs ${profile}`,
       description: `CCS profile: ${profile}`,
+      authType: "api_key",
     }));
   } catch {
     return [];
   }
 }
+
+function detectCliProxyProfiles(): Tool[] {
+  return CLI_PROXY_PROVIDERS.map((provider) => ({
+    name: `ccs:${provider.name}`,
+    command: `ccs ${provider.name}`,
+    description: provider.description,
+    authType: "oauth",
+  }));
+}
+
+export { detectCliProxyProfiles };
 
 export function detectInstalledTools(): Tool[] {
   const detected: Tool[] = [];
@@ -88,6 +110,7 @@ export function detectInstalledTools(): Tool[] {
     });
 
     detected.push(...detectCcsProfiles());
+    detected.push(...detectCliProxyProfiles());
   }
 
   return detected;

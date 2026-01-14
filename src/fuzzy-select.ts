@@ -66,6 +66,7 @@ export async function fuzzySelect(items: SelectableItem[]): Promise<SelectionRes
   let query = "";
   let selectedIndex = 0;
   let filteredItems = items;
+  let scrollOffset = 0;
   const maxVisible = Math.min(10, items.length);
 
   const stdin = process.stdin;
@@ -88,11 +89,15 @@ export async function fuzzySelect(items: SelectableItem[]): Promise<SelectionRes
 
     lines.push(`${CYAN}❯${RESET} ${query}${DIM}│${RESET}`);
 
-    const displayItems = filteredItems.slice(0, maxVisible);
+    const displayStart = scrollOffset;
+    const displayEnd = Math.min(scrollOffset + maxVisible, filteredItems.length);
+    const displayItems = filteredItems.slice(displayStart, displayEnd);
+
     for (let i = 0; i < displayItems.length; i++) {
+      const globalIndex = displayStart + i;
       const item = displayItems[i];
       if (!item) continue;
-      const isSelected = i === selectedIndex;
+      const isSelected = globalIndex === selectedIndex;
       const prefix = isSelected ? `${GREEN}▸${RESET}` : " ";
       const indicator = item.isTemplate ? `${YELLOW}[TEMPLATE]${RESET} ` : "  ";
       const aliasText =
@@ -107,7 +112,10 @@ export async function fuzzySelect(items: SelectableItem[]): Promise<SelectionRes
     }
 
     if (filteredItems.length > maxVisible) {
-      lines.push(`${DIM}  ... and ${filteredItems.length - maxVisible} more${RESET}`);
+      const remaining = filteredItems.length - displayEnd;
+      if (remaining > 0) {
+        lines.push(`${DIM}  ... and ${remaining} more${RESET}`);
+      }
     }
 
     if (filteredItems.length === 0) {
@@ -155,8 +163,14 @@ export async function fuzzySelect(items: SelectableItem[]): Promise<SelectionRes
 
       if (key === KEY_UP) {
         selectedIndex = Math.max(0, selectedIndex - 1);
+        if (selectedIndex < scrollOffset) {
+          scrollOffset = Math.max(0, selectedIndex - Math.floor(maxVisible / 2));
+        }
       } else if (key === KEY_DOWN) {
         selectedIndex = Math.min(filteredItems.length - 1, selectedIndex + 1);
+        if (selectedIndex >= scrollOffset + maxVisible) {
+          scrollOffset = Math.max(0, Math.min(filteredItems.length - maxVisible, selectedIndex - Math.floor(maxVisible / 2) + 1));
+        }
       } else if (key === KEY_BACKSPACE) {
         query = query.slice(0, -1);
         updateFilter();
@@ -176,6 +190,7 @@ export async function fuzzySelect(items: SelectableItem[]): Promise<SelectionRes
         filteredItems = fuse.search(query).map((r) => r.item);
       }
       selectedIndex = 0;
+      scrollOffset = 0;
     };
 
     stdin.on("data", handleKey);
