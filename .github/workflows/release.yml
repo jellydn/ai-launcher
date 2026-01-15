@@ -8,51 +8,13 @@ permissions:
   contents: write
 
 jobs:
-  build:
-    strategy:
-      matrix:
-        include:
-          - os: ubuntu-latest
-            target: bun-linux-x64
-            artifact: ai-linux-x64
-          - os: ubuntu-latest
-            target: bun-linux-arm64
-            artifact: ai-linux-arm64
-          - os: macos-latest
-            target: bun-darwin-x64
-            artifact: ai-darwin-x64
-          - os: macos-latest
-            target: bun-darwin-arm64
-            artifact: ai-darwin-arm64
-          - os: ubuntu-latest
-            target: bun-windows-x64
-            artifact: ai-windows-x64.exe
-
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v6
-
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
-      - run: bun install --frozen-lockfile
-
-      - name: Build for ${{ matrix.target }}
-        run: bun build src/index.ts --compile --target=${{ matrix.target }} --outfile dist/${{ matrix.artifact }}
-
-      - uses: actions/upload-artifact@v6
-        with:
-          name: ${{ matrix.artifact }}
-          path: dist/${{ matrix.artifact }}
-
-  release:
-    needs: build
+  version:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: oven-sh/setup-bun@v2
         with:
@@ -82,6 +44,81 @@ jobs:
           git commit -m "chore: bump version to ${{ steps.bump.outputs.version }}" || echo "No changes to commit"
           git push
 
+      - name: Output new version
+        run: echo "${{ steps.bump.outputs.version }}" > version.txt
+
+      - name: Upload version
+        uses: actions/upload-artifact@v4
+        with:
+          name: version
+          path: version.txt
+
+  build:
+    needs: version
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: bun-linux-x64
+            artifact: ai-linux-x64
+          - os: ubuntu-latest
+            target: bun-linux-arm64
+            artifact: ai-linux-arm64
+          - os: macos-latest
+            target: bun-darwin-x64
+            artifact: ai-darwin-x64
+          - os: macos-latest
+            target: bun-darwin-arm64
+            artifact: ai-darwin-arm64
+          - os: ubuntu-latest
+            target: bun-windows-x64
+            artifact: ai-windows-x64.exe
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Download version artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: version
+          path: .
+
+      - name: Generate version.ts
+        run: |
+          VERSION=$(cat version.txt)
+          echo "// This file is generated at build time by scripts/build.sh or CI" > src/version.ts
+          echo "// Do not edit manually - it will be overwritten on next build" >> src/version.ts
+          echo "export const VERSION = \"$VERSION\";" >> src/version.ts
+
+      - run: bun install --frozen-lockfile
+
+      - name: Build for ${{ matrix.target }}
+        run: bun build src/index.ts --compile --target=${{ matrix.target }} --outfile dist/${{ matrix.artifact }}
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: ${{ matrix.artifact }}
+          path: dist/${{ matrix.artifact }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
       - uses: actions/download-artifact@v7
         with:
           path: dist
@@ -95,6 +132,12 @@ jobs:
           cd dist
           sha256sum ai-* > checksums.txt
           cat checksums.txt
+
+      - name: Get version from artifact
+        id: version
+        run: |
+          VERSION=$(cat dist/version.txt 2>/dev/null || echo "unknown")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Generate changelog
         id: changelog
@@ -112,8 +155,8 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ steps.bump.outputs.version }}
-          name: v${{ steps.bump.outputs.version }}
+          tag_name: v${{ steps.version.outputs.version }}
+          name: v${{ steps.version.outputs.version }}
           body: |
             ## What's Changed
             ${{ steps.changelog.outputs.changelog }}

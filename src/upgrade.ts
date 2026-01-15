@@ -176,9 +176,23 @@ export async function upgrade() {
 			needsRestore = false;
 			await unlink(backupPath);
 		} catch (error) {
-			console.error(
-				`❌ Failed to install: ${error instanceof Error ? error.message : error}`,
-			);
+			if (
+				error instanceof Error &&
+				"code" in error &&
+				(error.code === "EACCES" || error.code === "EPERM")
+			) {
+				console.error(
+					`❌ Permission denied to write to ${binaryPath}\n`,
+				);
+				console.error(
+					"Run the upgrade with elevated permissions:\n",
+				);
+				console.error("    sudo ai upgrade\n");
+			} else {
+				console.error(
+					`❌ Failed to install: ${error instanceof Error ? error.message : error}`,
+				);
+			}
 
 			try {
 				if (needsRestore) {
