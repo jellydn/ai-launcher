@@ -139,7 +139,7 @@ export async function fuzzySelect(items: SelectableItem[]): Promise<SelectionRes
 
       let desc = "";
       if (item.description) {
-        const availableWidth = terminalWidth - baseLength - 3; // -3 for " - "
+        const availableWidth = terminalWidth - baseLength - 3;
         if (availableWidth > 10) {
           const truncatedDesc =
             item.description.length > availableWidth

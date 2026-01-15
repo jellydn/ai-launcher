@@ -271,7 +271,7 @@ describe("Template Input Validation", () => {
   });
 });
 
-describe("Template Execution (TDD - not yet implemented)", () => {
+describe("Template Execution", () => {
   test("buildTemplateCommand function exists and works", async () => {
     const { buildTemplateCommand } = await import("./template");
     const result = buildTemplateCommand("amp -x 'Review: $@'", ["file.ts"]);

@@ -21,7 +21,7 @@ interface GitHubRelease {
 async function findBinaryPath(): Promise<string | null> {
   try {
     const pathFromWhich = execSync("which ai", { encoding: "utf-8" }).trim();
-    if (pathFromWhich) {
+    if (pathFromWhich.length > 0) {
       await access(pathFromWhich);
       return pathFromWhich;
     }
@@ -41,7 +41,9 @@ async function findBinaryPath(): Promise<string | null> {
     try {
       await access(path);
       return path;
-    } catch {}
+    } catch {
+      // continue
+    }
   }
 
   return null;
@@ -174,15 +176,15 @@ export async function upgrade() {
         if (needsRestore) {
           await rename(backupPath, binaryPath);
         }
-      } catch (_restoreError) {
+      } catch (restoreError) {
         console.error(
-          `⚠️  Failed to restore backup: ${_restoreError instanceof Error ? _restoreError.message : _restoreError}`
+          `⚠️  Failed to restore backup: ${restoreError instanceof Error ? restoreError.message : restoreError}`
         );
       }
 
       try {
         await unlink(tempBinaryPath);
-      } catch (_cleanupError) {}
+      } catch {}
 
       process.exit(1);
     }

@@ -11,10 +11,17 @@ Guidelines for agentic coding agents working on this codebase.
 | Command | Description |
 |---------|-------------|
 | `bun run dev` | Run in development mode |
-| `bun run build` | Build standalone executable to `dist/ai` (generates `src/version.ts` from package.json version) |
-| `bun run typecheck` | TypeScript type checking (strict mode) |
+| `bun run build` | Build standalone executable to `dist/ai` (generates `src/version.ts`) |
+| `bun run typecheck` | TypeScript strict mode type checking |
+| `bun run lint` | Biome linting |
+| `bun run lint:fix` | Auto-fix lint issues |
+| `bun run format` | Biome format check |
+| `bun run format:fix` | Auto-format code |
+| `bun run check` | Combined lint + format check |
+| `bun run check:fix` | Auto-fix lint and format |
+| `bun run ci` | Full CI: typecheck + check + test |
 | `bun test` | Run all unit tests |
-| `bun test src/detect.test.ts` | Run specific test file |
+| `bun test src/config.test.ts` | Run specific test file |
 | `bun run src/index.ts claude` | Test with specific tool |
 
 ## Code Style Guidelines
@@ -23,50 +30,43 @@ Guidelines for agentic coding agents working on this codebase.
 
 - **Small, Safe Steps**: Make big changes through small, reversible steps
 - **Code is Communication**: Write for humans, not machines
-- **Eliminate Problems**: Remove complexity rather than managing it
 - **Separate Tidying from Behavior Changes**: Keep refactoring separate from features
-
-### Naming Conventions
-
-| Type | Convention | Example |
-|------|------------|---------|
-| Interfaces | PascalCase | `Tool`, `Config` |
-| Functions/variables | camelCase | `detectTools`, `filteredItems` |
-| Constants | UPPER_SNAKE_CASE | `CONFIG_PATH`, `KNOWN_TOOLS` |
-| Boolean variables | is/has/should prefix | `isValid`, `hasAlias` |
-| Type files | kebab-case | `fuzzy-select.ts` |
-
-### Imports
-
-- Use `node:` prefix for built-in modules: `import { spawnSync } from "node:child_process"`
-- Separate type imports: `import type { Tool } from "./types"`
-- Group imports: external libraries first, then types, then internal modules
 
 ### TypeScript
 
-- **Strict mode enabled**: All strict flags in tsconfig.json
+- **Strict mode**: All strict flags enabled in tsconfig.json
 - No `any` - use `unknown` for truly dynamic values
 - Explicit return types for public/exported functions
 - `noUncheckedIndexedAccess` - always check array/object access
-- `noImplicitOverride` - use `override` keyword when overriding
 - `noUnusedLocals` and `noUnusedParameters` - remove unused code
 - `verbatimModuleSyntax` - type imports must use `import type`
-- `noFallthroughCasesInSwitch` - always break or return
 - Path alias `@/*` resolves to `src/*`
-- ESNext target/lib for modern features
 
-### Formatting & Patterns
+### Biome Formatting & Linting
 
-- 2-space indentation
-- No comments unless explaining non-obvious logic
-- Helper variables for complex expressions
-- Module-level constants use UPPER_SNAKE_CASE at top of file
-- Entry points require `#!/usr/bin/env bun` shebang
+- **Line width**: 100 characters
+- **Quotes**: Double quotes (`"`), always with semicolons
+- **Indentation**: 2 spaces
+- **Key rules**:
+  - `noExplicitAny`: error
+  - `noUnusedVariables`: error
+  - `useConst`: error
+  - `noNonNullAssertion`: warn
 
-### Guard Clauses
+### Imports & Naming
 
-Move preconditions to the top and return early:
+- Use `node:` prefix for built-in modules
+- Separate type imports: `import type { Tool } from "./types"`
+- Group imports: external libraries, then types, then internal modules
+- Interfaces: PascalCase (`Tool`, `Config`)
+- Functions/variables: camelCase (`detectTools`)
+- Constants: UPPER_SNAKE_CASE (`CONFIG_PATH`)
+- Boolean: is/has/should prefix (`isValid`)
+- Type files: kebab-case (`fuzzy-select.ts`)
 
+### Patterns
+
+**Guard clauses** - move preconditions to top:
 ```typescript
 function processTool(tool: Tool | null) {
   if (!tool) return;
@@ -75,10 +75,7 @@ function processTool(tool: Tool | null) {
 }
 ```
 
-### Async/Await
-
-Main functions return `Promise<void>` and use top-level `.catch()`:
-
+**Async main with error handling**:
 ```typescript
 async function main(): Promise<void> {
   // ... async logic
@@ -90,19 +87,9 @@ main().catch((err) => {
 });
 ```
 
-### Error Handling
-
-- Use `Error` instances with descriptive messages
-- Validation errors return objects with `success`, `error`, and optionally `item`:
-
+**Validation errors**:
 ```typescript
-interface LookupResult {
-  success: boolean;
-  item?: Tool;
-  error?: string;
-}
-
-function findToolByName(query: string, items: LookupItem[]): LookupResult {
+function findToolByName(query: string): LookupResult {
   const match = items.find((i) => i.name === query);
   if (!match) return { success: false, error: "Tool not found" };
   return { success: true, item: match.tool };
@@ -111,7 +98,7 @@ function findToolByName(query: string, items: LookupItem[]): LookupResult {
 
 ### Security
 
-- Validate commands with regex patterns before execution
+- Validate commands with regex before execution
 - Sanitize user input for shell commands
 - Use allowlist patterns, not denylists
 
@@ -124,22 +111,24 @@ src/
   detect.ts       - Auto-detect installed AI CLI tools
   fuzzy-select.ts - Interactive terminal UI with fuzzy search
   lookup.ts       - Tool lookup by name, alias, or fuzzy match
+  template.ts     - Template configuration
+  upgrade.ts      - Upgrade functionality
   types.ts        - Type definitions and interfaces
   logo.ts         - ASCII logo and colors
-  version.ts      - Generated at build time (in .gitignore)
+  version.ts      - Generated at build time (.gitignore)
 ```
 
 ## Testing
 
-Write tests that give confidence to change:
-- Test behavior, not implementation details
-- Focus on user-facing functionality
-- Add tests for new features in `<module>.test.ts` files
 - Use Bun's test framework: `import { describe, test, expect } from "bun:test"`
+- Test behavior, not implementation details
+- Add tests for new features in `<module>.test.ts` files
+- Write tests that give confidence to change
 
 ## Development Workflow
 
-1. Run `bun run typecheck` after changes - must pass with no errors
-2. Test with `bun test` or specific file `bun test src/config.test.ts`
-3. Build with `bun run build` before committing
-4. Keep changes small and reversible
+1. Run `bun run typecheck` - must pass with no errors
+2. Run `bun run check` - linting and formatting
+3. Test with `bun test` or specific file `bun test src/config.test.ts`
+4. Build with `bun run build` before committing
+5. Keep changes small and reversible

@@ -92,12 +92,16 @@ function launchTool(command: string, extraArgs: string[] = [], stdinContent: str
   }
 
   const parts = finalCommand.split(/\s+/).filter((p) => p !== "");
-  const cmd = parts[0];
-  if (!cmd) {
-    console.error("Invalid command format");
+  if (parts.length === 0) {
+    console.error("Empty command after processing");
     process.exit(1);
   }
-  const args = parts.slice(1);
+  const [cmd = "", ...rest] = parts;
+  const args = rest;
+  if (!cmd) {
+    console.error("Empty command");
+    process.exit(1);
+  }
 
   const child = spawnSync(cmd, args, {
     stdio: "inherit",
@@ -156,7 +160,7 @@ async function main() {
       if (result.item) {
         launchTool(result.item.command, afterDash, stdinContent);
       }
-    } else if (beforeDash.length > 0) {
+    } else {
       const toolQuery = beforeDash[0];
       if (!toolQuery) {
         console.error("Invalid tool query");

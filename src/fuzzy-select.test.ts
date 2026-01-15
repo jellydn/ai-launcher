@@ -70,11 +70,7 @@ describe("toSelectableItems", () => {
 
 describe("promptForInput", () => {
   test("is exported and callable", () => {
-    // Basic check that function exists and is callable
     expect(typeof promptForInput).toBe("function");
-    expect(promptForInput.length).toBe(1); // Takes 1 parameter
+    expect(promptForInput.length).toBe(1);
   });
-
-  // Note: Full integration testing of promptForInput requires a TTY and user interaction
-  // These tests are better suited for manual testing or E2E test suites
 });

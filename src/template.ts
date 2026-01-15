@@ -30,7 +30,6 @@ export function parseTemplateCommand(command: string): ParsedCommand {
 
   for (let i = 0; i < command.length; i++) {
     const char = command[i];
-    if (!char) continue;
 
     if (char === "'" && !inDoubleQuote) {
       inSingleQuote = !inSingleQuote;
