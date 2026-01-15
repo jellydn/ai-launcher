@@ -1,5 +1,5 @@
-import { createHash, randomUUID } from "node:crypto";
 import { execSync } from "node:child_process";
+import { createHash, randomUUID } from "node:crypto";
 import {
 	access,
 	chmod,
@@ -181,12 +181,8 @@ export async function upgrade() {
 				"code" in error &&
 				(error.code === "EACCES" || error.code === "EPERM")
 			) {
-				console.error(
-					`❌ Permission denied to write to ${binaryPath}\n`,
-				);
-				console.error(
-					"Run the upgrade with elevated permissions:\n",
-				);
+				console.error(`❌ Permission denied to write to ${binaryPath}\n`);
+				console.error("Run the upgrade with elevated permissions:\n");
 				console.error("    sudo ai upgrade\n");
 			} else {
 				console.error(

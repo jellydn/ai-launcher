@@ -20,7 +20,7 @@
     {
       "name": "amp",
       "command": "amp",
-      "description": "AI coding assistant by Modular",
+      "description": "Frontier coding agent for terminal and editor",
       "aliases": [
         "a"
       ]

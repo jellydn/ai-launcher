@@ -1,26 +1,34 @@
 export type AuthType = "oauth" | "api_key" | "none";
 
 export interface Tool {
-  name: string;
-  command: string;
-  description?: string;
-  aliases?: string[];
-  authType?: AuthType;
+	name: string;
+	command: string;
+	description?: string;
+	aliases?: string[];
+	authType?: AuthType;
 }
 
 export interface Template {
-  name: string;
-  command: string;
-  description: string;
-  aliases?: string[];
+	name: string;
+	command: string;
+	description: string;
+	aliases?: string[];
 }
 
 export interface Config {
-  tools: Tool[];
-  templates: Template[];
+	tools: Tool[];
+	templates: Template[];
 }
 
 export interface ConfigValidationError {
-  path: string;
-  message: string;
+	path: string;
+	message: string;
+}
+
+export interface SelectableItem {
+	name: string;
+	command: string;
+	description: string;
+	isTemplate: boolean;
+	aliases?: string[];
 }

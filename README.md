@@ -106,7 +106,7 @@ ai
 - `↑/↓` Arrow keys to navigate
 - `Enter` to select and launch
 - `Esc` or `Ctrl+C` to cancel
-- Templates show `[T]` indicator
+- Templates show `[T]` indicator (compact display)
 - Real-time fuzzy matching on names and descriptions
 
 ### ⚡ Direct Invocation
@@ -160,6 +160,18 @@ echo "Hello world" | ai summarize
 
 Both methods substitute content into the `$@` placeholder. If no input is provided for a template requiring `$@`, an error is shown.
 
+### Templates Without Arguments
+
+Templates without `$@` run immediately when selected - perfect for common commands with embedded prompts:
+
+```bash
+# In config.json - no prompt needed, runs directly
+ai gemini-arch                # Runs immediately: ccs gemini 'Explain...'
+ai                           # Or select from interactive menu
+```
+
+These templates have fixed commands and execute instantly on selection.
+
 ## Configuration
 
 Config file location: `~/.config/ai-switcher/config.json`
@@ -197,6 +209,12 @@ A default config is created on first run. Example:
       "name": "commit-zen",
       "command": "opencode run 'Generate commit message: $@'",
       "description": "Generate commit message with OpenCode"
+    },
+    {
+      "name": "gemini-arch",
+      "command": "ccs gemini 'Explain this codebase architecture'",
+      "description": "Explain architecture with Gemini",
+      "aliases": ["arch"]
     }
   ]
 }

@@ -11,17 +11,11 @@ Guidelines for agentic coding agents working on this codebase.
 | Command | Description |
 |---------|-------------|
 | `bun run dev` | Run in development mode |
-| `bun run build` | Build standalone executable to `dist/ai` (generates version.ts) |
+| `bun run build` | Build standalone executable to `dist/ai` (generates `src/version.ts` from package.json version) |
 | `bun run typecheck` | TypeScript type checking (strict mode) |
 | `bun test` | Run all unit tests |
-| `bun test <file>` | Run specific test file (e.g., `bun test src/detect.test.ts`) |
-| `bun run src/index.ts <tool>` | Test with specific tool |
-
-**Before type checking:** Ensure `src/version.ts` exists (created by build or generate manually):
-```bash
-VERSION=$(node -p "require('./package.json').version")
-echo "export const VERSION = \"$VERSION\";" > src/version.ts
-```
+| `bun test src/detect.test.ts` | Run specific test file |
+| `bun run src/index.ts claude` | Test with specific tool |
 
 ## Code Style Guidelines
 
@@ -30,7 +24,6 @@ echo "export const VERSION = \"$VERSION\";" > src/version.ts
 - **Small, Safe Steps**: Make big changes through small, reversible steps
 - **Code is Communication**: Write for humans, not machines
 - **Eliminate Problems**: Remove complexity rather than managing it
-- **Self-Documenting Code**: Use meaningful names and clear structure
 - **Separate Tidying from Behavior Changes**: Keep refactoring separate from features
 
 ### Naming Conventions
@@ -54,43 +47,21 @@ echo "export const VERSION = \"$VERSION\";" > src/version.ts
 - **Strict mode enabled**: All strict flags in tsconfig.json
 - No `any` - use `unknown` for truly dynamic values
 - Explicit return types for public/exported functions
-- `noUncheckedIndexedAccess` enforced - always check array access
-- `noImplicitOverride` - use `override` keyword when overriding parent methods
+- `noUncheckedIndexedAccess` - always check array/object access
+- `noImplicitOverride` - use `override` keyword when overriding
 - `noUnusedLocals` and `noUnusedParameters` - remove unused code
 - `verbatimModuleSyntax` - type imports must use `import type`
-- `noFallthroughCasesInSwitch` - always break or return from switch cases
-- Path alias `@/*` resolves to `src/*` for internal imports
+- `noFallthroughCasesInSwitch` - always break or return
+- Path alias `@/*` resolves to `src/*`
 - ESNext target/lib for modern features
 
-### Formatting
+### Formatting & Patterns
 
 - 2-space indentation
 - No comments unless explaining non-obvious logic
-- Prefer readable one-liners for simple operations
-- Use helper variables for complex expressions
-
-### Constants & Helpers
-
+- Helper variables for complex expressions
 - Module-level constants use UPPER_SNAKE_CASE at top of file
-- Extract complex expressions into well-named helper variables
-- Group related constants together
-
-```typescript
-const ESC = "\x1b";
-const CSI = `${ESC}[`;
-const HIDE_CURSOR = `${CSI}?25l`;
-
-const hasActivePremiumSubscription =
-  user.subscription.plan.tier === 'premium' &&
-  user.subscription.status === 'active';
-```
-
-### Runtime Patterns
-
-- Use `spawnSync` from `node:child_process` for command execution
-- Terminal TTY checks: `if (!stdin.isTTY || !stdout.isTTY)`
-- Raw mode for input: `stdin.setRawMode(true)`
-- Async functions return typed `Promise<T>`
+- Entry points require `#!/usr/bin/env bun` shebang
 
 ### Guard Clauses
 
@@ -104,15 +75,13 @@ function processTool(tool: Tool | null) {
 }
 ```
 
-### Error Handling
+### Async/Await
 
-- Use `Error` instances with descriptive messages
-- Validation errors return arrays with `path` and `message`:
+Main functions return `Promise<void>` and use top-level `.catch()`:
 
 ```typescript
-interface ConfigValidationError {
-  path: string;
-  message: string;
+async function main(): Promise<void> {
+  // ... async logic
 }
 
 main().catch((err) => {
@@ -121,9 +90,28 @@ main().catch((err) => {
 });
 ```
 
+### Error Handling
+
+- Use `Error` instances with descriptive messages
+- Validation errors return objects with `success`, `error`, and optionally `item`:
+
+```typescript
+interface LookupResult {
+  success: boolean;
+  item?: Tool;
+  error?: string;
+}
+
+function findToolByName(query: string, items: LookupItem[]): LookupResult {
+  const match = items.find((i) => i.name === query);
+  if (!match) return { success: false, error: "Tool not found" };
+  return { success: true, item: match.tool };
+}
+```
+
 ### Security
 
-- Validate all commands with regex patterns before execution
+- Validate commands with regex patterns before execution
 - Sanitize user input for shell commands
 - Use allowlist patterns, not denylists
 
@@ -138,7 +126,7 @@ src/
   lookup.ts       - Tool lookup by name, alias, or fuzzy match
   types.ts        - Type definitions and interfaces
   logo.ts         - ASCII logo and colors
-  version.ts      - Generated at build time from package.json (in .gitignore)
+  version.ts      - Generated at build time (in .gitignore)
 ```
 
 ## Testing
@@ -147,11 +135,11 @@ Write tests that give confidence to change:
 - Test behavior, not implementation details
 - Focus on user-facing functionality
 - Add tests for new features in `<module>.test.ts` files
-- Use Bun's built-in test framework: `import { describe, test, expect } from "bun:test"`
+- Use Bun's test framework: `import { describe, test, expect } from "bun:test"`
 
 ## Development Workflow
 
 1. Run `bun run typecheck` after changes - must pass with no errors
-2. Test with `bun test` (or specific test file)
+2. Test with `bun test` or specific file `bun test src/config.test.ts`
 3. Build with `bun run build` before committing
 4. Keep changes small and reversible

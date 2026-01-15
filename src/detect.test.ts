@@ -1,5 +1,5 @@
-import { describe, test, expect } from "bun:test";
-import { parseCcsApiList, detectCliProxyProfiles } from "./detect";
+import { describe, expect, test } from "bun:test";
+import { detectCliProxyProfiles, parseCcsApiList } from "./detect";
 
 const CCS_API_LIST_OUTPUT = `CCS API Profiles
 
@@ -43,98 +43,98 @@ const CCS_API_LIST_ASCII_PIPES = `CCS API Profiles
 `;
 
 describe("parseCcsApiList", () => {
-  test("extracts profiles with OK status", () => {
-    const profiles = parseCcsApiList(CCS_API_LIST_OUTPUT);
+	test("extracts profiles with OK status", () => {
+		const profiles = parseCcsApiList(CCS_API_LIST_OUTPUT);
 
-    expect(profiles).toContain("glm");
-    expect(profiles).toContain("glmt");
-    expect(profiles).toContain("my-profile");
-    expect(profiles).toContain("test.api");
-  });
+		expect(profiles).toContain("glm");
+		expect(profiles).toContain("glmt");
+		expect(profiles).toContain("my-profile");
+		expect(profiles).toContain("test.api");
+	});
 
-  test("excludes profiles with ! status", () => {
-    const profiles = parseCcsApiList(CCS_API_LIST_OUTPUT);
+	test("excludes profiles with ! status", () => {
+		const profiles = parseCcsApiList(CCS_API_LIST_OUTPUT);
 
-    expect(profiles).not.toContain("kimi");
-    expect(profiles).not.toContain("openrouter");
-  });
+		expect(profiles).not.toContain("kimi");
+		expect(profiles).not.toContain("openrouter");
+	});
 
-  test("excludes header row", () => {
-    const profiles = parseCcsApiList(CCS_API_LIST_OUTPUT);
+	test("excludes header row", () => {
+		const profiles = parseCcsApiList(CCS_API_LIST_OUTPUT);
 
-    expect(profiles).not.toContain("API");
-  });
+		expect(profiles).not.toContain("API");
+	});
 
-  test("handles ANSI color codes", () => {
-    const profiles = parseCcsApiList(CCS_API_LIST_WITH_ANSI);
+	test("handles ANSI color codes", () => {
+		const profiles = parseCcsApiList(CCS_API_LIST_WITH_ANSI);
 
-    expect(profiles).toContain("glm");
-    expect(profiles).not.toContain("broken");
-  });
+		expect(profiles).toContain("glm");
+		expect(profiles).not.toContain("broken");
+	});
 
-  test("handles ASCII pipe characters", () => {
-    const profiles = parseCcsApiList(CCS_API_LIST_ASCII_PIPES);
+	test("handles ASCII pipe characters", () => {
+		const profiles = parseCcsApiList(CCS_API_LIST_ASCII_PIPES);
 
-    expect(profiles).toContain("glm");
-    expect(profiles).toContain("mm");
-    expect(profiles).not.toContain("kimi");
-  });
+		expect(profiles).toContain("glm");
+		expect(profiles).toContain("mm");
+		expect(profiles).not.toContain("kimi");
+	});
 
-  test("returns empty array for empty output", () => {
-    const profiles = parseCcsApiList("");
+	test("returns empty array for empty output", () => {
+		const profiles = parseCcsApiList("");
 
-    expect(profiles).toEqual([]);
-  });
+		expect(profiles).toEqual([]);
+	});
 
-  test("returns empty array for malformed output", () => {
-    const profiles = parseCcsApiList("Some random text\nNo table here");
+	test("returns empty array for malformed output", () => {
+		const profiles = parseCcsApiList("Some random text\nNo table here");
 
-    expect(profiles).toEqual([]);
-  });
+		expect(profiles).toEqual([]);
+	});
 });
 
 describe("detectCliProxyProfiles", () => {
-  test("returns all CLIProxy OAuth providers", () => {
-    const profiles = detectCliProxyProfiles();
-    const names = profiles.map(p => p.name);
+	test("returns all CLIProxy OAuth providers", () => {
+		const profiles = detectCliProxyProfiles();
+		const names = profiles.map((p) => p.name);
 
-    expect(names).toContain("ccs:gemini");
-    expect(names).toContain("ccs:codex");
-    expect(names).toContain("ccs:agy");
-    expect(names).toContain("ccs:qwen");
-    expect(names).toContain("ccs:iflow");
-    expect(names).toContain("ccs:kiro");
-    expect(names).toContain("ccs:ghcp");
-  });
+		expect(names).toContain("ccs:gemini");
+		expect(names).toContain("ccs:codex");
+		expect(names).toContain("ccs:agy");
+		expect(names).toContain("ccs:qwen");
+		expect(names).toContain("ccs:iflow");
+		expect(names).toContain("ccs:kiro");
+		expect(names).toContain("ccs:ghcp");
+	});
 
-  test("all profiles have correct auth type", () => {
-    const profiles = detectCliProxyProfiles();
+	test("all profiles have correct auth type", () => {
+		const profiles = detectCliProxyProfiles();
 
-    for (const profile of profiles) {
-      expect(profile.authType).toBe("oauth");
-    }
-  });
+		for (const profile of profiles) {
+			expect(profile.authType).toBe("oauth");
+		}
+	});
 
-  test("all profiles have correct command format", () => {
-    const profiles = detectCliProxyProfiles();
+	test("all profiles have correct command format", () => {
+		const profiles = detectCliProxyProfiles();
 
-    for (const profile of profiles) {
-      expect(profile.command).toStartWith("ccs ");
-      expect(profile.command).toEndWith(profile.name.replace("ccs:", ""));
-    }
-  });
+		for (const profile of profiles) {
+			expect(profile.command).toStartWith("ccs ");
+			expect(profile.command).toEndWith(profile.name.replace("ccs:", ""));
+		}
+	});
 
-  test("all profiles have OAuth description", () => {
-    const profiles = detectCliProxyProfiles();
+	test("all profiles have OAuth description", () => {
+		const profiles = detectCliProxyProfiles();
 
-    for (const profile of profiles) {
-      expect(profile.description).toContain("OAuth");
-    }
-  });
+		for (const profile of profiles) {
+			expect(profile.description).toContain("OAuth");
+		}
+	});
 
-  test("returns all 7 OAuth providers", () => {
-    const profiles = detectCliProxyProfiles();
+	test("returns all 7 OAuth providers", () => {
+		const profiles = detectCliProxyProfiles();
 
-    expect(profiles).toHaveLength(7);
-  });
+		expect(profiles).toHaveLength(7);
+	});
 });

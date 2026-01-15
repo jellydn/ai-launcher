@@ -1,40 +1,65 @@
 import Fuse from "fuse.js";
-import type { Tool, Template } from "./types";
-
-export interface SelectableItem {
-  name: string;
-  command: string;
-  description: string;
-  isTemplate: boolean;
-  aliases?: string[];
-}
+import type { SelectableItem, Template, Tool } from "./types";
 
 export interface SelectionResult {
-  cancelled: boolean;
-  item?: SelectableItem;
+	cancelled: boolean;
+	item?: SelectableItem;
 }
 
-export function toSelectableItems(tools: Tool[], templates: Template[]): SelectableItem[] {
-  return [
-    ...tools.map((t) => ({
-      name: t.name,
-      command: t.command,
-      description: t.description || "",
-      isTemplate: false,
-      aliases: t.aliases,
-    })),
-    ...templates.map((t) => ({
-      name: t.name,
-      command: t.command,
-      description: t.description,
-      isTemplate: true,
-      aliases: t.aliases,
-    })),
-  ];
+export function toSelectableItems(
+	tools: Tool[],
+	templates: Template[],
+): SelectableItem[] {
+	return [
+		...tools.map((t) => ({
+			name: t.name,
+			command: t.command,
+			description: t.description || "",
+			isTemplate: false,
+			aliases: t.aliases,
+		})),
+		...templates.map((t) => ({
+			name: t.name,
+			command: t.command,
+			description: t.description,
+			isTemplate: true,
+			aliases: t.aliases,
+		})),
+	];
 }
 
 const ESC = "\x1b";
 const CSI = `${ESC}[`;
+const ANSI_PATTERN = /\x1b\[[0-9;]*m/g;
+const MIN_TERMINAL_WIDTH = 40;
+
+let cachedTerminalWidth: number | null = null;
+
+function getTerminalWidth(): number {
+	if (cachedTerminalWidth !== null) {
+		return cachedTerminalWidth;
+	}
+
+	const columns = process.stdout.columns;
+	if (typeof columns !== "number" || columns < 1) {
+		cachedTerminalWidth = 80;
+	} else {
+		cachedTerminalWidth = Math.max(MIN_TERMINAL_WIDTH, columns);
+	}
+
+	return cachedTerminalWidth;
+}
+
+function resetTerminalWidthCache(): void {
+	cachedTerminalWidth = null;
+}
+
+function getDisplayLines(text: string, width: number): number {
+	if (width <= 0) return 1;
+	const cleanText = text.replace(ANSI_PATTERN, "");
+	return Math.max(1, Math.ceil(cleanText.length / width));
+}
+
 const HIDE_CURSOR = `${CSI}?25l`;
 const SHOW_CURSOR = `${CSI}?25h`;
 const CLEAR_LINE = `${CSI}2K`;
@@ -52,147 +77,250 @@ const KEY_CTRL_C = "\x03";
 const KEY_ESC = "\x1b";
 const KEY_BACKSPACE = "\x7f";
 
-export async function fuzzySelect(items: SelectableItem[]): Promise<SelectionResult> {
-  if (items.length === 0) {
-    return { cancelled: true };
-  }
+export async function fuzzySelect(
+	items: SelectableItem[],
+): Promise<SelectionResult> {
+	if (items.length === 0) {
+		return { cancelled: true };
+	}
 
-  const fuse = new Fuse(items, {
-    keys: ["name", "description", "aliases"],
-    threshold: 0.4,
-    includeScore: true,
-  });
+	resetTerminalWidthCache();
 
-  let query = "";
-  let selectedIndex = 0;
-  let filteredItems = items;
-  let scrollOffset = 0;
-  const maxVisible = Math.min(10, items.length);
+	const fuse = new Fuse(items, {
+		keys: ["name", "description", "aliases"],
+		threshold: 0.4,
+		includeScore: true,
+	});
 
-  const stdin = process.stdin;
-  const stdout = process.stdout;
+	let query = "";
+	let selectedIndex = 0;
+	let filteredItems = items;
+	let scrollOffset = 0;
+	const maxVisible = Math.min(10, items.length);
 
-  if (!stdin.isTTY || !stdout.isTTY) {
-    console.error("Interactive mode requires a terminal");
-    console.error("Use direct invocation: ai <tool-name>");
-    return { cancelled: true };
-  }
+	const stdin = process.stdin;
+	const stdout = process.stdout;
 
-  stdin.setRawMode(true);
-  stdin.resume();
-  stdin.setEncoding("utf8");
+	if (!stdin.isTTY || !stdout.isTTY) {
+		console.error("Interactive mode requires a terminal");
+		console.error("Use direct invocation: ai <tool-name>");
+		return { cancelled: true };
+	}
 
-  stdout.write(HIDE_CURSOR);
+	stdin.setRawMode(true);
+	stdin.resume();
+	stdin.setEncoding("utf8");
 
-  const render = () => {
-    const lines: string[] = [];
+	stdout.write(HIDE_CURSOR);
 
-    lines.push(`${CYAN}❯${RESET} ${query}${DIM}│${RESET}`);
+	const render = () => {
+		const lines: string[] = [];
+		const terminalWidth = getTerminalWidth();
 
-    const displayStart = scrollOffset;
-    const displayEnd = Math.min(scrollOffset + maxVisible, filteredItems.length);
-    const displayItems = filteredItems.slice(displayStart, displayEnd);
+		lines.push(`${CYAN}❯${RESET} ${query}${DIM}│${RESET}`);
 
-    for (let i = 0; i < displayItems.length; i++) {
-      const globalIndex = displayStart + i;
-      const item = displayItems[i];
-      if (!item) continue;
-      const isSelected = globalIndex === selectedIndex;
-      const prefix = isSelected ? `${GREEN}▸${RESET}` : " ";
-      const indicator = item.isTemplate ? `${YELLOW}[TEMPLATE]${RESET} ` : "  ";
-      const aliasText =
-        item.aliases && item.aliases.length > 0
-          ? `${CYAN}(${item.aliases.join(", ")})${RESET}`
-          : "";
-      const name = isSelected ? `${BOLD}${item.name}${RESET}` : item.name;
-      const desc = item.description
-        ? `${DIM} - ${item.description}${RESET}`
-        : "";
-      lines.push(`${prefix} ${indicator}${name}${aliasText}${desc}`);
-    }
+		const displayStart = scrollOffset;
+		const displayEnd = Math.min(
+			scrollOffset + maxVisible,
+			filteredItems.length,
+		);
+		const displayItems = filteredItems.slice(displayStart, displayEnd);
 
-    if (filteredItems.length > maxVisible) {
-      const remaining = filteredItems.length - displayEnd;
-      if (remaining > 0) {
-        lines.push(`${DIM}  ... and ${remaining} more${RESET}`);
-      }
-    }
+		for (let i = 0; i < displayItems.length; i++) {
+			const globalIndex = displayStart + i;
+			const item = displayItems[i];
+			if (!item) continue;
+			const isSelected = globalIndex === selectedIndex;
+			const prefix = isSelected ? `${GREEN}▸${RESET}` : " ";
+			const indicator = item.isTemplate ? `${YELLOW}[T]${RESET} ` : "   ";
+			const aliasText =
+				item.aliases && item.aliases.length > 0
+					? `${CYAN}(${item.aliases.join(", ")})${RESET}`
+					: "";
+			const name = isSelected ? `${BOLD}${item.name}${RESET}` : item.name;
 
-    if (filteredItems.length === 0) {
-      lines.push(`${DIM}  No matches${RESET}`);
-    }
+			const baseLength =
+				2 +
+				(item.isTemplate ? 4 : 3) +
+				item.name.length +
+				(item.aliases ? item.aliases.join(", ").length + 2 : 0);
 
-    stdout.write(`${lines.join("\n")}\n`);
-    return lines.length;
-  };
+			let desc = "";
+			if (item.description) {
+				const availableWidth = terminalWidth - baseLength - 3; // -3 for " - "
+				if (availableWidth > 10) {
+					const truncatedDesc =
+						item.description.length > availableWidth
+							? `${item.description.slice(0, availableWidth - 3)}...`
+							: item.description;
+					desc = `${DIM} - ${truncatedDesc}${RESET}`;
+				}
+			}
 
-  const clear = (lineCount: number) => {
-    stdout.write(MOVE_UP(lineCount));
-    for (let i = 0; i < lineCount; i++) {
-      stdout.write(`${CLEAR_LINE}\n`);
-    }
-    stdout.write(MOVE_UP(lineCount));
-  };
+			lines.push(`${prefix} ${indicator}${name}${aliasText}${desc}`);
+		}
 
-  let lastLineCount = render();
+		if (filteredItems.length > maxVisible) {
+			const remaining = filteredItems.length - displayEnd;
+			if (remaining > 0) {
+				lines.push(`${DIM}  ... and ${remaining} more${RESET}`);
+			}
+		}
 
-  return new Promise((resolve) => {
-    const cleanup = () => {
-      clear(lastLineCount);
-      stdout.write(SHOW_CURSOR);
-      if (stdin.setRawMode) {
-        stdin.setRawMode(false);
-      }
-      stdin.pause();
-    };
+		if (filteredItems.length === 0) {
+			lines.push(`${DIM}  No matches${RESET}`);
+		}
 
-    const handleKey = (key: string) => {
-      if (key === KEY_CTRL_C || key === KEY_ESC) {
-        cleanup();
-        resolve({ cancelled: true });
-        return;
-      }
+		stdout.write(`${lines.join("\n")}\n`);
+		return lines;
+	};
 
-      if (key === KEY_ENTER) {
-        if (filteredItems.length > 0 && selectedIndex < filteredItems.length) {
-          cleanup();
-          resolve({ cancelled: false, item: filteredItems[selectedIndex] });
-        }
-        return;
-      }
+	const clear = (lines: string[], width: number) => {
+		let totalLines = 0;
+		for (const line of lines) {
+			totalLines += getDisplayLines(line, width);
+		}
 
-      if (key === KEY_UP) {
-        selectedIndex = Math.max(0, selectedIndex - 1);
-        if (selectedIndex < scrollOffset) {
-          scrollOffset = Math.max(0, selectedIndex - Math.floor(maxVisible / 2));
-        }
-      } else if (key === KEY_DOWN) {
-        selectedIndex = Math.min(filteredItems.length - 1, selectedIndex + 1);
-        if (selectedIndex >= scrollOffset + maxVisible) {
-          scrollOffset = Math.max(0, Math.min(filteredItems.length - maxVisible, selectedIndex - Math.floor(maxVisible / 2) + 1));
-        }
-      } else if (key === KEY_BACKSPACE) {
-        query = query.slice(0, -1);
-        updateFilter();
-      } else if (key.length === 1 && key >= " " && key <= "~") {
-        query += key;
-        updateFilter();
-      }
+		stdout.write(MOVE_UP(totalLines));
+		for (let i = 0; i < totalLines; i++) {
+			stdout.write(`${CLEAR_LINE}\n`);
+		}
+		stdout.write(MOVE_UP(totalLines));
+	};
 
-      clear(lastLineCount);
-      lastLineCount = render();
-    };
+	let lastLines = render();
 
-    const updateFilter = () => {
-      if (query === "") {
-        filteredItems = items;
-      } else {
-        filteredItems = fuse.search(query).map((r) => r.item);
-      }
-      selectedIndex = 0;
-      scrollOffset = 0;
-    };
+	return new Promise((resolve) => {
+		const cleanup = () => {
+			stdin.removeListener("data", handleKey);
+			clear(lastLines, getTerminalWidth());
+			stdout.write(SHOW_CURSOR);
+			if (stdin.setRawMode) {
+				stdin.setRawMode(false);
+			}
+			stdin.pause();
+		};
 
-    stdin.on("data", handleKey);
-  });
+		const handleKey = (key: string) => {
+			if (key === KEY_CTRL_C || key === KEY_ESC) {
+				cleanup();
+				resolve({ cancelled: true });
+				return;
+			}
+
+			if (key === KEY_ENTER) {
+				if (filteredItems.length > 0 && selectedIndex < filteredItems.length) {
+					cleanup();
+					resolve({ cancelled: false, item: filteredItems[selectedIndex] });
+				}
+				return;
+			}
+
+			if (key === KEY_UP) {
+				selectedIndex = Math.max(0, selectedIndex - 1);
+				if (selectedIndex < scrollOffset) {
+					scrollOffset = Math.max(
+						0,
+						selectedIndex - Math.floor(maxVisible / 2),
+					);
+				}
+			} else if (key === KEY_DOWN) {
+				selectedIndex = Math.min(filteredItems.length - 1, selectedIndex + 1);
+				if (selectedIndex >= scrollOffset + maxVisible) {
+					scrollOffset = Math.max(
+						0,
+						Math.min(
+							filteredItems.length - maxVisible,
+							selectedIndex - Math.floor(maxVisible / 2) + 1,
+						),
+					);
+				}
+			} else if (key === KEY_BACKSPACE) {
+				query = query.slice(0, -1);
+				updateFilter();
+			} else if (key.length === 1 && key >= " " && key <= "~") {
+				query += key;
+				updateFilter();
+			}
+
+			clear(lastLines, getTerminalWidth());
+			lastLines = render();
+		};
+
+		const updateFilter = () => {
+			if (query === "") {
+				filteredItems = items;
+			} else {
+				filteredItems = fuse.search(query).map((r) => r.item);
+			}
+
+			if (selectedIndex >= filteredItems.length) {
+				selectedIndex = Math.max(0, filteredItems.length - 1);
+			}
+
+			if (selectedIndex < scrollOffset) {
+				scrollOffset = selectedIndex;
+			} else if (selectedIndex >= scrollOffset + maxVisible) {
+				scrollOffset = Math.max(0, selectedIndex - maxVisible + 1);
+			}
+		};
+
+		stdin.on("data", handleKey);
+	});
 }
+
+export async function promptForInput(promptText: string): Promise<string> {
+	const stdin = process.stdin;
+	const stdout = process.stdout;
+
+	if (!stdin.isTTY || !stdout.isTTY) {
+		return "";
+	}
+
+	stdin.setRawMode(true);
+	stdin.resume();
+	stdin.setEncoding("utf8");
+
+	stdout.write(SHOW_CURSOR);
+	stdout.write(promptText);
+
+	return new Promise((resolve) => {
+		let input = "";
+
+		const cleanup = () => {
+			stdin.removeListener("data", onData);
+			if (stdin.setRawMode) {
+				stdin.setRawMode(false);
+			}
+			stdin.pause();
+		};
+
+		const onData = (key: string) => {
+			if (key === KEY_CTRL_C || key === KEY_ESC) {
+				cleanup();
+				stdout.write("\n");
+				resolve("");
+				return;
+			}
+
+			if (key === KEY_ENTER) {
+				cleanup();
+				stdout.write("\n");
+				resolve(input);
+				return;
+			}
+
+			if (key === KEY_BACKSPACE) {
+				input = input.slice(0, -1);
+				stdout.write("\b \b");
+			} else if (key.length === 1 && key >= " " && key <= "~") {
+				input += key;
+				stdout.write(key);
+			}
+		};
+
+		stdin.on("data", onData);
+	});
+}
+
+export { getTerminalWidth, getDisplayLines };

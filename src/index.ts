@@ -4,7 +4,7 @@ import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { loadConfig } from "./config";
 import { detectInstalledTools, mergeTools } from "./detect";
-import { fuzzySelect, toSelectableItems } from "./fuzzy-select";
+import { fuzzySelect, promptForInput, toSelectableItems } from "./fuzzy-select";
 import { getColoredLogo } from "./logo";
 import { findToolByName, toLookupItems } from "./lookup";
 import { upgrade } from "./upgrade";
@@ -213,7 +213,21 @@ async function main() {
 	}
 
 	if (result.item) {
-		launchTool(result.item.command, [], stdinContent);
+		if (result.item.isTemplate && result.item.command.includes("$@")) {
+			console.log(`\nSelected: ${result.item.name}`);
+			const input = await promptForInput(
+				`Enter arguments for "${result.item.name}": `,
+			);
+			if (input.length === 0) {
+				process.exit(0);
+			}
+			const finalCommand = result.item.command.replace("$@", input);
+			console.log(`\nRunning: ${finalCommand}\n`);
+			launchTool(finalCommand, [], stdinContent);
+		} else {
+			console.log(`\nRunning: ${result.item.command}\n`);
+			launchTool(result.item.command, [], stdinContent);
+		}
 	}
 }
 
