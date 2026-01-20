@@ -102,12 +102,19 @@ ai
 
 **Controls:**
 
-- `Type` to filter tools and templates
-- `↑/↓` Arrow keys to navigate
-- `Enter` to select and launch
-- `Esc` or `Ctrl+C` to cancel
-- Templates show `[T]` indicator (compact display)
-- Real-time fuzzy matching on names and descriptions
+| Key | Action |
+|-----|--------|
+| Type | Filter tools and templates |
+| `↑` / `Ctrl+P` / `Shift+Tab` | Move up |
+| `↓` / `Ctrl+N` / `Tab` | Move down |
+| `Enter` | Select and launch |
+| `Esc` / `Ctrl+C` | Cancel |
+
+> **Note:** Tab/Shift+Tab navigate the list (not shell completion) since the UI runs in raw mode.
+
+- Templates show `[T]` indicator
+- Compact mode for narrow terminals (< 60 chars)
+- Real-time fuzzy matching on names, descriptions, and aliases
 
 ### ⚡ Direct Invocation
 

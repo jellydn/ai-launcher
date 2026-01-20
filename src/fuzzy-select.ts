@@ -29,6 +29,8 @@ const ESC = "\x1b";
 const CSI = `${ESC}[`;
 const ANSI_PATTERN = /\x1b\[[0-9;]*m/g;
 const MIN_TERMINAL_WIDTH = 40;
+const COMPACT_MODE_THRESHOLD = 60;
+const ESC_TIMEOUT_MS = 50;
 
 let cachedTerminalWidth: number | null = null;
 
@@ -71,8 +73,12 @@ const KEY_UP = `${ESC}[A`;
 const KEY_DOWN = `${ESC}[B`;
 const KEY_ENTER = "\r";
 const KEY_CTRL_C = "\x03";
-const KEY_ESC = "\x1b";
+const KEY_ESC_ONLY = "\x1b";
 const KEY_BACKSPACE = "\x7f";
+const KEY_CTRL_N = "\x0e";
+const KEY_CTRL_P = "\x10";
+const KEY_TAB = "\t";
+const KEY_SHIFT_TAB = `${ESC}[Z`;
 
 export async function fuzzySelect(items: SelectableItem[]): Promise<SelectionResult> {
   if (items.length === 0) {
@@ -124,23 +130,26 @@ export async function fuzzySelect(items: SelectableItem[]): Promise<SelectionRes
       if (!item) continue;
       const isSelected = globalIndex === selectedIndex;
       const prefix = isSelected ? `${GREEN}▸${RESET}` : " ";
-      const indicator = item.isTemplate ? `${YELLOW}[T]${RESET} ` : "   ";
-      const aliasText =
-        item.aliases && item.aliases.length > 0
-          ? `${CYAN}(${item.aliases.join(", ")})${RESET}`
-          : "";
+
+      const isCompact = terminalWidth < COMPACT_MODE_THRESHOLD;
+      const indicator = item.isTemplate ? `${YELLOW}[T]${RESET} ` : isCompact ? "" : "   ";
       const name = isSelected ? `${BOLD}${item.name}${RESET}` : item.name;
+
+      let aliasText = "";
+      if (!isCompact && item.aliases && item.aliases.length > 0) {
+        aliasText = `${CYAN}(${item.aliases.join(", ")})${RESET}`;
+      }
 
       const baseLength =
         2 +
-        (item.isTemplate ? 4 : 3) +
+        (item.isTemplate ? 4 : isCompact ? 0 : 3) +
         item.name.length +
-        (item.aliases ? item.aliases.join(", ").length + 2 : 0);
+        (aliasText ? (item.aliases?.join(", ").length ?? 0) + 2 : 0);
 
       let desc = "";
-      if (item.description) {
+      if (!isCompact && item.description) {
         const availableWidth = terminalWidth - baseLength - 3;
-        if (availableWidth > 10) {
+        if (availableWidth > 15) {
           const truncatedDesc =
             item.description.length > availableWidth
               ? `${item.description.slice(0, availableWidth - 3)}...`
@@ -193,10 +202,40 @@ export async function fuzzySelect(items: SelectableItem[]): Promise<SelectionRes
       stdin.pause();
     };
 
+    const moveUp = () => {
+      selectedIndex = Math.max(0, selectedIndex - 1);
+      if (selectedIndex < scrollOffset) {
+        scrollOffset = Math.max(0, selectedIndex - Math.floor(maxVisible / 2));
+      }
+    };
+
+    const moveDown = () => {
+      selectedIndex = Math.min(filteredItems.length - 1, selectedIndex + 1);
+      if (selectedIndex >= scrollOffset + maxVisible) {
+        scrollOffset = Math.max(
+          0,
+          Math.min(
+            filteredItems.length - maxVisible,
+            selectedIndex - Math.floor(maxVisible / 2) + 1
+          )
+        );
+      }
+    };
+
     const handleKey = (key: string) => {
-      if (key === KEY_CTRL_C || key === KEY_ESC) {
+      if (key === KEY_CTRL_C) {
         cleanup();
         resolve({ cancelled: true });
+        return;
+      }
+
+      if (key === KEY_ESC_ONLY) {
+        // Delay to distinguish bare ESC from escape sequences (e.g., arrow keys send ESC + [...).
+        // Without this, pressing arrow keys would cancel the selection.
+        setTimeout(() => {
+          cleanup();
+          resolve({ cancelled: true });
+        }, ESC_TIMEOUT_MS);
         return;
       }
 
@@ -208,22 +247,10 @@ export async function fuzzySelect(items: SelectableItem[]): Promise<SelectionRes
         return;
       }
 
-      if (key === KEY_UP) {
-        selectedIndex = Math.max(0, selectedIndex - 1);
-        if (selectedIndex < scrollOffset) {
-          scrollOffset = Math.max(0, selectedIndex - Math.floor(maxVisible / 2));
-        }
-      } else if (key === KEY_DOWN) {
-        selectedIndex = Math.min(filteredItems.length - 1, selectedIndex + 1);
-        if (selectedIndex >= scrollOffset + maxVisible) {
-          scrollOffset = Math.max(
-            0,
-            Math.min(
-              filteredItems.length - maxVisible,
-              selectedIndex - Math.floor(maxVisible / 2) + 1
-            )
-          );
-        }
+      if (key === KEY_UP || key === KEY_CTRL_P || key === KEY_SHIFT_TAB) {
+        moveUp();
+      } else if (key === KEY_DOWN || key === KEY_CTRL_N || key === KEY_TAB) {
+        moveDown();
       } else if (key === KEY_BACKSPACE) {
         query = query.slice(0, -1);
         updateFilter();
@@ -285,7 +312,7 @@ export async function promptForInput(promptText: string): Promise<string> {
     };
 
     const onData = (key: string) => {
-      if (key === KEY_CTRL_C || key === KEY_ESC) {
+      if (key === KEY_CTRL_C || key === KEY_ESC_ONLY) {
         cleanup();
         stdout.write("\n");
         resolve("");
