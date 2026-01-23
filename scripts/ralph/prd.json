@@ -1,17 +1,17 @@
 {
   "project": "AI CLI Router",
-  "branchName": "ralph/ai-cli-router",
-  "description": "A quick launcher CLI tool called 'ai' that allows users to switch between different AI coding assistants using fuzzy search",
+  "branchName": "ralph/passthrough-args",
+  "description": "Passthrough Arguments - Pass CLI arguments directly to underlying AI tools without validation",
   "userStories": [
     {
       "id": "US-001",
-      "title": "Initialize project structure with Bun",
-      "description": "As a developer, I need the project scaffolded so I can start building.",
+      "title": "Remove validation for passthrough arguments",
+      "description": "As a user, I want to pass any CLI arguments to the underlying tool without validation errors.",
       "acceptanceCriteria": [
-        "Initialize Bun project with TypeScript",
-        "Set up src/ directory structure with index.ts entry point",
-        "Configure tsconfig.json for Bun",
-        "Add build script in package.json to produce executable",
+        "Remove validateArguments() call for args passed to tools",
+        "Args like /slop, --model=gpt-4, -v pass through unchanged",
+        "Special characters like slashes and dashes don't cause rejection",
+        "Keep validateToolCommand() for the tool command itself",
         "Typecheck passes"
       ],
       "priority": 1,
@@ -20,106 +20,62 @@
     },
     {
       "id": "US-002",
-      "title": "Create config file structure",
-      "description": "As a user, I want a config file to define my AI tools and aliases.",
+      "title": "Implicit passthrough for direct tool invocation",
+      "description": "As a user, I want 'ai o /slop' to launch opencode with /slop without needing -- separator.",
       "acceptanceCriteria": [
-        "Config file location: ~/.config/ai-router/config.json",
-        "Define TypeScript types for config schema (tools, aliases, templates)",
-        "Creates default config on first run if missing",
-        "Validates config and shows helpful errors",
+        "'ai claude /slop' launches 'claude /slop'",
+        "'ai o --help' launches 'opencode --help'",
+        "'ai amp -p prompt' launches 'amp -p prompt'",
+        "Multiple args work: 'ai claude --model sonnet --help'",
         "Typecheck passes"
       ],
       "priority": 2,
       "passes": true,
-      "notes": ""
+      "notes": "Verified: implicit passthrough works for all test cases. Args pass through without -- separator."
     },
     {
       "id": "US-003",
-      "title": "Auto-detect installed AI CLIs",
-      "description": "As a user, I want the tool to find my installed AI assistants automatically.",
+      "title": "Passthrough after fuzzy selection with separator",
+      "description": "As a user, I want to select a tool via fuzzy search and pass args using 'ai -- /slop'.",
       "acceptanceCriteria": [
-        "Detects: claude, opencode, amp, ccs (using which or command -v)",
-        "For ccs, detect available profiles from ~/.ccs/config.json",
-        "Merges auto-detected tools with config-defined tools",
-        "Config-defined tools take precedence over auto-detected",
+        "'ai -- /slop' opens fuzzy selector, then passes /slop to selected tool",
+        "'ai -- --help' opens fuzzy selector, then passes --help to selected tool",
+        "Multiple args after -- all pass through",
+        "Existing -- separator behavior preserved",
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
       "id": "US-004",
-      "title": "Implement fuzzy search selection",
-      "description": "As a user, I want to type partial names to quickly filter and select a tool.",
+      "title": "Optional args prompt after interactive selection",
+      "description": "As a user, I want to optionally provide arguments after selecting a tool interactively.",
       "acceptanceCriteria": [
-        "Running 'ai' shows interactive fuzzy search prompt",
-        "Typing filters the list in real-time",
-        "Arrow keys navigate, Enter selects",
-        "Esc or Ctrl+C cancels",
-        "Shows tool name and description in list",
+        "After fuzzy selection of non-template tool, prompt: 'Arguments (optional, press Enter to skip):'",
+        "Empty input launches tool without args",
+        "Entered args pass directly to the tool",
+        "Templates with $@ continue using existing prompt behavior",
+        "Non-template tools without $@ get the new optional args prompt",
         "Typecheck passes"
       ],
       "priority": 4,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
       "id": "US-005",
-      "title": "Support direct tool invocation",
-      "description": "As a user, I want to skip the menu by passing the tool name directly.",
+      "title": "Update help text with passthrough examples",
+      "description": "As a user, I want the help text to show how to use passthrough arguments.",
       "acceptanceCriteria": [
-        "'ai claude' launches Claude directly",
-        "'ai g' launches the tool aliased to 'g'",
-        "Fuzzy matches if exact match not found (e.g., 'ai cl' → claude)",
-        "Shows error if multiple fuzzy matches with no clear winner",
+        "EXAMPLES section includes: 'ai claude /slop' - Pass /slop to claude",
+        "EXAMPLES section includes: 'ai o --help' - Show opencode's help",
+        "Examples clearly demonstrate passthrough usage",
         "Typecheck passes"
       ],
       "priority": 5,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-006",
-      "title": "Support command templates",
-      "description": "As a user, I want to define command shortcuts that include prompts or arguments.",
-      "acceptanceCriteria": [
-        "Config supports templates with command and description",
-        "Templates can include $@ for pass-through arguments",
-        "'ai summarize main.ts' expands template with arguments",
-        "Templates shown in fuzzy search with different indicator",
-        "Typecheck passes"
-      ],
-      "priority": 6,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-007",
-      "title": "Pass through arguments to selected tool",
-      "description": "As a user, I want to pass additional arguments to the AI tool.",
-      "acceptanceCriteria": [
-        "'ai claude --help' passes --help to claude",
-        "Arguments after tool name are forwarded to the spawned process",
-        "Works with both direct invocation and fuzzy selection",
-        "Typecheck passes"
-      ],
-      "priority": 7,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-008",
-      "title": "Create install/setup script and README",
-      "description": "As a user, I want easy installation to get started quickly.",
-      "acceptanceCriteria": [
-        "'bun run build' produces single executable in dist/",
-        "README.md includes installation and usage instructions",
-        "Instructions for symlinking to /usr/local/bin/ai",
-        "Typecheck passes"
-      ],
-      "priority": 8,
-      "passes": true,
+      "passes": false,
       "notes": ""
     }
   ]
