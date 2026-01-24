@@ -36,7 +36,10 @@ function findSingleBy<T>(items: T[], predicate: (item: T) => boolean): T | undef
   return matches.length === 1 ? matches[0] : undefined;
 }
 
-export function findToolByName(query: string, items: LookupItem[]): LookupResult {
+export function findToolByName(query: string | undefined, items: LookupItem[]): LookupResult {
+  if (!query) {
+    return { success: false, error: "No query provided" };
+  }
   const lowerQuery = query.toLowerCase();
 
   const exactNameMatch = items.find((i) => i.name.toLowerCase() === lowerQuery);

@@ -161,7 +161,7 @@ async function main() {
     } else {
       const toolQuery = beforeDash[0];
       if (!toolQuery) {
-        console.error("Invalid tool query");
+        console.error("No tool specified before '--' separator");
         process.exit(1);
       }
       const lookupResult = findToolByName(toolQuery, lookupItems);
@@ -177,10 +177,6 @@ async function main() {
 
   if (args.length > 0) {
     const toolQuery = args[0];
-    if (!toolQuery) {
-      console.error("Invalid tool query");
-      process.exit(1);
-    }
     const extraArgs = args.slice(1);
 
     const result = findToolByName(toolQuery, lookupItems);

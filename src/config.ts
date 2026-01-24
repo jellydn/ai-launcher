@@ -12,15 +12,28 @@ const DEFAULT_CONFIG: Config = {
   templates: [],
 };
 
-function validateTool(tool: unknown, index: number): ConfigValidationError[] {
+function validateAliases(aliases: unknown, path: string): ConfigValidationError[] {
   const errors: ConfigValidationError[] = [];
-  const path = `tools[${index}]`;
 
-  if (typeof tool !== "object" || tool === null) {
-    errors.push({ path, message: "Tool must be an object" });
+  if (aliases === undefined) {
     return errors;
   }
 
+  if (!Array.isArray(aliases)) {
+    errors.push({ path, message: "Aliases must be an array of strings" });
+    return errors;
+  }
+
+  if (!aliases.every((a) => typeof a === "string")) {
+    errors.push({ path, message: "All aliases must be strings" });
+  }
+
+  return errors;
+}
+
+function validateTool(tool: unknown, index: number): ConfigValidationError[] {
+  const errors: ConfigValidationError[] = [];
+  const path = `tools[${index}]`;
   const t = tool as Record<string, unknown>;
 
   if (typeof t.name !== "string" || t.name.trim() === "") {
@@ -52,36 +65,13 @@ function validateTool(tool: unknown, index: number): ConfigValidationError[] {
     });
   }
 
-  if (t.aliases === undefined) {
-    return errors;
-  }
-
-  if (!Array.isArray(t.aliases)) {
-    errors.push({
-      path: `${path}.aliases`,
-      message: "Tool aliases must be an array of strings",
-    });
-    return errors;
-  }
-
-  if (!t.aliases.every((a) => typeof a === "string")) {
-    errors.push({
-      path: `${path}.aliases`,
-      message: "All aliases must be strings",
-    });
-  }
+  errors.push(...validateAliases(t.aliases, `${path}.aliases`));
 
   return errors;
 }
 
 export function validateTemplate(template: unknown, path: string): ConfigValidationError[] {
   const errors: ConfigValidationError[] = [];
-
-  if (typeof template !== "object" || template === null) {
-    errors.push({ path, message: "Template must be an object" });
-    return errors;
-  }
-
   const t = template as Record<string, unknown>;
 
   if (typeof t.name !== "string" || t.name.trim() === "") {
@@ -97,7 +87,6 @@ export function validateTemplate(template: unknown, path: string): ConfigValidat
       message: "Template command is required and must be a non-empty string",
     });
   } else if (!isSafeCommand(t.command)) {
-    // isSafeCommand handles all dangerous pattern checks
     errors.push({
       path: `${path}.command`,
       message: "Template command contains unsafe characters or patterns",
@@ -128,36 +117,13 @@ export function validateTemplate(template: unknown, path: string): ConfigValidat
     });
   }
 
-  if (t.aliases === undefined) {
-    return errors;
-  }
-
-  if (!Array.isArray(t.aliases)) {
-    errors.push({
-      path: `${path}.aliases`,
-      message: "Template aliases must be an array of strings",
-    });
-    return errors;
-  }
-
-  if (!t.aliases.every((a) => typeof a === "string")) {
-    errors.push({
-      path: `${path}.aliases`,
-      message: "All aliases must be strings",
-    });
-  }
+  errors.push(...validateAliases(t.aliases, `${path}.aliases`));
 
   return errors;
 }
 
 export function validateConfig(config: unknown): ConfigValidationError[] {
   const errors: ConfigValidationError[] = [];
-
-  if (typeof config !== "object" || config === null) {
-    errors.push({ path: "", message: "Config must be an object" });
-    return errors;
-  }
-
   const c = config as Record<string, unknown>;
 
   if (!Array.isArray(c.tools)) {
@@ -210,19 +176,8 @@ export function loadConfig(): Config {
     return { ...DEFAULT_CONFIG };
   }
 
-  let rawContent: string;
-  try {
-    rawContent = readFileSync(CONFIG_PATH, "utf-8");
-  } catch (err) {
-    throw new Error(`Failed to read config file: ${CONFIG_PATH}\n${err}`);
-  }
-
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(rawContent);
-  } catch (err) {
-    throw new Error(`Config file contains invalid JSON: ${CONFIG_PATH}\n${err}`);
-  }
+  const rawContent = readFileSync(CONFIG_PATH, "utf-8");
+  const parsed = JSON.parse(rawContent);
 
   const errors = validateConfig(parsed);
   if (errors.length > 0) {
