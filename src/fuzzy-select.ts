@@ -140,19 +140,20 @@ export async function fuzzySelect(items: SelectableItem[]): Promise<SelectionRes
         aliasText = `${CYAN}(${item.aliases.join(", ")})${RESET}`;
       }
 
-      const baseLength =
-        2 +
-        (item.isTemplate ? 4 : isCompact ? 0 : 3) +
-        item.name.length +
-        (aliasText ? (item.aliases?.join(", ").length ?? 0) + 2 : 0);
+      const aliasLength = aliasText ? (item.aliases?.join(", ").length ?? 0) + 2 : 0;
+      const indicatorLength = item.isTemplate ? 4 : isCompact ? 0 : 3;
+      const baseLength = 2 + indicatorLength + item.name.length + aliasLength;
 
       let desc = "";
       if (!isCompact && item.description) {
-        const availableWidth = terminalWidth - baseLength - 3;
-        if (availableWidth > 15) {
+        const TRUNCATION_SUFFIX_LENGTH = 3;
+        const MIN_DESCRIPTION_WIDTH = 15;
+        const availableWidth = terminalWidth - baseLength - TRUNCATION_SUFFIX_LENGTH;
+
+        if (availableWidth > MIN_DESCRIPTION_WIDTH) {
           const truncatedDesc =
             item.description.length > availableWidth
-              ? `${item.description.slice(0, availableWidth - 3)}...`
+              ? `${item.description.slice(0, availableWidth - TRUNCATION_SUFFIX_LENGTH)}...`
               : item.description;
           desc = `${DIM} - ${truncatedDesc}${RESET}`;
         }

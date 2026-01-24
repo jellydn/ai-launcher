@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { isSafeCommand } from "./template";
 import type { Config, ConfigValidationError } from "./types";
 
 const CONFIG_DIR = join(homedir(), ".config", "ai-switcher");
@@ -51,18 +52,23 @@ function validateTool(tool: unknown, index: number): ConfigValidationError[] {
     });
   }
 
-  if (t.aliases !== undefined) {
-    if (!Array.isArray(t.aliases)) {
-      errors.push({
-        path: `${path}.aliases`,
-        message: "Tool aliases must be an array of strings",
-      });
-    } else if (!t.aliases.every((a) => typeof a === "string")) {
-      errors.push({
-        path: `${path}.aliases`,
-        message: "All aliases must be strings",
-      });
-    }
+  if (t.aliases === undefined) {
+    return errors;
+  }
+
+  if (!Array.isArray(t.aliases)) {
+    errors.push({
+      path: `${path}.aliases`,
+      message: "Tool aliases must be an array of strings",
+    });
+    return errors;
+  }
+
+  if (!t.aliases.every((a) => typeof a === "string")) {
+    errors.push({
+      path: `${path}.aliases`,
+      message: "All aliases must be strings",
+    });
   }
 
   return errors;
@@ -90,24 +96,13 @@ export function validateTemplate(template: unknown, path: string): ConfigValidat
       path: `${path}.command`,
       message: "Template command is required and must be a non-empty string",
     });
+  } else if (!isSafeCommand(t.command)) {
+    // isSafeCommand handles all dangerous pattern checks
+    errors.push({
+      path: `${path}.command`,
+      message: "Template command contains unsafe characters or patterns",
+    });
   } else {
-    const safeTemplatePattern = /^[a-zA-Z0-9._\s\-"':,!?/\\|$@`()]+$/;
-    if (!safeTemplatePattern.test(t.command.trim())) {
-      errors.push({
-        path: `${path}.command`,
-        message: "Template command contains unsafe characters",
-      });
-    }
-
-    const commandSubPattern = /\$\([^)]+\)/;
-    if (commandSubPattern.test(t.command)) {
-      errors.push({
-        path: `${path}.command`,
-        message:
-          "Template command contains unsafe command substitution $(...). Use $@ for placeholders only.",
-      });
-    }
-
     const placeholderCount = (t.command.match(/\$@/g) || []).length;
     if (placeholderCount > 1) {
       errors.push({
@@ -133,18 +128,23 @@ export function validateTemplate(template: unknown, path: string): ConfigValidat
     });
   }
 
-  if (t.aliases !== undefined) {
-    if (!Array.isArray(t.aliases)) {
-      errors.push({
-        path: `${path}.aliases`,
-        message: "Template aliases must be an array of strings",
-      });
-    } else if (!t.aliases.every((a) => typeof a === "string")) {
-      errors.push({
-        path: `${path}.aliases`,
-        message: "All aliases must be strings",
-      });
-    }
+  if (t.aliases === undefined) {
+    return errors;
+  }
+
+  if (!Array.isArray(t.aliases)) {
+    errors.push({
+      path: `${path}.aliases`,
+      message: "Template aliases must be an array of strings",
+    });
+    return errors;
+  }
+
+  if (!t.aliases.every((a) => typeof a === "string")) {
+    errors.push({
+      path: `${path}.aliases`,
+      message: "All aliases must be strings",
+    });
   }
 
   return errors;

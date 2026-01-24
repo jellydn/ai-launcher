@@ -3,6 +3,34 @@ export interface ParsedCommand {
   args: string[];
 }
 
+// Allowlist pattern for safe shell characters in commands
+const SAFE_COMMAND_PATTERN = /^[a-zA-Z0-9._\s\-"':,!?/\\|$@`()[\]<>]+$/;
+
+// Blocked patterns for dangerous shell constructs
+// Note: Backticks are allowed for shell-style prompts (e.g., `review $@`) per template security enhancement
+const DANGEROUS_PATTERNS = [
+  /&&/, // Command chaining
+  /\|\|/, // Command chaining
+  /;/, // Command separator
+  /\$\(/, // Command substitution
+  /`[a-zA-Z0-9_]+`/, // Backtick command substitution (simple command names like `whoami`)
+  /\bsudo\b/, // Privilege escalation
+  /\brm\s+-rf\b/, // Destructive file removal
+  />\s*\//, // Output redirection
+];
+
+export function isSafeCommand(command: string): boolean {
+  if (!command.trim()) return false;
+  if (command.length > 500) return false;
+  if (!SAFE_COMMAND_PATTERN.test(command.trim())) return false;
+
+  for (const pattern of DANGEROUS_PATTERNS) {
+    if (pattern.test(command)) return false;
+  }
+
+  return true;
+}
+
 export function buildTemplateCommand(command: string, args: string[]): string {
   if (command.includes("$@")) {
     return command.replace("$@", args.join(" "));
@@ -11,18 +39,14 @@ export function buildTemplateCommand(command: string, args: string[]): string {
 }
 
 export function validateTemplateCommand(command: string): boolean {
-  const dangerous = [/&&/, /\|\|/, /;/, /\$\(/, /`[^`]*`/, /\bsudo\b/, /\brm\s+-rf\b/, />\s*\//];
-
-  for (const pattern of dangerous) {
-    if (pattern.test(command)) {
-      return false;
-    }
-  }
-
-  return true;
+  return isSafeCommand(command);
 }
 
 export function parseTemplateCommand(command: string): ParsedCommand {
+  if (command.length === 0) {
+    return { cmd: "", args: [] };
+  }
+
   const parts: string[] = [];
   let current = "";
   let inSingleQuote = false;

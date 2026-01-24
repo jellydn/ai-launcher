@@ -7,13 +7,9 @@ import { detectInstalledTools, mergeTools } from "./detect";
 import { fuzzySelect, promptForInput, toSelectableItems } from "./fuzzy-select";
 import { getColoredLogo } from "./logo";
 import { findToolByName, toLookupItems } from "./lookup";
+import { isSafeCommand } from "./template";
 import { upgrade } from "./upgrade";
 import { VERSION } from "./version";
-
-function validateToolCommand(command: string): boolean {
-  const safePattern = /^[a-zA-Z0-9._\s\-"':,!?/\\|$@`()]+$/;
-  return safePattern.test(command.trim()) && command.length > 0 && command.length <= 500;
-}
 
 function validateArguments(args: string[]): boolean {
   const safePattern = /^[a-zA-Z0-9._\-"/\\@#=\s,.:()[\]{}]+$/;
@@ -64,7 +60,7 @@ CONFIG:
 }
 
 function launchTool(command: string, extraArgs: string[] = [], stdinContent: string | null = null) {
-  if (!validateToolCommand(command)) {
+  if (!isSafeCommand(command)) {
     console.error("Invalid command format");
     process.exit(1);
   }
@@ -74,10 +70,11 @@ function launchTool(command: string, extraArgs: string[] = [], stdinContent: str
     process.exit(1);
   }
 
-  let finalCommand = command;
+  const hasArgs = extraArgs.length > 0;
+  const hasStdin = stdinContent !== null && stdinContent.length > 0;
+  const hasInput = hasArgs || hasStdin;
 
-  const hasInput = extraArgs.length > 0 || (stdinContent !== null && stdinContent.length > 0);
-  const argsOrStdin = extraArgs.length > 0 ? extraArgs.join(" ") : (stdinContent ?? "");
+  const inputString = hasArgs ? extraArgs.join(" ") : (stdinContent ?? "");
 
   if (command.includes("$@") && !hasInput) {
     console.error("This template requires input.");
@@ -85,19 +82,20 @@ function launchTool(command: string, extraArgs: string[] = [], stdinContent: str
     process.exit(1);
   }
 
-  if (command.includes("$@")) {
-    finalCommand = command.replace("$@", argsOrStdin);
-  } else if (argsOrStdin.length > 0) {
-    finalCommand = `${command} ${argsOrStdin}`;
-  }
+  const usesPlaceholder = command.includes("$@");
+  const finalCommand = usesPlaceholder
+    ? command.replace("$@", inputString)
+    : hasInput
+      ? `${command} ${inputString}`
+      : command;
 
   const parts = finalCommand.split(/\s+/).filter((p) => p !== "");
   if (parts.length === 0) {
     console.error("Empty command after processing");
     process.exit(1);
   }
-  const [cmd = "", ...rest] = parts;
-  const args = rest;
+
+  const [cmd, ...args] = parts;
   if (!cmd) {
     console.error("Empty command");
     process.exit(1);

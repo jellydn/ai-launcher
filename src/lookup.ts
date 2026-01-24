@@ -31,6 +31,11 @@ export function toLookupItems(tools: Tool[], templates: Template[]): LookupItem[
   ];
 }
 
+function findSingleBy<T>(items: T[], predicate: (item: T) => boolean): T | undefined {
+  const matches = items.filter(predicate);
+  return matches.length === 1 ? matches[0] : undefined;
+}
+
 export function findToolByName(query: string, items: LookupItem[]): LookupResult {
   const lowerQuery = query.toLowerCase();
 
@@ -44,14 +49,14 @@ export function findToolByName(query: string, items: LookupItem[]): LookupResult
     return { success: true, item: aliasMatch };
   }
 
-  const exactSuffixMatches = items.filter((i) => i.name.toLowerCase().endsWith(lowerQuery));
-  if (exactSuffixMatches.length === 1) {
-    return { success: true, item: exactSuffixMatches[0] };
+  const suffixMatch = findSingleBy(items, (i) => i.name.toLowerCase().endsWith(lowerQuery));
+  if (suffixMatch) {
+    return { success: true, item: suffixMatch };
   }
 
-  const substringMatches = items.filter((i) => i.name.toLowerCase().includes(lowerQuery));
-  if (substringMatches.length === 1) {
-    return { success: true, item: substringMatches[0] };
+  const substringMatch = findSingleBy(items, (i) => i.name.toLowerCase().includes(lowerQuery));
+  if (substringMatch) {
+    return { success: true, item: substringMatch };
   }
 
   const fuse = new Fuse(items, {
