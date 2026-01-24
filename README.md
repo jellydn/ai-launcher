@@ -260,6 +260,282 @@ The following CLIs are auto-detected if installed and available in PATH:
 **CCS Profile Auto-Detection:**
 Runs `ccs api list` to detect active profiles. Each profile with `[OK]` status becomes available as `ccs:<profile-name>`.
 
+## 💡 Template Examples & Tips
+
+> Based on a real-world config using **claude**, **opencode**, **amp**, and **CCS** profiles.
+
+### Your Current Templates
+
+These are the templates from your active config:
+
+```json
+{
+  "templates": [
+    {
+      "name": "review",
+      "command": "opencode run --model opencode/big-pickle --agent plan 'Review the following changes and provide feedback: $@'",
+      "description": "Code review with OpenCode",
+      "aliases": ["rev", "code-review"]
+    },
+    {
+      "name": "commit-zen",
+      "command": "opencode run --model opencode/big-pickle --agent plan 'Review the following changes and generate a concise git commit message: $@'",
+      "description": "Generate commit message with OpenCode",
+      "aliases": ["commit", "commit-message"]
+    },
+    {
+      "name": "commit-atomic",
+      "command": "opencode run --model opencode/big-pickle --agent build 'Run git diff --staged then do atomic commit message for the change with commitizen convention. Write clear, informative commit messages that explain the what and why behind changes, not just the how.'",
+      "description": "Atomic commit message with OpenCode",
+      "aliases": ["ac", "auto-commit"]
+    },
+    {
+      "name": "architecture-explanation",
+      "command": "ccs gemini 'Explain this codebase architecture'",
+      "description": "Explain architecture with Gemini",
+      "aliases": ["arch", "arch-explanation"]
+    },
+    {
+      "name": "draft-pull-request",
+      "command": "ccs glm 'Create draft pr with what why how by gh cli'",
+      "description": "Create draft pull request with GLM",
+      "aliases": ["pr", "draft-pr"]
+    }
+  ]
+}
+```
+
+### Complementary Templates to Add
+
+Expand your toolkit with these templates that work with your existing tools:
+
+#### Code Quality & TypeScript
+
+```json
+{
+  "templates": [
+    {
+      "name": "types",
+      "command": "claude -p 'Improve TypeScript types: Remove any, add proper type guards, ensure strict mode compliance for: $@'",
+      "description": "Enhance type safety",
+      "aliases": ["typescript"]
+    },
+    {
+      "name": "test",
+      "command": "claude -p 'Write Bun tests using Arrange-Act-Assert pattern. Focus on behavior, not implementation details for: $@'",
+      "description": "Generate tests",
+      "aliases": ["spec", "tests"]
+    },
+    {
+      "name": "docs",
+      "command": "claude -p 'Add JSDoc comments with @param and @returns. Include usage examples for: $@'",
+      "description": "Add documentation",
+      "aliases": ["document"]
+    },
+    {
+      "name": "explain",
+      "command": "claude -p 'Explain this code in detail: 1) What it does 2) How it works 3) Design decisions: $@'",
+      "description": "Code explanation",
+      "aliases": ["wtf", "explain-code"]
+    }
+  ]
+}
+```
+
+#### Specialized Reviews
+
+```json
+{
+  "templates": [
+    {
+      "name": "review-security",
+      "command": "claude -p 'Security review: Check for injection vulnerabilities, input validation, auth issues, and sensitive data handling in: $@'",
+      "description": "Security-focused review",
+      "aliases": ["sec", "security"]
+    },
+    {
+      "name": "review-refactor",
+      "command": "claude -p 'Refactor suggestion: Improve readability, eliminate complexity, and apply clean code principles to: $@'",
+      "description": "Refactoring recommendations",
+      "aliases": ["refactor"]
+    },
+    {
+      "name": "review-performance",
+      "command": "claude -p 'Analyze performance: Identify bottlenecks, suggest optimizations with measurable impact for: $@'",
+      "description": "Performance review",
+      "aliases": ["perf", "optimize"]
+    }
+  ]
+}
+```
+
+#### Git Workflow Enhancements
+
+```json
+{
+  "templates": [
+    {
+      "name": "pr-title",
+      "command": "claude -p 'Write a clear PR title (max 72 chars) using Conventional Commits: Type(scope): description'",
+      "description": "Generate PR title only"
+    },
+    {
+      "name": "release-notes",
+      "command": "git diff HEAD~1 | opencode run --model opencode/big-pickle --agent plan 'Generate user-friendly release notes from this diff, focusing on user-facing changes'",
+      "description": "Generate release notes from last commit"
+    }
+  ]
+}
+```
+
+#### Design & Architecture
+
+```json
+{
+  "templates": [
+    {
+      "name": "design-review",
+      "command": "claude -p 'Review this design for: maintainability, extensibility, and separation of concerns: $@'",
+      "description": "Design pattern review",
+      "aliases": ["design"]
+    },
+    {
+      "name": "api-design",
+      "command": "claude -p 'Review this API design for: REST principles, error handling, versioning, and documentation: $@'",
+      "description": "API design review"
+    },
+    {
+      "name": "profiler-guidance",
+      "command": "claude -p 'Suggest profiling strategy: What to measure, tools to use, and how to interpret results for: $@'",
+      "description": "Profiling guidance"
+    }
+  ]
+}
+```
+
+#### Quick-Fix Templates (No Arguments)
+
+```json
+{
+  "templates": [
+    {
+      "name": "fix-lint",
+      "command": "opencode run 'Fix all linting errors in current file'",
+      "description": "Auto-fix lint issues"
+    },
+    {
+      "name": "format-imports",
+      "command": "claude -p 'Organize and sort imports, remove unused imports, add type imports where needed'",
+      "description": "Clean up imports",
+      "aliases": ["imports"]
+    },
+    {
+      "name": "add-error-handling",
+      "command": "claude -p 'Add proper error handling with try-catch and meaningful error messages'",
+      "description": "Add error handling"
+    }
+  ]
+}
+```
+
+#### Code Cleanup & Refactoring
+
+```json
+{
+  "templates": [
+    {
+      "name": "remove-ai-slop",
+      "command": "claude -p 'You\\'re reviewing code cleanup. Remove: 1) Excessive comments that break existing documentation style 2) Defensive checks that don\\'t match the codebase\\'s trust model 3) Type escape hatches (any casts, assertions) 4) Generic patterns that feel imported rather than native. Match the file\\'s existing voice and conventions. Report what you removed in 1-3 sentences: $@'",
+      "description": "Remove AI-generated code patterns",
+      "aliases": ["slop", "clean-ai"]
+    },
+    {
+      "name": "tidy-first",
+      "command": "claude -p 'Apply Tidy First principles: 1) Use guard clauses 2) Extract helper variables for complex expressions 3) Remove dead code 4) Normalize symmetries. Focus on making the code easier to understand: $@'",
+      "description": "Tidy code before making changes",
+      "aliases": ["tidy"]
+    },
+    {
+      "name": "simplify",
+      "command": "claude -p 'Simplify this code: Remove unnecessary complexity, eliminate over-engineering, reduce coupling. Keep solutions simple and focused on what\\'s actually needed: $@'",
+      "description": "Simplify over-engineered code",
+      "aliases": ["simple"]
+    }
+  ]
+}
+```
+
+### Usage Examples
+
+```bash
+# Your current templates
+git diff | ai review                    # Review with OpenCode big-pickle
+git diff --staged | ai commit-zen       # Generate commit message
+ai ac                                  # Atomic commit (runs git diff internally)
+ai arch                                # Explain architecture with Gemini
+ai pr                                  # Create draft PR with GLM
+
+# Additional templates to add
+cat src/lookup.ts | ai explain         # Explain a file
+ai test src/config.test.ts             # Generate tests
+ai types src/lookup.ts                 # Improve types
+git diff HEAD~1 | ai release-notes     # Generate release notes
+
+# Security & performance reviews
+git diff | ai review-security          # Security-focused review
+cat main.ts | ai review-performance    # Performance analysis
+
+# Quick fixes (no arguments needed)
+ai format-imports                      # Clean up imports immediately
+ai fix-lint                            # Auto-fix linting errors
+
+# Code cleanup & refactoring
+cat src/file.ts | ai remove-ai-slop    # Clean up AI-generated patterns
+git diff | ai tidy-first               # Apply Tidy First principles
+cat src/complex.ts | ai simplify       # Simplify over-engineered code
+```
+
+### Pro Tips
+
+1. **Your current aliases**: Use short aliases you've configured
+   - `ai rev` → `review` (OpenCode code review)
+   - `ai ac` → `commit-atomic` (atomic commits)
+   - `ai arch` → `architecture-explanation` (Gemini architecture)
+
+2. **Model selection**: Choose the right AI for the task
+   - **OpenCode big-pickle**: Great for code review and commits (your current choice)
+   - **Claude**: Best for TypeScript, testing, and explanations
+   - **CCS Gemini**: Excellent for architecture explanations
+   - **CCS GLM**: Good for PR creation and structured outputs
+   - **Amp**: Lightweight alternative for quick tasks
+
+3. **Chain operations**: Use shell pipes to create workflows
+   ```bash
+   git diff | ai review                  # Review staged changes
+   cat file.ts | ai test > file.test.ts  # Generate test file
+   git diff main..feature | ai pr        # Create draft PR from branch diff
+   ```
+
+4. **Fuzzy match power**: Type minimal characters to find templates
+   - `ai com` → matches `commit-zen` or `commit-atomic` (will ask)
+   - `ai arc` → matches `architecture-explanation`
+   - `ai rev-se` → matches `review-security` (if added)
+
+5. **CCS profiles**: Extend with more models as needed
+   ```json
+   {
+     "name": "review-gpt4",
+     "command": "ccs:gpt4 'Review this code: $@'",
+     "description": "Review with GPT-4 via CCS"
+   }
+   ```
+
+6. **Template naming**: Use descriptive prefixes for organization
+   - `commit-*` for Git commits
+   - `review-*` for different review types
+   - `pr-*` for pull request workflows
+   - Quick aliases for frequent tasks: `ai slop` for cleanup, `ai tidy` for tidying
+
 ## 🛠️ Development
 
 ```bash
