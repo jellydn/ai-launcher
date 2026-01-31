@@ -77,29 +77,23 @@ function launchTool(command: string, extraArgs: string[] = [], stdinContent: str
 
   const hasArgs = extraArgs.length > 0;
   const hasStdin = stdinContent !== null && stdinContent.length > 0;
-  const hasInput = hasArgs || hasStdin;
 
-  const inputString = hasArgs ? extraArgs.join(" ") : (stdinContent ?? "");
-
-  if (command.includes("$@") && !hasInput) {
+  if (command.includes("$@") && !hasArgs && !hasStdin) {
     console.error("This template requires input.");
     console.error("Usage: ai <template> <args...>  OR  <command> | ai <template>");
     process.exit(1);
   }
 
+  const inputString = hasArgs ? extraArgs.join(" ") : (stdinContent ?? "");
   const usesPlaceholder = command.includes("$@");
+
   const finalCommand = usesPlaceholder
     ? command.replace("$@", inputString)
-    : hasInput
+    : hasArgs || hasStdin
       ? `${command} ${inputString}`
       : command;
 
   const parts = finalCommand.split(/\s+/).filter((p) => p !== "");
-  if (parts.length === 0) {
-    console.error("Empty command after processing");
-    process.exit(1);
-  }
-
   const [cmd, ...args] = parts;
   if (!cmd) {
     console.error("Empty command");
@@ -114,14 +108,29 @@ function launchTool(command: string, extraArgs: string[] = [], stdinContent: str
   process.exit(child.status ?? 1);
 }
 
-function launchToolWithPrompt(command: string, prompt: string): never {
+function launchToolWithPrompt(command: string, prompt: string, useStdin = false): never {
   if (!isSafeCommand(command)) {
     console.error("Invalid command format");
     process.exit(1);
   }
 
-  const escapedPrompt = prompt.replace(/'/g, "'\\''");
+  const parts = command.split(/\s+/).filter((p) => p !== "");
+  const [cmd, ...args] = parts;
+  if (!cmd) {
+    console.error("Empty command");
+    process.exit(1);
+  }
 
+  if (useStdin) {
+    const child = spawnSync(cmd, args, {
+      input: prompt,
+      stdio: ["pipe", "inherit", "inherit"],
+      shell: true,
+    });
+    process.exit(child.status ?? 1);
+  }
+
+  const escapedPrompt = prompt.replace(/'/g, "'\\''");
   const finalCommand = `${command} '${escapedPrompt}'`;
 
   const child = spawnSync("sh", ["-c", finalCommand], {

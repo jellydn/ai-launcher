@@ -14,6 +14,8 @@ export function toSelectableItems(tools: Tool[], templates: Template[]): Selecta
       description: t.description || "",
       isTemplate: false,
       aliases: t.aliases,
+      promptCommand: t.promptCommand,
+      promptUseStdin: t.promptUseStdin,
     })),
     ...templates.map((t) => ({
       name: t.name,
@@ -129,19 +131,18 @@ export async function fuzzySelect(items: SelectableItem[]): Promise<SelectionRes
       const item = displayItems[i];
       if (!item) continue;
       const isSelected = globalIndex === selectedIndex;
-      const prefix = isSelected ? `${GREEN}▸${RESET}` : " ";
-
       const isCompact = terminalWidth < COMPACT_MODE_THRESHOLD;
+
       const indicator = item.isTemplate ? `${YELLOW}[T]${RESET} ` : isCompact ? "" : "   ";
-      const name = isSelected ? `${BOLD}${item.name}${RESET}` : item.name;
-
-      let aliasText = "";
-      if (!isCompact && item.aliases && item.aliases.length > 0) {
-        aliasText = `${CYAN}(${item.aliases.join(", ")})${RESET}`;
-      }
-
-      const aliasLength = aliasText ? (item.aliases?.join(", ").length ?? 0) + 2 : 0;
       const indicatorLength = item.isTemplate ? 4 : isCompact ? 0 : 3;
+
+      const aliasText =
+        !isCompact && item.aliases && item.aliases.length > 0
+          ? `${CYAN}(${item.aliases.join(", ")})${RESET}`
+          : "";
+      const aliasLength = aliasText ? (item.aliases?.join(", ").length ?? 0) + 2 : 0;
+
+      const name = isSelected ? `${BOLD}${item.name}${RESET}` : item.name;
       const baseLength = 2 + indicatorLength + item.name.length + aliasLength;
 
       let desc = "";
@@ -159,6 +160,7 @@ export async function fuzzySelect(items: SelectableItem[]): Promise<SelectionRes
         }
       }
 
+      const prefix = isSelected ? `${GREEN}▸${RESET}` : " ";
       lines.push(`${prefix} ${indicator}${name}${aliasText}${desc}`);
     }
 
