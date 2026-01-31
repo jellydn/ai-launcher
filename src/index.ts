@@ -135,35 +135,38 @@ function launchToolWithPrompt(
 
   if (outputFile) {
     // Capture output when outputFile is specified
+    let child;
 
     if (useStdin) {
-      const child = spawnSync(cmd, args, {
+      child = spawnSync(cmd, args, {
         input: prompt,
         stdio: ["pipe", "pipe", "inherit"],
         shell: true,
         encoding: "utf-8",
       });
+    } else {
+      const escapedPrompt = prompt.replace(/'/g, "'\\''");
+      const finalCommand = `${command} '${escapedPrompt}'`;
 
-      const output = child.stdout || "";
-      const resolvedPath = resolve(outputFile);
-      writeFileSync(resolvedPath, output);
-      console.log(`\n✅ Analysis saved to: ${resolvedPath}`);
-      process.exit(child.status ?? 1);
+      child = spawnSync("sh", ["-c", finalCommand], {
+        stdio: ["inherit", "pipe", "inherit"],
+        encoding: "utf-8",
+      });
     }
-
-    const escapedPrompt = prompt.replace(/'/g, "'\\''");
-    const finalCommand = `${command} '${escapedPrompt}'`;
-
-    const child = spawnSync("sh", ["-c", finalCommand], {
-      stdio: ["inherit", "pipe", "inherit"],
-      encoding: "utf-8",
-    });
 
     const output = child.stdout || "";
     const resolvedPath = resolve(outputFile);
-    writeFileSync(resolvedPath, output);
-    console.log(`\n✅ Analysis saved to: ${resolvedPath}`);
-    process.exit(child.status ?? 1);
+
+    try {
+      writeFileSync(resolvedPath, output);
+      console.log(`\n✅ Analysis saved to: ${resolvedPath}`);
+    } catch (error) {
+      console.error(`\n❌ Failed to write output to ${resolvedPath}`);
+      console.error(error instanceof Error ? error.message : String(error));
+      process.exit(1);
+    }
+
+    process.exit(child.status ?? 0);
   }
 
   // Original behavior when no output file
@@ -173,7 +176,7 @@ function launchToolWithPrompt(
       stdio: ["pipe", "inherit", "inherit"],
       shell: true,
     });
-    process.exit(child.status ?? 1);
+    process.exit(child.status ?? 0);
   }
 
   const escapedPrompt = prompt.replace(/'/g, "'\\''");
@@ -183,7 +186,7 @@ function launchToolWithPrompt(
     stdio: "inherit",
   });
 
-  process.exit(child.status ?? 1);
+  process.exit(child.status ?? 0);
 }
 
 async function main() {

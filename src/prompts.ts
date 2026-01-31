@@ -21,6 +21,7 @@ Provide:
   if (customPrompt) {
     return `${basePrompt}
 
+Additional instructions:
 ${customPrompt}`;
   }
 
