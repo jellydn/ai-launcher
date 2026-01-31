@@ -20,6 +20,8 @@ export function toLookupItems(tools: Tool[], templates: Template[]): LookupItem[
       description: t.description || "",
       isTemplate: false,
       aliases: t.aliases || [],
+      promptCommand: t.promptCommand,
+      promptUseStdin: t.promptUseStdin,
     })),
     ...templates.map((t) => ({
       name: t.name,

@@ -5,10 +5,29 @@ const KNOWN_TOOLS: Array<{
   name: string;
   command: string;
   description: string;
+  promptCommand?: string;
+  promptUseStdin?: boolean;
 }> = [
-  { name: "claude", command: "claude", description: "Anthropic Claude CLI" },
-  { name: "opencode", command: "opencode", description: "OpenCode CLI" },
-  { name: "amp", command: "amp", description: "Sourcegraph Amp CLI" },
+  {
+    name: "claude",
+    command: "claude",
+    description: "Anthropic Claude CLI",
+    promptCommand: "claude --permission-mode plan -p",
+  },
+  {
+    name: "opencode",
+    command: "opencode",
+    description: "OpenCode CLI",
+    promptCommand: "opencode run --model opencode/big-pickle",
+    promptUseStdin: true,
+  },
+  {
+    name: "amp",
+    command: "amp",
+    description: "Sourcegraph Amp CLI",
+    promptCommand: "amp -x",
+    promptUseStdin: true,
+  },
 ];
 
 const CLI_PROXY_PROVIDERS: Array<{ name: string; description: string }> = [
@@ -76,6 +95,7 @@ function detectCcsProfiles(): Tool[] {
       command: `ccs ${profile}`,
       description: `CCS profile: ${profile}`,
       authType: "api_key",
+      promptCommand: `ccs ${profile} --permission-mode plan -p`,
     }));
   } catch {
     return [];
@@ -88,6 +108,7 @@ export function detectCliProxyProfiles(): Tool[] {
     command: `ccs ${provider.name}`,
     description: provider.description,
     authType: "oauth",
+    promptCommand: `ccs ${provider.name} --permission-mode plan -p`,
   }));
 }
 
@@ -100,6 +121,8 @@ export function detectInstalledTools(): Tool[] {
         name: tool.name,
         command: tool.command,
         description: tool.description,
+        promptCommand: tool.promptCommand,
+        promptUseStdin: tool.promptUseStdin,
       });
     }
   }

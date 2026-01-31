@@ -238,13 +238,24 @@ A default config is created on first run. Example:
       "name": "claude",
       "command": "claude",
       "description": "Anthropic Claude CLI",
-      "aliases": ["c"]
+      "aliases": ["c"],
+      "promptCommand": "claude --permission-mode plan -p"
     },
     {
       "name": "opencode",
       "command": "opencode",
       "description": "OpenCode AI assistant",
-      "aliases": ["o", "oc"]
+      "aliases": ["o", "oc"],
+      "promptCommand": "opencode run",
+      "promptUseStdin": true
+    },
+    {
+      "name": "amp",
+      "command": "amp",
+      "description": "Sourcegraph Amp CLI",
+      "aliases": ["a"],
+      "promptCommand": "amp -x",
+      "promptUseStdin": true
     }
   ],
   "templates": [
@@ -277,16 +288,47 @@ A default config is created on first run. Example:
 
 **tools**: Array of AI tools
 
-- `name`: Display name and primary lookup key
-- `command`: The CLI command to execute
-- `description`: Shown in fuzzy search list
-- `aliases`: Optional array of short aliases
+| Field | Required | Description |
+|-------|----------|-------------|
+| `name` | ✅ | Display name and primary lookup key |
+| `command` | ✅ | The CLI command to execute |
+| `description` | ❌ | Shown in fuzzy search list |
+| `aliases` | ❌ | Array of short aliases (e.g., `["c", "cl"]`) |
+| `promptCommand` | ❌ | Alternative command for `--diff-*` prompts |
+| `promptUseStdin` | ❌ | If `true`, pipe prompt via stdin instead of argument |
 
 **templates**: Array of command templates
 
-- `name`: Template name (shown with [T] indicator)
-- `command`: Command string, use `$@` for argument substitution
-- `description`: Template description
+| Field | Required | Description |
+|-------|----------|-------------|
+| `name` | ✅ | Template name (shown with [T] indicator) |
+| `command` | ✅ | Command string, use `$@` for argument substitution |
+| `description` | ✅ | Template description |
+| `aliases` | ❌ | Array of short aliases |
+
+### Git Diff Prompt Configuration
+
+Different AI CLIs accept prompts in different ways. The `promptCommand` and `promptUseStdin` fields configure how `--diff-staged` and `--diff-commit` send prompts:
+
+| Tool | Prompt Command | Why |
+|------|----------------|-----|
+| `claude` | `claude --permission-mode plan -p 'prompt'` | Uses plan mode for read-only analysis |
+| `ccs` | `ccs <profile> --permission-mode plan -p 'prompt'` | Uses plan mode for read-only analysis |
+| `opencode` | `echo 'prompt' &#124; opencode run` | First arg is treated as project path, needs stdin |
+| `amp` | `echo 'prompt' &#124; amp -x` | Execute mode works best with stdin |
+
+**Example configuration:**
+
+```json
+{
+  "name": "opencode",
+  "command": "opencode",
+  "promptCommand": "opencode run",
+  "promptUseStdin": true
+}
+```
+
+This tells ai-switcher: when running `ai opencode --diff-staged`, pipe the diff prompt to `opencode run` via stdin instead of passing it as an argument.
 
 ### 🔍 Auto-Detection
 

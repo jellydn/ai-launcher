@@ -103,7 +103,7 @@ export async function executeDiffCommand(
   options: DiffCommandOptions,
   diffFlagIndex: number,
   context: DiffCommandContext,
-  launchToolWithPrompt: (command: string, prompt: string) => never
+  launchToolWithPrompt: (command: string, prompt: string, useStdin?: boolean) => never
 ): Promise<never> {
   try {
     ensureGitRepository();
@@ -147,8 +147,6 @@ export async function executeDiffCommand(
   // Determine which tool to use (args before the diff flag)
   const argsBeforeFlag = context.args.slice(0, diffFlagIndex);
 
-  console.log("\nAnalyzing git diff...\n");
-
   if (argsBeforeFlag.length === 0) {
     const result = await context.fuzzySelect(context.items);
     if (result.cancelled) {
@@ -158,8 +156,10 @@ export async function executeDiffCommand(
       console.error("No tool selected");
       process.exit(1);
     }
-    const toolCommand = result.item.command;
-    return launchToolWithPrompt(toolCommand, analysisPrompt);
+    console.log(`\nAnalyzing git diff with ${result.item.name}...\n`);
+    const toolCommand = result.item.promptCommand ?? result.item.command;
+    const useStdin = result.item.promptUseStdin ?? false;
+    return launchToolWithPrompt(toolCommand, analysisPrompt, useStdin);
   }
 
   const toolQuery = argsBeforeFlag[0];
@@ -168,7 +168,9 @@ export async function executeDiffCommand(
     console.error(lookupResult.error);
     process.exit(1);
   }
-  const toolCommand = lookupResult.item.command;
+  console.log(`\nAnalyzing git diff with ${lookupResult.item.name}...\n`);
+  const toolCommand = lookupResult.item.promptCommand ?? lookupResult.item.command;
+  const useStdin = lookupResult.item.promptUseStdin ?? false;
 
-  return launchToolWithPrompt(toolCommand, analysisPrompt);
+  return launchToolWithPrompt(toolCommand, analysisPrompt, useStdin);
 }

@@ -20,22 +20,22 @@ const DANGEROUS_PATTERNS = [
 ];
 
 export function isSafeCommand(command: string): boolean {
-  if (!command.trim()) return false;
-  if (command.length > 500) return false;
-  if (!SAFE_COMMAND_PATTERN.test(command.trim())) return false;
+  const trimmed = command.trim();
+  if (!trimmed) return false;
+  if (trimmed.length > 500) return false;
+  if (!SAFE_COMMAND_PATTERN.test(trimmed)) return false;
 
-  for (const pattern of DANGEROUS_PATTERNS) {
-    if (pattern.test(command)) return false;
-  }
-
-  return true;
+  return !DANGEROUS_PATTERNS.some((pattern) => pattern.test(trimmed));
 }
 
 export function buildTemplateCommand(command: string, args: string[]): string {
   if (command.includes("$@")) {
     return command.replace("$@", args.join(" "));
   }
-  return args.length > 0 ? `${command} ${args.join(" ")}` : command;
+  if (args.length > 0) {
+    return `${command} ${args.join(" ")}`;
+  }
+  return command;
 }
 
 export function validateTemplateCommand(command: string): boolean {

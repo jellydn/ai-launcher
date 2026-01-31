@@ -13,22 +13,18 @@ const DEFAULT_CONFIG: Config = {
 };
 
 function validateAliases(aliases: unknown, path: string): ConfigValidationError[] {
-  const errors: ConfigValidationError[] = [];
-
-  if (aliases === undefined) {
-    return errors;
-  }
-
   if (!Array.isArray(aliases)) {
-    errors.push({ path, message: "Aliases must be an array of strings" });
-    return errors;
+    if (aliases !== undefined) {
+      return [{ path, message: "Aliases must be an array of strings" }];
+    }
+    return [];
   }
 
   if (!aliases.every((a) => typeof a === "string")) {
-    errors.push({ path, message: "All aliases must be strings" });
+    return [{ path, message: "All aliases must be strings" }];
   }
 
-  return errors;
+  return [];
 }
 
 function validateTool(tool: unknown, index: number): ConfigValidationError[] {
