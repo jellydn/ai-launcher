@@ -120,10 +120,8 @@ function launchToolWithPrompt(command: string, prompt: string): never {
     process.exit(1);
   }
 
-  // Escape single quotes in prompt by replacing ' with '\''
   const escapedPrompt = prompt.replace(/'/g, "'\\''");
 
-  // Construct command with properly quoted prompt
   const finalCommand = `${command} '${escapedPrompt}'`;
 
   const child = spawnSync("sh", ["-c", finalCommand], {
@@ -169,7 +167,6 @@ async function main() {
     return;
   }
 
-  // Handle git diff analysis command
   const diffParsed = parseDiffArgs(args);
   if (diffParsed.hasDiffCommand) {
     const { options, diffFlagIndex } = diffParsed;

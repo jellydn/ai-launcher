@@ -2,9 +2,6 @@
  * Prompt generation for AI analysis
  */
 
-/**
- * Build analysis prompt for AI based on git diff
- */
 export function buildDiffAnalysisPrompt(diff: string, ref?: string): string {
   const target = ref || "staged changes";
   return `Please analyze the following git diff (${target}):
