@@ -18,7 +18,7 @@ const KNOWN_TOOLS: Array<{
     name: "opencode",
     command: "opencode",
     description: "OpenCode CLI",
-    promptCommand: "opencode run",
+    promptCommand: "opencode run --model opencode/big-pickle",
     promptUseStdin: true,
   },
   {

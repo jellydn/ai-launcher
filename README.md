@@ -314,8 +314,8 @@ Different AI CLIs accept prompts in different ways. The `promptCommand` and `pro
 |------|----------------|-----|
 | `claude` | `claude --permission-mode plan -p 'prompt'` | Uses plan mode for read-only analysis |
 | `ccs` | `ccs <profile> --permission-mode plan -p 'prompt'` | Uses plan mode for read-only analysis |
-| `opencode` | `echo 'prompt' \| opencode run` | First arg is treated as project path, needs stdin |
-| `amp` | `echo 'prompt' \| amp -x` | Execute mode works best with stdin |
+| `opencode` | `echo 'prompt' &#124; opencode run` | First arg is treated as project path, needs stdin |
+| `amp` | `echo 'prompt' &#124; amp -x` | Execute mode works best with stdin |
 
 **Example configuration:**
 
