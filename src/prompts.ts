@@ -2,11 +2,7 @@
  * Prompt generation for AI analysis
  */
 
-export function buildDiffAnalysisPrompt(
-  diff: string,
-  ref?: string,
-  customPrompt?: string
-): string {
+export function buildDiffAnalysisPrompt(diff: string, ref?: string, customPrompt?: string): string {
   const target = ref || "staged changes";
   const basePrompt = `Please analyze the following git diff (${target}):
 

@@ -38,10 +38,6 @@ export function buildTemplateCommand(command: string, args: string[]): string {
   return command;
 }
 
-export function validateTemplateCommand(command: string): boolean {
-  return isSafeCommand(command);
-}
-
 export function parseTemplateCommand(command: string): ParsedCommand {
   if (command.length === 0) {
     return { cmd: "", args: [] };

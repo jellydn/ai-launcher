@@ -36,7 +36,9 @@ function isValidOutputPath(filePath: string): boolean {
     return false;
   }
 
-  if (normalized.startsWith("..") || normalized.includes("/../") || normalized.includes("\\..\\")) {
+  const isPathEscape =
+    normalized.startsWith("..") || normalized.includes("/../") || normalized.includes("\\..\\");
+  if (isPathEscape) {
     console.error("Error: Output file path cannot escape current directory");
     return false;
   }
@@ -91,7 +93,8 @@ function validateArguments(args: string[]): boolean {
 
 function readStdin(): string | null {
   try {
-    if (process.stdin.isTTY) return null;
+    const isInteractive = process.stdin.isTTY;
+    if (isInteractive) return null;
     return readFileSync(0, "utf-8").trim();
   } catch {
     return null;

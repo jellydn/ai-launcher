@@ -34,6 +34,7 @@ export interface DiffCommandContext {
 function isValidGitRef(ref: string): boolean {
   // Git ref pattern: allows HEAD, branch names, tags, commit SHAs, and ref operators including {}
   const validRefPattern = /^[a-zA-Z0-9._\-/~^@{}]+$/;
+  if (!validRefPattern.test(ref)) return false;
 
   // Additional safety: reject refs that could be dangerous
   const dangerousPatterns = [
@@ -42,17 +43,7 @@ function isValidGitRef(ref: string): boolean {
     /\.\./g, // Multiple consecutive dots can be confusing
   ];
 
-  if (!validRefPattern.test(ref)) {
-    return false;
-  }
-
-  for (const pattern of dangerousPatterns) {
-    if (pattern.test(ref)) {
-      return false;
-    }
-  }
-
-  return true;
+  return !dangerousPatterns.some((pattern) => pattern.test(ref));
 }
 
 /**

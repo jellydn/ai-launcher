@@ -82,8 +82,10 @@ export function findToolByName(query: string | undefined, items: LookupItem[]): 
   if (results.length >= 2) {
     const topScore = results[0]?.score ?? 0;
     const secondScore = results[1]?.score ?? 0;
+    const scoreGap = Math.abs(topScore - secondScore);
+    const isAmbiguous = scoreGap < 0.05;
 
-    if (Math.abs(topScore - secondScore) < 0.05) {
+    if (isAmbiguous) {
       const ambiguousMatches = results
         .filter((r) => Math.abs((r.score ?? 0) - topScore) < 0.05)
         .map((r) => r.item);
@@ -96,7 +98,8 @@ export function findToolByName(query: string | undefined, items: LookupItem[]): 
       };
     }
 
-    if (topScore < 0.25) {
+    const isConfidentMatch = topScore < 0.25;
+    if (isConfidentMatch) {
       return { success: true, item: results[0]?.item };
     }
   }
