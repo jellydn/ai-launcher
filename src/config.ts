@@ -20,7 +20,8 @@ function validateAliases(aliases: unknown, path: string): ConfigValidationError[
     return [];
   }
 
-  if (!aliases.every((a) => typeof a === "string")) {
+  const allStrings = aliases.every((a) => typeof a === "string");
+  if (!allStrings) {
     return [{ path, message: "All aliases must be strings" }];
   }
 
@@ -32,7 +33,8 @@ function validateTool(tool: unknown, index: number): ConfigValidationError[] {
   const path = `tools[${index}]`;
   const t = tool as Record<string, unknown>;
 
-  if (typeof t.name !== "string" || t.name.trim() === "") {
+  const hasValidName = typeof t.name === "string" && t.name.trim() !== "";
+  if (!hasValidName) {
     errors.push({
       path: `${path}.name`,
       message: "Tool name is required and must be a non-empty string",
@@ -46,7 +48,8 @@ function validateTool(tool: unknown, index: number): ConfigValidationError[] {
     });
   } else {
     const safeCommandPattern = /^[a-zA-Z0-9._\s-]+$/;
-    if (!safeCommandPattern.test(t.command.trim())) {
+    const isSafe = safeCommandPattern.test(t.command.trim());
+    if (!isSafe) {
       errors.push({
         path: `${path}.command`,
         message: "Tool command contains unsafe characters",
@@ -54,7 +57,8 @@ function validateTool(tool: unknown, index: number): ConfigValidationError[] {
     }
   }
 
-  if (t.description !== undefined && typeof t.description !== "string") {
+  const hasInvalidDescription = t.description !== undefined && typeof t.description !== "string";
+  if (hasInvalidDescription) {
     errors.push({
       path: `${path}.description`,
       message: "Tool description must be a string",

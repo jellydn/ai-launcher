@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { promptForInput, toSelectableItems } from "./fuzzy-select";
+import type { Template } from "./types";
 
 describe("toSelectableItems", () => {
   test("converts tools and templates to selectable items", () => {
@@ -64,7 +65,20 @@ describe("toSelectableItems", () => {
 
     const firstItem = items[0];
     expect(firstItem?.description).toBe("");
-    expect(firstItem?.aliases).toBeUndefined();
+    expect(firstItem?.aliases).toEqual([]);
+  });
+
+  test("normalizes undefined aliases to empty array", () => {
+    const tools = [
+      { name: "no-alias-tool", command: "cmd" },
+      { name: "with-alias-tool", command: "cmd2", aliases: ["alias1", "alias2"] },
+    ];
+    const templates: Template[] = [];
+
+    const items = toSelectableItems(tools, templates);
+
+    expect(items[0]?.aliases).toEqual([]);
+    expect(items[1]?.aliases).toEqual(["alias1", "alias2"]);
   });
 });
 

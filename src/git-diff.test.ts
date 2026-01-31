@@ -64,5 +64,25 @@ describe("prompts module", () => {
       expect(prompt).toContain("align");
       expect(prompt).toContain("improvement");
     });
+
+    test("appends custom prompt when provided", () => {
+      const diff = "test diff";
+      const customPrompt = "Focus on security vulnerabilities";
+      const prompt = buildDiffAnalysisPrompt(diff, undefined, customPrompt);
+
+      expect(prompt).toContain(diff);
+      expect(prompt).toContain(customPrompt);
+      expect(prompt).toContain("summary");
+    });
+
+    test("appends custom prompt with ref", () => {
+      const diff = "test diff";
+      const customPrompt = "Check for breaking changes";
+      const prompt = buildDiffAnalysisPrompt(diff, "main", customPrompt);
+
+      expect(prompt).toContain("main");
+      expect(prompt).toContain(diff);
+      expect(prompt).toContain(customPrompt);
+    });
   });
 });

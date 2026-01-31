@@ -1,16 +1,90 @@
 #!/usr/bin/env bun
 
+import type { SpawnSyncReturns } from "node:child_process";
 import { spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, isAbsolute, normalize, resolve } from "node:path";
 import { executeDiffCommand, parseDiffArgs } from "./cli/diff";
 import { loadConfig } from "./config";
 import { detectInstalledTools, mergeTools } from "./detect";
 import { fuzzySelect, promptForInput, toSelectableItems } from "./fuzzy-select";
 import { getColoredLogo } from "./logo";
-import { findToolByName, toLookupItems } from "./lookup";
+import { findToolByName } from "./lookup";
 import { isSafeCommand } from "./template";
 import { upgrade } from "./upgrade";
 import { VERSION } from "./version";
+
+const EXIT_CODE_SUCCESS = 0;
+const EXIT_CODE_VALIDATION_ERROR = 1;
+const EXIT_CODE_FILE_WRITE_ERROR = 2;
+const EXIT_CODE_PROCESS_ERROR = 3;
+
+function handleChildProcessError(child: SpawnSyncReturns<string | Buffer>): void {
+  if (child.error || child.signal) {
+    console.error(
+      child.error?.message ?? `Process terminated by signal ${child.signal ?? "unknown"}`
+    );
+    process.exit(EXIT_CODE_PROCESS_ERROR);
+  }
+}
+
+function isValidOutputPath(filePath: string): boolean {
+  const normalized = normalize(filePath);
+
+  if (isAbsolute(normalized)) {
+    console.error("Error: Output file path must be relative, not absolute");
+    return false;
+  }
+
+  const isPathEscape =
+    normalized.startsWith("..") || normalized.includes("/../") || normalized.includes("\\..\\");
+  if (isPathEscape) {
+    console.error("Error: Output file path cannot escape current directory");
+    return false;
+  }
+
+  const forbiddenPatterns = [
+    /^\./,
+    /\.git\//,
+    /\.config\//,
+    /etc\//,
+    /root\//,
+    /home\//,
+    /usr\//,
+    /var\//,
+    /sys\//,
+    /proc\//,
+  ];
+
+  for (const pattern of forbiddenPatterns) {
+    if (pattern.test(normalized)) {
+      console.error("Error: Output file path points to a protected location");
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function validateOutputFile(filePath: string): string | null {
+  if (!filePath || filePath.trim().length === 0) {
+    return "Output file path cannot be empty";
+  }
+
+  if (!isValidOutputPath(filePath)) {
+    return "Invalid output file path";
+  }
+
+  const resolvedPath = resolve(filePath);
+
+  if (existsSync(resolvedPath)) {
+    console.error(`Warning: File already exists: ${resolvedPath}`);
+    console.error("Use a different filename or remove the existing file first");
+    return "File already exists";
+  }
+
+  return null;
+}
 
 function validateArguments(args: string[]): boolean {
   const safePattern = /^[a-zA-Z0-9._\-"/\\@#=\s,.:()[\]{}]+$/;
@@ -19,7 +93,8 @@ function validateArguments(args: string[]): boolean {
 
 function readStdin(): string | null {
   try {
-    if (process.stdin.isTTY) return null;
+    const isInteractive = process.stdin.isTTY;
+    if (isInteractive) return null;
     return readFileSync(0, "utf-8").trim();
   } catch {
     return null;
@@ -46,6 +121,8 @@ OPTIONS:
     --version, -v                    Show version information
     --diff-staged                    Analyze staged git changes
     --diff-commit <ref>              Analyze git diff against ref (e.g., HEAD~1)
+    --diff-prompt <text>             Add custom text to diff analysis prompt
+    --diff-output <file>             Save analysis output to markdown file
     upgrade                          Upgrade to latest version
 
 EXAMPLES:
@@ -56,6 +133,10 @@ EXAMPLES:
     ai -- --version                  Select tool, then show version
     ai claude --diff-staged          Analyze staged changes with Claude
     ai --diff-commit HEAD~1          Select tool, analyze commit diff
+    ai --diff-staged --diff-output analysis.md
+                                     Save analysis to file
+    ai --diff-commit HEAD~1 --diff-prompt "Focus on security"
+                                     Add custom prompt
     ai upgrade                       Upgrade to latest version
 
 CONFIG:
@@ -105,10 +186,17 @@ function launchTool(command: string, extraArgs: string[] = [], stdinContent: str
     shell: true,
   });
 
-  process.exit(child.status ?? 1);
+  handleChildProcessError(child);
+
+  process.exit(child.status ?? EXIT_CODE_SUCCESS);
 }
 
-function launchToolWithPrompt(command: string, prompt: string, useStdin = false): never {
+function launchToolWithPrompt(
+  command: string,
+  prompt: string,
+  useStdin = false,
+  outputFile?: string
+): never {
   if (!isSafeCommand(command)) {
     console.error("Invalid command format");
     process.exit(1);
@@ -121,19 +209,67 @@ function launchToolWithPrompt(command: string, prompt: string, useStdin = false)
     process.exit(1);
   }
 
-  if (useStdin) {
-    // Validate individual arguments for security
-    if (!validateArguments(args)) {
-      console.error("Invalid argument format detected");
-      process.exit(1);
+  if (outputFile) {
+    const validationError = validateOutputFile(outputFile);
+    if (validationError) {
+      console.error(`Error: ${validationError}`);
+      process.exit(EXIT_CODE_VALIDATION_ERROR);
     }
 
+    const resolvedPath = resolve(outputFile);
+    const outputDir = dirname(resolvedPath);
+
+    if (!existsSync(outputDir)) {
+      console.error(`Error: Output directory does not exist: ${outputDir}`);
+      process.exit(EXIT_CODE_VALIDATION_ERROR);
+    }
+
+    let child: SpawnSyncReturns<string>;
+
+    if (useStdin) {
+      child = spawnSync(cmd, args, {
+        input: prompt,
+        stdio: ["pipe", "pipe", "inherit"],
+        shell: true,
+        encoding: "utf-8",
+      });
+    } else {
+      const escapedPrompt = prompt.replace(/'/g, "'\\''");
+      const finalCommand = `${command} '${escapedPrompt}'`;
+
+      child = spawnSync("sh", ["-c", finalCommand], {
+        stdio: ["inherit", "pipe", "inherit"],
+        encoding: "utf-8",
+      });
+    }
+
+    handleChildProcessError(child);
+
+    const output = child.stdout || "";
+
+    try {
+      writeFileSync(resolvedPath, output);
+      const fileSize = Buffer.byteLength(output, "utf-8");
+      console.log(`\n✅ Analysis saved to: ${resolvedPath} (${fileSize} bytes)`);
+    } catch (error) {
+      console.error(`\n❌ Failed to write output to ${resolvedPath}`);
+      console.error(error instanceof Error ? error.message : String(error));
+      process.exit(EXIT_CODE_FILE_WRITE_ERROR);
+    }
+
+    process.exit(child.status ?? EXIT_CODE_SUCCESS);
+  }
+
+  if (useStdin) {
     const child = spawnSync(cmd, args, {
       input: prompt,
       stdio: ["pipe", "inherit", "inherit"],
-      shell: false,
-    });
-    process.exit(child.status ?? 1);
+      shell: true,
+    }) as SpawnSyncReturns<string | Buffer>;
+
+    handleChildProcessError(child);
+
+    process.exit(child.status ?? 0);
   }
 
   const escapedPrompt = prompt.replace(/'/g, "'\\''");
@@ -141,9 +277,11 @@ function launchToolWithPrompt(command: string, prompt: string, useStdin = false)
 
   const child = spawnSync("sh", ["-c", finalCommand], {
     stdio: "inherit",
-  });
+  }) as SpawnSyncReturns<string | Buffer>;
 
-  process.exit(child.status ?? 1);
+  handleChildProcessError(child);
+
+  process.exit(child.status ?? 0);
 }
 
 async function main() {
@@ -154,7 +292,7 @@ async function main() {
   const allTools = mergeTools(config.tools, detectedTools);
 
   const items = toSelectableItems(allTools, config.templates);
-  const lookupItems = toLookupItems(allTools, config.templates);
+  const lookupItems = items;
 
   if (items.length === 0) {
     console.error("❌ No AI tools found!\n");

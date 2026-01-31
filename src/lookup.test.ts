@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import type { LookupItem } from "./lookup";
-import { findToolByName, toLookupItems } from "./lookup";
+import { findToolByName } from "./lookup";
+import type { SelectableItem } from "./types";
 
-const MOCK_ITEMS: LookupItem[] = [
+const MOCK_ITEMS: SelectableItem[] = [
   {
     name: "claude",
     command: "claude",
@@ -140,7 +140,7 @@ describe("findToolByName", () => {
 
   describe("substring matching", () => {
     test("matches when only one substring match exists", () => {
-      const items: LookupItem[] = [
+      const items: SelectableItem[] = [
         {
           name: "unique-tool",
           command: "unique",
@@ -158,7 +158,7 @@ describe("findToolByName", () => {
     });
 
     test("does not use substring match when multiple matches exist", () => {
-      const items: LookupItem[] = [
+      const items: SelectableItem[] = [
         { name: "foo-bar", command: "foo", description: "Foo", isTemplate: false, aliases: [] },
         { name: "foo-baz", command: "bar", description: "Bar", isTemplate: false, aliases: [] },
       ];
@@ -188,7 +188,7 @@ describe("findToolByName", () => {
 
   describe("ambiguous match detection", () => {
     test("returns ambiguous error for multiple close matches", () => {
-      const items: LookupItem[] = [
+      const items: SelectableItem[] = [
         {
           name: "opencode",
           command: "opencode",
@@ -214,7 +214,7 @@ describe("findToolByName", () => {
     });
 
     test("includes all ambiguous candidates in error", () => {
-      const items: LookupItem[] = [
+      const items: SelectableItem[] = [
         {
           name: "opencode",
           command: "opencode",
@@ -241,7 +241,7 @@ describe("findToolByName", () => {
     });
 
     test("does not trigger ambiguity when best match is very good", () => {
-      const items: LookupItem[] = [
+      const items: SelectableItem[] = [
         {
           name: "very-specific-name",
           command: "cmd",
@@ -263,68 +263,5 @@ describe("findToolByName", () => {
       expect(result.success).toBe(true);
       expect(result.item?.name).toBe("very-specific-name");
     });
-  });
-});
-
-describe("toLookupItems", () => {
-  test("converts tools to lookup items", () => {
-    const tools = [
-      { name: "claude", command: "claude", description: "Claude CLI", aliases: ["c"] },
-    ];
-    const templates: Array<{
-      name: string;
-      command: string;
-      description: string;
-      aliases?: string[];
-    }> = [];
-
-    const items = toLookupItems(tools, templates);
-
-    expect(items).toHaveLength(1);
-    expect(items[0]?.name).toBe("claude");
-    expect(items[0]?.aliases).toEqual(["c"]);
-    expect(items[0]?.isTemplate).toBe(false);
-  });
-
-  test("converts templates to lookup items with isTemplate flag", () => {
-    const tools: Array<{ name: string; command: string; description: string; aliases?: string[] }> =
-      [];
-    const templates = [
-      { name: "review", command: "amp review", description: "Review code", aliases: ["rev"] },
-    ];
-
-    const items = toLookupItems(tools, templates);
-
-    expect(items).toHaveLength(1);
-    expect(items[0]?.name).toBe("review");
-    expect(items[0]?.isTemplate).toBe(true);
-    expect(items[0]?.aliases).toEqual(["rev"]);
-  });
-
-  test("combines tools and templates", () => {
-    const tools = [{ name: "claude", command: "claude", description: "Claude CLI", aliases: [] }];
-    const templates = [
-      { name: "review", command: "amp review", description: "Review code", aliases: [] },
-    ];
-
-    const items = toLookupItems(tools, templates);
-
-    expect(items).toHaveLength(2);
-    expect(items[0]?.isTemplate).toBe(false);
-    expect(items[1]?.isTemplate).toBe(true);
-  });
-
-  test("handles empty arrays", () => {
-    const items = toLookupItems([], []);
-
-    expect(items).toEqual([]);
-  });
-
-  test("handles tools without aliases", () => {
-    const tools = [{ name: "claude", command: "claude", description: "Claude CLI" }];
-
-    const items = toLookupItems(tools, []);
-
-    expect(items[0]?.aliases).toEqual([]);
   });
 });

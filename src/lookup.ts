@@ -1,5 +1,5 @@
 import Fuse from "fuse.js";
-import type { SelectableItem, Template, Tool } from "./types";
+import type { SelectableItem } from "./types";
 
 export interface LookupResult {
   success: boolean;
@@ -8,37 +8,7 @@ export interface LookupResult {
   candidates?: SelectableItem[];
 }
 
-export interface LookupItem extends SelectableItem {
-  aliases: string[];
-}
-
-export function toLookupItems(tools: Tool[], templates: Template[]): LookupItem[] {
-  return [
-    ...tools.map((t) => ({
-      name: t.name,
-      command: t.command,
-      description: t.description || "",
-      isTemplate: false,
-      aliases: t.aliases || [],
-      promptCommand: t.promptCommand,
-      promptUseStdin: t.promptUseStdin,
-    })),
-    ...templates.map((t) => ({
-      name: t.name,
-      command: t.command,
-      description: t.description,
-      isTemplate: true,
-      aliases: t.aliases || [],
-    })),
-  ];
-}
-
-function findSingleBy<T>(items: T[], predicate: (item: T) => boolean): T | undefined {
-  const matches = items.filter(predicate);
-  return matches.length === 1 ? matches[0] : undefined;
-}
-
-export function findToolByName(query: string | undefined, items: LookupItem[]): LookupResult {
+export function findToolByName(query: string | undefined, items: SelectableItem[]): LookupResult {
   if (!query) {
     return { success: false, error: "No query provided" };
   }
@@ -54,14 +24,14 @@ export function findToolByName(query: string | undefined, items: LookupItem[]): 
     return { success: true, item: aliasMatch };
   }
 
-  const suffixMatch = findSingleBy(items, (i) => i.name.toLowerCase().endsWith(lowerQuery));
-  if (suffixMatch) {
-    return { success: true, item: suffixMatch };
+  const suffixMatch = items.filter((i) => i.name.toLowerCase().endsWith(lowerQuery));
+  if (suffixMatch.length === 1) {
+    return { success: true, item: suffixMatch[0] };
   }
 
-  const substringMatch = findSingleBy(items, (i) => i.name.toLowerCase().includes(lowerQuery));
-  if (substringMatch) {
-    return { success: true, item: substringMatch };
+  const substringMatch = items.filter((i) => i.name.toLowerCase().includes(lowerQuery));
+  if (substringMatch.length === 1) {
+    return { success: true, item: substringMatch[0] };
   }
 
   const fuse = new Fuse(items, {
@@ -82,8 +52,10 @@ export function findToolByName(query: string | undefined, items: LookupItem[]): 
   if (results.length >= 2) {
     const topScore = results[0]?.score ?? 0;
     const secondScore = results[1]?.score ?? 0;
+    const scoreGap = Math.abs(topScore - secondScore);
+    const isAmbiguous = scoreGap < 0.05;
 
-    if (Math.abs(topScore - secondScore) < 0.05) {
+    if (isAmbiguous) {
       const ambiguousMatches = results
         .filter((r) => Math.abs((r.score ?? 0) - topScore) < 0.05)
         .map((r) => r.item);

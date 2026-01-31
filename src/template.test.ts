@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { validateConfig } from "./config";
-import { findToolByName, toLookupItems } from "./lookup";
+import { toSelectableItems } from "./fuzzy-select";
+import { findToolByName } from "./lookup";
 import type { Tool } from "./types";
 
 describe("Template Validation", () => {
@@ -137,7 +138,7 @@ describe("Template Lookup", () => {
   ];
 
   test("finds template by exact name", () => {
-    const items = toLookupItems(tools, templates);
+    const items = toSelectableItems(tools, templates);
     const result = findToolByName("review", items);
     expect(result.success).toBe(true);
     expect(result.item?.name).toBe("review");
@@ -145,21 +146,21 @@ describe("Template Lookup", () => {
   });
 
   test("finds template by alias", () => {
-    const items = toLookupItems(tools, templates);
+    const items = toSelectableItems(tools, templates);
     const result = findToolByName("rev", items);
     expect(result.success).toBe(true);
     expect(result.item?.name).toBe("review");
   });
 
   test("finds template by fuzzy match", () => {
-    const items = toLookupItems(tools, templates);
+    const items = toSelectableItems(tools, templates);
     const result = findToolByName("revie", items);
     expect(result.success).toBe(true);
     expect(result.item?.name).toBe("review");
   });
 
   test("distinguishes tools from templates", () => {
-    const items = toLookupItems(tools, templates);
+    const items = toSelectableItems(tools, templates);
 
     const toolResult = findToolByName("claude", items);
     expect(toolResult.success).toBe(true);
@@ -171,7 +172,7 @@ describe("Template Lookup", () => {
   });
 
   test("template lookup is case insensitive", () => {
-    const items = toLookupItems(tools, templates);
+    const items = toSelectableItems(tools, templates);
     const result = findToolByName("REVIEW", items);
     expect(result.success).toBe(true);
     expect(result.item?.name).toBe("review");
@@ -278,18 +279,18 @@ describe("Template Execution", () => {
     expect(result).toBe("amp -x 'Review: file.ts'");
   });
 
-  test("validateTemplateCommand rejects dangerous patterns", async () => {
-    const { validateTemplateCommand } = await import("./template");
-    expect(validateTemplateCommand("rm -rf /")).toBe(false);
-    expect(validateTemplateCommand("amp && rm -rf /")).toBe(false);
-    expect(validateTemplateCommand("$(evil)")).toBe(false);
-    expect(validateTemplateCommand("`evil`")).toBe(false);
+  test("isSafeCommand rejects dangerous patterns", async () => {
+    const { isSafeCommand } = await import("./template");
+    expect(isSafeCommand("rm -rf /")).toBe(false);
+    expect(isSafeCommand("amp && rm -rf /")).toBe(false);
+    expect(isSafeCommand("$(evil)")).toBe(false);
+    expect(isSafeCommand("`evil`")).toBe(false);
   });
 
-  test("validateTemplateCommand accepts safe patterns", async () => {
-    const { validateTemplateCommand } = await import("./template");
-    expect(validateTemplateCommand("amp -x 'Review: $@'")).toBe(true);
-    expect(validateTemplateCommand("claude 'Explain this'")).toBe(true);
+  test("isSafeCommand accepts safe patterns", async () => {
+    const { isSafeCommand } = await import("./template");
+    expect(isSafeCommand("amp -x 'Review: $@'")).toBe(true);
+    expect(isSafeCommand("claude 'Explain this'")).toBe(true);
   });
 
   test("parseTemplateCommand splits command correctly", async () => {
@@ -324,37 +325,37 @@ describe("Template Edge Cases", () => {
   });
 
   test("template command with double quotes inside single quotes", async () => {
-    const { buildTemplateCommand, validateTemplateCommand } = await import("./template");
+    const { buildTemplateCommand, isSafeCommand } = await import("./template");
     const command = "claude -p 'Explain: \"hello world\" and more: $@'";
     const result = buildTemplateCommand(command, ["src/file.ts"]);
     expect(result).toBe("claude -p 'Explain: \"hello world\" and more: src/file.ts'");
-    expect(validateTemplateCommand(command)).toBe(true);
+    expect(isSafeCommand(command)).toBe(true);
   });
 
   test("template with complex prompt and special characters", async () => {
-    const { validateTemplateCommand } = await import("./template");
+    const { isSafeCommand } = await import("./template");
     expect(
-      validateTemplateCommand("claude -p 'Check [security] issues: (injection, xss, csrf) for: $@'")
+      isSafeCommand("claude -p 'Check [security] issues: (injection, xss, csrf) for: $@'")
     ).toBe(true);
   });
 });
 
 describe("Template Security", () => {
   test("rejects shell operators and command substitution", async () => {
-    const { validateTemplateCommand } = await import("./template");
-    expect(validateTemplateCommand("amp && rm -rf /")).toBe(false);
-    expect(validateTemplateCommand("amp || rm -rf /")).toBe(false);
-    expect(validateTemplateCommand("amp; rm -rf /")).toBe(false);
-    expect(validateTemplateCommand("amp $(whoami)")).toBe(false);
-    expect(validateTemplateCommand("amp `whoami`")).toBe(false);
-    expect(validateTemplateCommand("sudo amp")).toBe(false);
-    expect(validateTemplateCommand("amp > /dev/null")).toBe(false);
+    const { isSafeCommand } = await import("./template");
+    expect(isSafeCommand("amp && rm -rf /")).toBe(false);
+    expect(isSafeCommand("amp || rm -rf /")).toBe(false);
+    expect(isSafeCommand("amp; rm -rf /")).toBe(false);
+    expect(isSafeCommand("amp $(whoami)")).toBe(false);
+    expect(isSafeCommand("amp `whoami`")).toBe(false);
+    expect(isSafeCommand("sudo amp")).toBe(false);
+    expect(isSafeCommand("amp > /dev/null")).toBe(false);
   });
 
   test("accepts special characters in prompts", async () => {
-    const { validateTemplateCommand } = await import("./template");
-    expect(validateTemplateCommand("claude -p 'Check <script> tags: $@'")).toBe(true);
-    expect(validateTemplateCommand("amp 'Review <file>: $@'")).toBe(true);
-    expect(validateTemplateCommand("claude -p 'Check A | B: $@'")).toBe(true);
+    const { isSafeCommand } = await import("./template");
+    expect(isSafeCommand("claude -p 'Check <script> tags: $@'")).toBe(true);
+    expect(isSafeCommand("amp 'Review <file>: $@'")).toBe(true);
+    expect(isSafeCommand("claude -p 'Check A | B: $@'")).toBe(true);
   });
 });
