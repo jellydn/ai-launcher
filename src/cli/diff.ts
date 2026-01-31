@@ -2,7 +2,13 @@
  * Git diff analysis command handler
  */
 
-import { GitDiffError, NotGitRepositoryError } from "../errors";
+import {
+  GitCommandError,
+  GitDiffError,
+  InvalidGitRefError,
+  NoChangesError,
+  NotGitRepositoryError,
+} from "../errors";
 import type { SelectionResult } from "../fuzzy-select";
 import { ensureGitRepository, getGitDiff } from "../git-diff";
 import type { LookupItem } from "../lookup";
@@ -109,19 +115,46 @@ export async function executeDiffCommand(
   } catch (error) {
     if (error instanceof NotGitRepositoryError) {
       console.error("❌ Not a git repository");
+      console.error("💡 Initialize a git repository with: git init");
       process.exit(1);
     }
     throw error;
   }
 
-  // Get the git diff
-  const diff = getGitDiff(options);
+  // Get the git diff with user-friendly error messages
+  let diff: string;
+  try {
+    diff = getGitDiff(options);
+  } catch (error) {
+    if (error instanceof NoChangesError) {
+      if (options.type === "staged") {
+        console.error("❌ No staged changes found");
+        console.error("💡 Stage changes with: git add <files>");
+      } else {
+        console.error("❌ No changes found in diff");
+        console.error(`💡 Check your git reference: ${options.ref}`);
+      }
+      process.exit(1);
+    }
+    if (error instanceof InvalidGitRefError) {
+      console.error(`❌ ${error.message}`);
+      console.error("💡 Use valid git references like: HEAD~1, main, origin/main, or commit SHA");
+      process.exit(1);
+    }
+    if (error instanceof GitCommandError) {
+      console.error(`❌ ${error.message}`);
+      process.exit(1);
+    }
+    throw error;
+  }
 
   // Build analysis prompt
   const analysisPrompt = buildDiffAnalysisPrompt(diff, options.ref);
 
   // Determine which tool to use (args before the diff flag)
   const argsBeforeFlag = context.args.slice(0, diffFlagIndex);
+
+  console.log("\nAnalyzing git diff...\n");
 
   if (argsBeforeFlag.length === 0) {
     // No tool specified, use fuzzy select
@@ -146,7 +179,5 @@ export async function executeDiffCommand(
   }
   const toolCommand = lookupResult.item.command;
 
-  // Launch tool with analysis prompt
-  console.log("\nAnalyzing git diff...\n");
   return launchToolWithPrompt(toolCommand, analysisPrompt);
 }
