@@ -189,6 +189,7 @@ export async function executeDiffCommand(
     console.log(`\nAnalyzing git diff with ${result.item.name}...\n`);
     const toolCommand = result.item.promptCommand ?? result.item.command;
     const useStdin = result.item.promptUseStdin ?? false;
+
     return launchToolWithPrompt(toolCommand, analysisPrompt, useStdin, options.outputFile);
   }
 

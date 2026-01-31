@@ -1,6 +1,5 @@
 {
   "name": "ai-cli-switcher",
-  "version": "0.2.0-0",
   "description": "A quick launcher CLI to switch between AI coding assistants using fuzzy search",
   "module": "src/index.ts",
   "type": "module",

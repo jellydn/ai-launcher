@@ -165,18 +165,16 @@ function launchToolWithPrompt(
 
     handleChildProcessError(child);
 
-    if (outputFile) {
-      const output = child.stdout || "";
-      const resolvedPath = resolve(outputFile);
+    const output = child.stdout || "";
+    const resolvedPath = resolve(outputFile);
 
-      try {
-        writeFileSync(resolvedPath, output);
-        console.log(`\n✅ Analysis saved to: ${resolvedPath}`);
-      } catch (error) {
-        console.error(`\n❌ Failed to write output to ${resolvedPath}`);
-        console.error(error instanceof Error ? error.message : String(error));
-        process.exit(1);
-      }
+    try {
+      writeFileSync(resolvedPath, output);
+      console.log(`\n✅ Analysis saved to: ${resolvedPath}`);
+    } catch (error) {
+      console.error(`\n❌ Failed to write output to ${resolvedPath}`);
+      console.error(error instanceof Error ? error.message : String(error));
+      process.exit(1);
     }
 
     process.exit(child.status ?? 0);
