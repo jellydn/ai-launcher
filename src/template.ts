@@ -22,10 +22,10 @@ const DANGEROUS_PATTERNS = [
 export function isSafeCommand(command: string): boolean {
   const trimmed = command.trim();
   if (!trimmed) return false;
-  if (command.length > 500) return false;
+  if (trimmed.length > 500) return false;
   if (!SAFE_COMMAND_PATTERN.test(trimmed)) return false;
 
-  return !DANGEROUS_PATTERNS.some((pattern) => pattern.test(command));
+  return !DANGEROUS_PATTERNS.some((pattern) => pattern.test(trimmed));
 }
 
 export function buildTemplateCommand(command: string, args: string[]): string {
