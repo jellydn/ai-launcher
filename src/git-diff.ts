@@ -22,15 +22,15 @@ export function getGitDiff(options: GitDiffOptions): string {
 
   if (options.type === "staged") {
     args = ["diff", "--cached"];
-  } else if (options.type === "commit" && options.ref) {
+  } else if (options.ref) {
     args = ["diff", options.ref];
   } else {
-    throw new InvalidGitRefError("Invalid git diff options");
+    throw new InvalidGitRefError("Missing required ref for commit diff");
   }
 
   const result = spawnSync("git", args, {
     encoding: "utf-8",
-    maxBuffer: 10 * 1024 * 1024, // 10MB - sufficient for most diffs, prevents memory issues
+    maxBuffer: 10 * 1024 * 1024,
   });
 
   if (result.error) {

@@ -97,18 +97,7 @@ export async function executeDiffCommand(
   // Determine which tool to use (args before the diff flag)
   const argsBeforeFlag = context.args.slice(0, diffFlagIndex);
 
-  let toolCommand: string;
-
-  if (argsBeforeFlag.length > 0) {
-    // Tool specified before flag
-    const toolQuery = argsBeforeFlag[0] ?? "";
-    const lookupResult = findToolByName(toolQuery, context.lookupItems);
-    if (!lookupResult.success || !lookupResult.item) {
-      console.error(lookupResult.error);
-      process.exit(1);
-    }
-    toolCommand = lookupResult.item.command;
-  } else {
+  if (argsBeforeFlag.length === 0) {
     // No tool specified, use fuzzy select
     const result = await context.fuzzySelect(context.items);
     if (result.cancelled) {
@@ -118,8 +107,18 @@ export async function executeDiffCommand(
       console.error("No tool selected");
       process.exit(1);
     }
-    toolCommand = result.item.command;
+    const toolCommand = result.item.command;
+    return launchToolWithPrompt(toolCommand, analysisPrompt);
   }
+
+  // Tool specified before flag
+  const toolQuery = argsBeforeFlag[0];
+  const lookupResult = findToolByName(toolQuery, context.lookupItems);
+  if (!lookupResult.success || !lookupResult.item) {
+    console.error(lookupResult.error);
+    process.exit(1);
+  }
+  const toolCommand = lookupResult.item.command;
 
   // Launch tool with analysis prompt
   console.log("\nAnalyzing git diff...\n");

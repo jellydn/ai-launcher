@@ -171,19 +171,13 @@ async function main() {
 
   // Handle git diff analysis command
   const diffParsed = parseDiffArgs(args);
-  if (diffParsed.hasDiffCommand && diffParsed.options && diffParsed.diffFlagIndex !== undefined) {
-    await executeDiffCommand(
-      diffParsed.options,
-      diffParsed.diffFlagIndex,
-      {
-        args,
-        lookupItems,
-        fuzzySelect,
-        items,
-      },
-      launchToolWithPrompt
-    );
-    return;
+  if (diffParsed.hasDiffCommand) {
+    const { options, diffFlagIndex } = diffParsed;
+    if (options && diffFlagIndex !== undefined) {
+      const diffContext = { args, lookupItems, fuzzySelect, items };
+      await executeDiffCommand(options, diffFlagIndex, diffContext, launchToolWithPrompt);
+      return;
+    }
   }
 
   const dashIndex = args.indexOf("--");
@@ -199,21 +193,22 @@ async function main() {
       if (result.item) {
         launchTool(result.item.command, afterDash, stdinContent);
       }
-    } else {
-      const toolQuery = beforeDash[0];
-      if (!toolQuery) {
-        console.error("No tool specified before '--' separator");
-        process.exit(1);
-      }
-      const lookupResult = findToolByName(toolQuery, lookupItems);
-      if (lookupResult.success && lookupResult.item) {
-        launchTool(lookupResult.item.command, afterDash, stdinContent);
-        return;
-      }
-      console.error(lookupResult.error);
+      return;
+    }
+
+    const toolQuery = beforeDash[0];
+    if (!toolQuery) {
+      console.error("No tool specified before '--' separator");
       process.exit(1);
     }
-    return;
+
+    const lookupResult = findToolByName(toolQuery, lookupItems);
+    if (lookupResult.success && lookupResult.item) {
+      launchTool(lookupResult.item.command, afterDash, stdinContent);
+      return;
+    }
+    console.error(lookupResult.error);
+    process.exit(1);
   }
 
   if (args.length > 0) {
