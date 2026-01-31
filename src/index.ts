@@ -181,17 +181,21 @@ async function main() {
 
     let diffResult: import("./git-diff").GitDiffResult | undefined;
     let ref: string | undefined;
+    let diffFlagIndex: number;
 
+    // Prioritize --diff-staged if both are present
     if (diffStagedIndex !== -1) {
       diffResult = getGitDiff({ type: "staged" });
-    } else if (diffCommitIndex !== -1) {
-      // Get the ref after --diff-commit
+      diffFlagIndex = diffStagedIndex;
+    } else {
+      // --diff-commit requires a ref argument
       ref = args[diffCommitIndex + 1];
       if (!ref || ref.startsWith("-")) {
         console.error("❌ --diff-commit requires a git reference (e.g., HEAD~1, main)");
         process.exit(1);
       }
       diffResult = getGitDiff({ type: "commit", ref });
+      diffFlagIndex = diffCommitIndex;
     }
 
     if (!diffResult || !diffResult.success) {
@@ -202,8 +206,7 @@ async function main() {
     // Build analysis prompt
     const analysisPrompt = buildDiffAnalysisPrompt(diffResult.diff, ref);
 
-    // Determine which tool to use
-    const diffFlagIndex = diffStagedIndex !== -1 ? diffStagedIndex : diffCommitIndex;
+    // Determine which tool to use (args before the diff flag)
     const argsBeforeFlag = args.slice(0, diffFlagIndex);
 
     let toolCommand: string;
