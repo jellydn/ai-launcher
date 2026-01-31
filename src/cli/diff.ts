@@ -80,16 +80,7 @@ export async function executeDiffCommand(
   }
 
   // Get the git diff
-  let diff: string;
-  try {
-    diff = getGitDiff(options);
-  } catch (error) {
-    if (error instanceof GitDiffError) {
-      console.error(`❌ ${error.message}`);
-      process.exit(1);
-    }
-    throw error;
-  }
+  const diff = getGitDiff(options);
 
   // Build analysis prompt
   const analysisPrompt = buildDiffAnalysisPrompt(diff, options.ref);

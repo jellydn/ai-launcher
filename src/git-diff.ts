@@ -56,11 +56,7 @@ export function getGitDiff(options: GitDiffOptions): string {
  * @throws {NotGitRepositoryError} When not in a git repository
  */
 export function ensureGitRepository(): void {
-  const result = spawnSync("git", ["rev-parse", "--git-dir"], {
-    encoding: "utf-8",
-  });
-
-  if (result.status !== 0) {
+  if (!isGitRepository()) {
     throw new NotGitRepositoryError();
   }
 }
