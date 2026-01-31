@@ -11,6 +11,11 @@ export interface GitDiffOptions {
   ref?: string;
 }
 
+// 10MB buffer limit - sufficient for most diffs, prevents memory issues
+const MAX_DIFF_BUFFER_SIZE = 10 * 1024 * 1024;
+// Warn if diff exceeds 8MB (80% of buffer)
+const DIFF_SIZE_WARNING_THRESHOLD = 8 * 1024 * 1024;
+
 /**
  * Get git diff based on options
  * @throws {InvalidGitRefError} When git diff options are invalid
@@ -30,10 +35,16 @@ export function getGitDiff(options: GitDiffOptions): string {
 
   const result = spawnSync("git", args, {
     encoding: "utf-8",
-    maxBuffer: 10 * 1024 * 1024,
+    maxBuffer: MAX_DIFF_BUFFER_SIZE,
   });
 
   if (result.error) {
+    // Check if error is due to buffer overflow
+    if (result.error.message.includes("maxBuffer") || result.error.message.includes("ENOBUFS")) {
+      throw new GitCommandError(
+        `Diff too large (exceeds ${MAX_DIFF_BUFFER_SIZE / 1024 / 1024}MB limit). Consider analyzing specific files or commits separately.`
+      );
+    }
     throw new GitCommandError(result.error.message);
   }
 
@@ -46,6 +57,14 @@ export function getGitDiff(options: GitDiffOptions): string {
   const diff = result.stdout.trim();
   if (!diff) {
     throw new NoChangesError();
+  }
+
+  // Warn if diff is approaching buffer limit
+  const diffSize = Buffer.byteLength(diff, "utf-8");
+  if (diffSize > DIFF_SIZE_WARNING_THRESHOLD) {
+    console.warn(
+      `⚠️  Warning: Large diff (${(diffSize / 1024 / 1024).toFixed(1)}MB). Consider analyzing specific files if truncation occurs.`
+    );
   }
 
   return diff;

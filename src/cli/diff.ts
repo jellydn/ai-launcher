@@ -23,6 +23,34 @@ export interface DiffCommandContext {
 }
 
 /**
+ * Validate git reference format to prevent injection
+ * Allows: alphanumeric, -, _, /, ., ~, ^, @, {, } and common ref patterns
+ */
+function isValidGitRef(ref: string): boolean {
+  // Git ref pattern: allows HEAD, branch names, tags, commit SHAs, and ref operators including {}
+  const validRefPattern = /^[a-zA-Z0-9._\-/~^@{}]+$/;
+
+  // Additional safety: reject refs that could be dangerous
+  const dangerousPatterns = [
+    /^-/, // Starts with dash (could be interpreted as flag)
+    /[;&|`$()<>[\]]/, // Shell metacharacters (excluding {} which git uses)
+    /\.\./g, // Multiple consecutive dots can be confusing
+  ];
+
+  if (!validRefPattern.test(ref)) {
+    return false;
+  }
+
+  for (const pattern of dangerousPatterns) {
+    if (pattern.test(ref)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/**
  * Parse diff command arguments
  */
 export function parseDiffArgs(args: string[]): {
@@ -50,6 +78,13 @@ export function parseDiffArgs(args: string[]): {
   const ref = args[diffCommitIndex + 1];
   if (!ref || ref.startsWith("-")) {
     throw new GitDiffError("--diff-commit requires a git reference (e.g., HEAD~1, main)");
+  }
+
+  // Validate ref format
+  if (!isValidGitRef(ref)) {
+    throw new GitDiffError(
+      `Invalid git reference format: ${ref}. Only alphanumeric characters, -, _, /, ., ~, ^, and @ are allowed.`
+    );
   }
 
   return {
