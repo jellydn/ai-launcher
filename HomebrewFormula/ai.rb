@@ -29,7 +29,18 @@ class Ai < Formula
     bin.install "ai-#{os}-#{arch}" => "ai"
   end
 
+  def caveats
+    <<~EOS
+      ai has been installed to: #{bin}/ai
+
+      To get started, run:
+        ai --help
+
+      For configuration, see: https://github.com/jellydn/ai-cli-switcher
+    EOS
+  end
+
   test do
-    assert_match "launcher", shell_output("#{bin}/ai --help 2>&1", 0)
+    system "#{bin}/ai", "--help"
   end
 end
