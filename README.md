@@ -9,6 +9,7 @@
 </p>
 
 <p align="center">
+  <a href="https://ai-cli.itman.fyi"><strong>📚 Documentation</strong></a> •
   <a href="#installation"><strong>Installation</strong></a> •
   <a href="#usage"><strong>Usage</strong></a> •
   <a href="#configuration"><strong>Configuration</strong></a>
