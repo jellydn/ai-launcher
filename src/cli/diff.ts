@@ -15,6 +15,8 @@ import type { SelectableItem } from "../types";
 export interface DiffCommandOptions {
   type: "staged" | "commit";
   ref?: string;
+  customPrompt?: string;
+  outputFile?: string;
 }
 
 export interface DiffCommandContext {
@@ -22,6 +24,7 @@ export interface DiffCommandContext {
   lookupItems: LookupItem[];
   fuzzySelect: (items: SelectableItem[]) => Promise<SelectionResult>;
   items: SelectableItem[];
+  outputFile?: string;
 }
 
 /**
@@ -67,11 +70,28 @@ export function parseDiffArgs(args: string[]): {
     return { hasDiffCommand: false };
   }
 
+  // Parse optional flags
+  const diffPromptIndex = args.indexOf("--diff-prompt");
+  const customPrompt = diffPromptIndex !== -1 ? args[diffPromptIndex + 1] : undefined;
+
+  const diffOutputIndex = args.indexOf("--diff-output");
+  const outputFile = diffOutputIndex !== -1 ? args[diffOutputIndex + 1] : undefined;
+
+  // Validate --diff-prompt has a value
+  if (diffPromptIndex !== -1 && (!customPrompt || customPrompt.startsWith("-"))) {
+    throw new GitDiffError("--diff-prompt requires a prompt text");
+  }
+
+  // Validate --diff-output has a value
+  if (diffOutputIndex !== -1 && (!outputFile || outputFile.startsWith("-"))) {
+    throw new GitDiffError("--diff-output requires a file path");
+  }
+
   // Prioritize --diff-staged if both are present
   if (diffStagedIndex !== -1) {
     return {
       hasDiffCommand: true,
-      options: { type: "staged" },
+      options: { type: "staged", customPrompt, outputFile },
       diffFlagIndex: diffStagedIndex,
     };
   }
@@ -91,7 +111,7 @@ export function parseDiffArgs(args: string[]): {
 
   return {
     hasDiffCommand: true,
-    options: { type: "commit", ref },
+    options: { type: "commit", ref, customPrompt, outputFile },
     diffFlagIndex: diffCommitIndex,
   };
 }
@@ -103,7 +123,12 @@ export async function executeDiffCommand(
   options: DiffCommandOptions,
   diffFlagIndex: number,
   context: DiffCommandContext,
-  launchToolWithPrompt: (command: string, prompt: string, useStdin?: boolean) => never
+  launchToolWithPrompt: (
+    command: string,
+    prompt: string,
+    useStdin?: boolean,
+    outputFile?: string
+  ) => never
 ): Promise<never> {
   try {
     ensureGitRepository();
@@ -142,7 +167,12 @@ export async function executeDiffCommand(
     throw error;
   }
 
-  const analysisPrompt = buildDiffAnalysisPrompt(diff, options.ref);
+  const analysisPrompt = buildDiffAnalysisPrompt(diff, options.ref, options.customPrompt);
+
+  // If output file is specified, inform the user
+  if (options.outputFile) {
+    console.log(`\n📝 Output will be saved to: ${options.outputFile}\n`);
+  }
 
   // Determine which tool to use (args before the diff flag)
   const argsBeforeFlag = context.args.slice(0, diffFlagIndex);
@@ -159,7 +189,7 @@ export async function executeDiffCommand(
     console.log(`\nAnalyzing git diff with ${result.item.name}...\n`);
     const toolCommand = result.item.promptCommand ?? result.item.command;
     const useStdin = result.item.promptUseStdin ?? false;
-    return launchToolWithPrompt(toolCommand, analysisPrompt, useStdin);
+    return launchToolWithPrompt(toolCommand, analysisPrompt, useStdin, options.outputFile);
   }
 
   const toolQuery = argsBeforeFlag[0];
@@ -172,5 +202,5 @@ export async function executeDiffCommand(
   const toolCommand = lookupResult.item.promptCommand ?? lookupResult.item.command;
   const useStdin = lookupResult.item.promptUseStdin ?? false;
 
-  return launchToolWithPrompt(toolCommand, analysisPrompt, useStdin);
+  return launchToolWithPrompt(toolCommand, analysisPrompt, useStdin, options.outputFile);
 }

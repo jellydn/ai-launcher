@@ -195,6 +195,17 @@ ai --diff-commit main             # Compare current branch with main
 ai amp --diff-commit origin/main  # Compare with remote branch
 ai --diff-commit HEAD~3           # Analyze last 3 commits
 
+# Custom prompt - add specific instructions
+ai --diff-staged --diff-prompt "Focus on security vulnerabilities"
+ai --diff-commit HEAD~1 --diff-prompt "Check for breaking changes"
+
+# Save output to markdown file
+ai --diff-staged --diff-output analysis.md
+ai --diff-commit main --diff-output review.md
+
+# Combine all options
+ai claude --diff-commit HEAD~1 --diff-prompt "Review performance" --diff-output report.md
+
 # Combine with tool selection
 ai c --diff-staged                # Use alias
 ai --diff-commit HEAD~1           # Interactive tool selection
@@ -210,20 +221,20 @@ ai --diff-commit HEAD~1           # Interactive tool selection
 **Use Cases:**
 
 ```bash
-# Pre-commit review
-git add -A && ai claude --diff-staged
+# Pre-commit review with custom focus
+git add -A && ai claude --diff-staged --diff-prompt "Check for SQL injection risks"
 
-# Review before push
-ai --diff-commit origin/main
+# Save analysis for documentation
+ai --diff-commit origin/main --diff-output deployment-review.md
 
-# Understand recent changes
-ai --diff-commit HEAD~5
+# Review before push with specific concerns
+ai --diff-commit origin/main --diff-prompt "Verify backward compatibility"
 
-# Quick sanity check
-git add . && ai c --diff-staged
+# Quick sanity check and save
+git add . && ai c --diff-staged --diff-output quick-review.md
 ```
 
-The feature automatically constructs a prompt with the diff and sends it to your chosen AI assistant for analysis.
+The feature automatically constructs a prompt with the diff and sends it to your chosen AI assistant for analysis. Use `--diff-prompt` to add custom instructions and `--diff-output` to save the analysis to a markdown file.
 
 ## Configuration
 

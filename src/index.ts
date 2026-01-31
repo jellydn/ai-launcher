@@ -1,7 +1,8 @@
 #!/usr/bin/env bun
 
 import { spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { executeDiffCommand, parseDiffArgs } from "./cli/diff";
 import { loadConfig } from "./config";
 import { detectInstalledTools, mergeTools } from "./detect";
@@ -46,6 +47,8 @@ OPTIONS:
     --version, -v                    Show version information
     --diff-staged                    Analyze staged git changes
     --diff-commit <ref>              Analyze git diff against ref (e.g., HEAD~1)
+    --diff-prompt <text>             Add custom text to diff analysis prompt
+    --diff-output <file>             Save analysis output to markdown file
     upgrade                          Upgrade to latest version
 
 EXAMPLES:
@@ -56,6 +59,10 @@ EXAMPLES:
     ai -- --version                  Select tool, then show version
     ai claude --diff-staged          Analyze staged changes with Claude
     ai --diff-commit HEAD~1          Select tool, analyze commit diff
+    ai --diff-staged --diff-output analysis.md
+                                     Save analysis to file
+    ai --diff-commit HEAD~1 --diff-prompt "Focus on security"
+                                     Add custom prompt
     ai upgrade                       Upgrade to latest version
 
 CONFIG:
@@ -108,7 +115,12 @@ function launchTool(command: string, extraArgs: string[] = [], stdinContent: str
   process.exit(child.status ?? 1);
 }
 
-function launchToolWithPrompt(command: string, prompt: string, useStdin = false): never {
+function launchToolWithPrompt(
+  command: string,
+  prompt: string,
+  useStdin = false,
+  outputFile?: string
+): never {
   if (!isSafeCommand(command)) {
     console.error("Invalid command format");
     process.exit(1);
@@ -121,6 +133,40 @@ function launchToolWithPrompt(command: string, prompt: string, useStdin = false)
     process.exit(1);
   }
 
+  if (outputFile) {
+    // Capture output when outputFile is specified
+
+    if (useStdin) {
+      const child = spawnSync(cmd, args, {
+        input: prompt,
+        stdio: ["pipe", "pipe", "inherit"],
+        shell: true,
+        encoding: "utf-8",
+      });
+
+      const output = child.stdout || "";
+      const resolvedPath = resolve(outputFile);
+      writeFileSync(resolvedPath, output);
+      console.log(`\n✅ Analysis saved to: ${resolvedPath}`);
+      process.exit(child.status ?? 1);
+    }
+
+    const escapedPrompt = prompt.replace(/'/g, "'\\''");
+    const finalCommand = `${command} '${escapedPrompt}'`;
+
+    const child = spawnSync("sh", ["-c", finalCommand], {
+      stdio: ["inherit", "pipe", "inherit"],
+      encoding: "utf-8",
+    });
+
+    const output = child.stdout || "";
+    const resolvedPath = resolve(outputFile);
+    writeFileSync(resolvedPath, output);
+    console.log(`\n✅ Analysis saved to: ${resolvedPath}`);
+    process.exit(child.status ?? 1);
+  }
+
+  // Original behavior when no output file
   if (useStdin) {
     const child = spawnSync(cmd, args, {
       input: prompt,
