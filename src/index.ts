@@ -2,6 +2,7 @@
 
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
+import { executeDiffCommand, parseDiffArgs } from "./cli/diff";
 import { loadConfig } from "./config";
 import { detectInstalledTools, mergeTools } from "./detect";
 import { fuzzySelect, promptForInput, toSelectableItems } from "./fuzzy-select";
@@ -43,6 +44,8 @@ USAGE:
 OPTIONS:
     --help, -h                       Show this help message
     --version, -v                    Show version information
+    --diff-staged                    Analyze staged git changes
+    --diff-commit <ref>              Analyze git diff against ref (e.g., HEAD~1)
     upgrade                          Upgrade to latest version
 
 EXAMPLES:
@@ -51,6 +54,8 @@ EXAMPLES:
     ai c                             Launch by alias
     ai claude --help                 Pass --help to claude
     ai -- --version                  Select tool, then show version
+    ai claude --diff-staged          Analyze staged changes with Claude
+    ai --diff-commit HEAD~1          Select tool, analyze commit diff
     ai upgrade                       Upgrade to latest version
 
 CONFIG:
@@ -109,6 +114,23 @@ function launchTool(command: string, extraArgs: string[] = [], stdinContent: str
   process.exit(child.status ?? 1);
 }
 
+function launchToolWithPrompt(command: string, prompt: string): never {
+  if (!isSafeCommand(command)) {
+    console.error("Invalid command format");
+    process.exit(1);
+  }
+
+  const escapedPrompt = prompt.replace(/'/g, "'\\''");
+
+  const finalCommand = `${command} '${escapedPrompt}'`;
+
+  const child = spawnSync("sh", ["-c", finalCommand], {
+    stdio: "inherit",
+  });
+
+  process.exit(child.status ?? 1);
+}
+
 async function main() {
   const stdinContent = readStdin();
 
@@ -145,6 +167,16 @@ async function main() {
     return;
   }
 
+  const diffParsed = parseDiffArgs(args);
+  if (diffParsed.hasDiffCommand) {
+    const { options, diffFlagIndex } = diffParsed;
+    if (options && diffFlagIndex !== undefined) {
+      const diffContext = { args, lookupItems, fuzzySelect, items };
+      await executeDiffCommand(options, diffFlagIndex, diffContext, launchToolWithPrompt);
+      return;
+    }
+  }
+
   const dashIndex = args.indexOf("--");
   if (dashIndex !== -1) {
     const beforeDash = args.slice(0, dashIndex);
@@ -158,21 +190,22 @@ async function main() {
       if (result.item) {
         launchTool(result.item.command, afterDash, stdinContent);
       }
-    } else {
-      const toolQuery = beforeDash[0];
-      if (!toolQuery) {
-        console.error("No tool specified before '--' separator");
-        process.exit(1);
-      }
-      const lookupResult = findToolByName(toolQuery, lookupItems);
-      if (lookupResult.success && lookupResult.item) {
-        launchTool(lookupResult.item.command, afterDash, stdinContent);
-        return;
-      }
-      console.error(lookupResult.error);
+      return;
+    }
+
+    const toolQuery = beforeDash[0];
+    if (!toolQuery) {
+      console.error("No tool specified before '--' separator");
       process.exit(1);
     }
-    return;
+
+    const lookupResult = findToolByName(toolQuery, lookupItems);
+    if (lookupResult.success && lookupResult.item) {
+      launchTool(lookupResult.item.command, afterDash, stdinContent);
+      return;
+    }
+    console.error(lookupResult.error);
+    process.exit(1);
   }
 
   if (args.length > 0) {

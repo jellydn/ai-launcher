@@ -24,6 +24,7 @@
 - **🏷️ Aliases**: Define short aliases for frequently used tools (e.g., `ai c` for claude)
 - **📋 Templates**: Create command shortcuts with `$@` argument/stdin placeholders
 - **👤 CCS Profiles**: Automatically detects CCS profiles via `ccs api list`
+- **📊 Git Diff Analysis**: Analyze staged or commit diffs with AI assistants
 - **🔒 Security**: Built-in command validation and injection prevention
 - **🌍 Cross-Platform**: Works on macOS, Linux, and Windows
 - **⚙️ Configuration**: User-defined tools override auto-detection
@@ -178,6 +179,51 @@ ai                           # Or select from interactive menu
 ```
 
 These templates have fixed commands and execute instantly on selection.
+
+### Git Diff Analysis
+
+Analyze your git changes with AI assistants for code review, risk assessment, and improvement suggestions:
+
+```bash
+# Analyze staged changes
+ai claude --diff-staged           # Analyze staged changes with Claude
+ai --diff-staged                  # Select tool, then analyze staged changes
+
+# Analyze commit diffs
+ai claude --diff-commit HEAD~1    # Compare current state with previous commit
+ai --diff-commit main             # Compare current branch with main
+ai amp --diff-commit origin/main  # Compare with remote branch
+ai --diff-commit HEAD~3           # Analyze last 3 commits
+
+# Combine with tool selection
+ai c --diff-staged                # Use alias
+ai --diff-commit HEAD~1           # Interactive tool selection
+```
+
+**What the AI analyzes:**
+
+1. **Summary**: Overview of what changed
+2. **Potential Risks**: Security issues, breaking changes, edge cases
+3. **Best Practices**: Code quality, patterns, conventions
+4. **Improvements**: Suggestions for better implementation
+
+**Use Cases:**
+
+```bash
+# Pre-commit review
+git add -A && ai claude --diff-staged
+
+# Review before push
+ai --diff-commit origin/main
+
+# Understand recent changes
+ai --diff-commit HEAD~5
+
+# Quick sanity check
+git add . && ai c --diff-staged
+```
+
+The feature automatically constructs a prompt with the diff and sends it to your chosen AI assistant for analysis.
 
 ## Configuration
 
@@ -595,6 +641,10 @@ bun run src/index.ts summarize file.txt
 # Test template with stdin
 cat file.txt | bun run src/index.ts summarize
 git diff | bun run src/index.ts review
+
+# Test git diff analysis
+bun run src/index.ts claude --diff-staged
+bun run src/index.ts --diff-commit HEAD~1
 ```
 
 ## 🌍 Platform Compatibility
