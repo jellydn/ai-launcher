@@ -2,10 +2,10 @@
 
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
+import { executeDiffCommand, parseDiffArgs } from "./cli/diff";
 import { loadConfig } from "./config";
 import { detectInstalledTools, mergeTools } from "./detect";
 import { fuzzySelect, promptForInput, toSelectableItems } from "./fuzzy-select";
-import { buildDiffAnalysisPrompt, getGitDiff, isGitRepository } from "./git-diff";
 import { getColoredLogo } from "./logo";
 import { findToolByName, toLookupItems } from "./lookup";
 import { isSafeCommand } from "./template";
@@ -114,7 +114,7 @@ function launchTool(command: string, extraArgs: string[] = [], stdinContent: str
   process.exit(child.status ?? 1);
 }
 
-function launchToolWithPrompt(command: string, prompt: string) {
+function launchToolWithPrompt(command: string, prompt: string): never {
   if (!isSafeCommand(command)) {
     console.error("Invalid command format");
     process.exit(1);
@@ -169,73 +169,20 @@ async function main() {
     return;
   }
 
-  // Handle git diff analysis flags
-  const diffStagedIndex = args.indexOf("--diff-staged");
-  const diffCommitIndex = args.indexOf("--diff-commit");
-
-  if (diffStagedIndex !== -1 || diffCommitIndex !== -1) {
-    if (!isGitRepository()) {
-      console.error("❌ Not a git repository");
-      process.exit(1);
-    }
-
-    let diffResult: import("./git-diff").GitDiffResult | undefined;
-    let ref: string | undefined;
-    let diffFlagIndex: number;
-
-    // Prioritize --diff-staged if both are present
-    if (diffStagedIndex !== -1) {
-      diffResult = getGitDiff({ type: "staged" });
-      diffFlagIndex = diffStagedIndex;
-    } else {
-      // --diff-commit requires a ref argument
-      ref = args[diffCommitIndex + 1];
-      if (!ref || ref.startsWith("-")) {
-        console.error("❌ --diff-commit requires a git reference (e.g., HEAD~1, main)");
-        process.exit(1);
-      }
-      diffResult = getGitDiff({ type: "commit", ref });
-      diffFlagIndex = diffCommitIndex;
-    }
-
-    if (!diffResult || !diffResult.success) {
-      console.error(`❌ ${diffResult?.error || "Failed to get git diff"}`);
-      process.exit(1);
-    }
-
-    // Build analysis prompt
-    const analysisPrompt = buildDiffAnalysisPrompt(diffResult.diff, ref);
-
-    // Determine which tool to use (args before the diff flag)
-    const argsBeforeFlag = args.slice(0, diffFlagIndex);
-
-    let toolCommand: string;
-
-    if (argsBeforeFlag.length > 0) {
-      // Tool specified before flag
-      const toolQuery = argsBeforeFlag[0] ?? "";
-      const lookupResult = findToolByName(toolQuery, lookupItems);
-      if (!lookupResult.success || !lookupResult.item) {
-        console.error(lookupResult.error);
-        process.exit(1);
-      }
-      toolCommand = lookupResult.item.command;
-    } else {
-      // No tool specified, use fuzzy select
-      const result = await fuzzySelect(items);
-      if (result.cancelled) {
-        process.exit(0);
-      }
-      if (!result.item) {
-        console.error("No tool selected");
-        process.exit(1);
-      }
-      toolCommand = result.item.command;
-    }
-
-    // Launch tool with analysis prompt
-    console.log("\nAnalyzing git diff...\n");
-    launchToolWithPrompt(toolCommand, analysisPrompt);
+  // Handle git diff analysis command
+  const diffParsed = parseDiffArgs(args);
+  if (diffParsed.hasDiffCommand && diffParsed.options && diffParsed.diffFlagIndex !== undefined) {
+    await executeDiffCommand(
+      diffParsed.options,
+      diffParsed.diffFlagIndex,
+      {
+        args,
+        lookupItems,
+        fuzzySelect,
+        items,
+      },
+      launchToolWithPrompt
+    );
     return;
   }
 
