@@ -114,6 +114,21 @@ function launchTool(command: string, extraArgs: string[] = [], stdinContent: str
   process.exit(child.status ?? 1);
 }
 
+function launchToolWithPrompt(command: string, prompt: string) {
+  if (!isSafeCommand(command)) {
+    console.error("Invalid command format");
+    process.exit(1);
+  }
+
+  const finalCommand = `${command} '${prompt.replace(/'/g, "'\\''")}'`;
+
+  const child = spawnSync("sh", ["-c", finalCommand], {
+    stdio: "inherit",
+  });
+
+  process.exit(child.status ?? 1);
+}
+
 async function main() {
   const stdinContent = readStdin();
 
@@ -217,7 +232,7 @@ async function main() {
 
     // Launch tool with analysis prompt
     console.log("\nAnalyzing git diff...\n");
-    launchTool(toolCommand, [analysisPrompt], null);
+    launchToolWithPrompt(toolCommand, analysisPrompt);
     return;
   }
 
