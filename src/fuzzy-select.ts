@@ -13,7 +13,7 @@ export function toSelectableItems(tools: Tool[], templates: Template[]): Selecta
       command: t.command,
       description: t.description || "",
       isTemplate: false,
-      aliases: t.aliases,
+      aliases: t.aliases ?? [],
       promptCommand: t.promptCommand,
       promptUseStdin: t.promptUseStdin,
     })),
@@ -22,7 +22,7 @@ export function toSelectableItems(tools: Tool[], templates: Template[]): Selecta
       command: t.command,
       description: t.description,
       isTemplate: true,
-      aliases: t.aliases,
+      aliases: t.aliases ?? [],
     })),
   ];
 }
@@ -341,5 +341,3 @@ export async function promptForInput(promptText: string): Promise<string> {
     stdin.on("data", onData);
   });
 }
-
-export { getTerminalWidth, getDisplayLines };

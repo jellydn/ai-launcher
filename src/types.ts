@@ -32,7 +32,7 @@ export interface SelectableItem {
   command: string;
   description: string;
   isTemplate: boolean;
-  aliases?: string[];
+  aliases: string[];
   promptCommand?: string;
   promptUseStdin?: boolean;
 }
