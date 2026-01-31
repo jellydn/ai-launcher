@@ -103,7 +103,7 @@ export async function executeDiffCommand(
   options: DiffCommandOptions,
   diffFlagIndex: number,
   context: DiffCommandContext,
-  launchToolWithPrompt: (command: string, prompt: string) => never
+  launchToolWithPrompt: (command: string, prompt: string, useStdin?: boolean) => never
 ): Promise<never> {
   try {
     ensureGitRepository();
@@ -158,8 +158,9 @@ export async function executeDiffCommand(
       console.error("No tool selected");
       process.exit(1);
     }
-    const toolCommand = result.item.command;
-    return launchToolWithPrompt(toolCommand, analysisPrompt);
+    const toolCommand = result.item.promptCommand ?? result.item.command;
+    const useStdin = result.item.promptUseStdin ?? false;
+    return launchToolWithPrompt(toolCommand, analysisPrompt, useStdin);
   }
 
   const toolQuery = argsBeforeFlag[0];
@@ -168,7 +169,8 @@ export async function executeDiffCommand(
     console.error(lookupResult.error);
     process.exit(1);
   }
-  const toolCommand = lookupResult.item.command;
+  const toolCommand = lookupResult.item.promptCommand ?? lookupResult.item.command;
+  const useStdin = lookupResult.item.promptUseStdin ?? false;
 
-  return launchToolWithPrompt(toolCommand, analysisPrompt);
+  return launchToolWithPrompt(toolCommand, analysisPrompt, useStdin);
 }

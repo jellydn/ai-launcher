@@ -6,6 +6,8 @@ export interface Tool {
   description?: string;
   aliases?: string[];
   authType?: AuthType;
+  promptCommand?: string;
+  promptUseStdin?: boolean;
 }
 
 export interface Template {
@@ -31,4 +33,6 @@ export interface SelectableItem {
   description: string;
   isTemplate: boolean;
   aliases?: string[];
+  promptCommand?: string;
+  promptUseStdin?: boolean;
 }
