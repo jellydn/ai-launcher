@@ -1,7 +1,6 @@
 class Ai < Formula
   desc "Fast launcher CLI to switch between AI coding assistants using fuzzy search"
   homepage "https://github.com/jellydn/ai-cli-switcher"
-  version "0.1.0"
   license "MIT"
 
   on_macos do
