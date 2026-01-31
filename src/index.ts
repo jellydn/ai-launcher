@@ -186,7 +186,9 @@ function launchTool(command: string, extraArgs: string[] = [], stdinContent: str
     shell: true,
   });
 
-  process.exit(child.status ?? 1);
+  handleChildProcessError(child);
+
+  process.exit(child.status ?? EXIT_CODE_SUCCESS);
 }
 
 function launchToolWithPrompt(
