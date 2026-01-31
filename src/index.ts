@@ -1,5 +1,6 @@
 #!/usr/bin/env bun
 
+import type { SpawnSyncReturns } from "node:child_process";
 import { spawnSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -12,6 +13,15 @@ import { findToolByName, toLookupItems } from "./lookup";
 import { isSafeCommand } from "./template";
 import { upgrade } from "./upgrade";
 import { VERSION } from "./version";
+
+function handleChildProcessError(child: SpawnSyncReturns<string | Buffer>): void {
+  if (child.error || child.signal) {
+    console.error(
+      child.error?.message ?? `Process terminated by signal ${child.signal ?? "unknown"}`
+    );
+    process.exit(1);
+  }
+}
 
 function validateArguments(args: string[]): boolean {
   const safePattern = /^[a-zA-Z0-9._\-"/\\@#=\s,.:()[\]{}]+$/;
@@ -134,8 +144,7 @@ function launchToolWithPrompt(
   }
 
   if (outputFile) {
-    // Capture output when outputFile is specified
-    let child;
+    let child: SpawnSyncReturns<string>;
 
     if (useStdin) {
       child = spawnSync(cmd, args, {
@@ -154,28 +163,34 @@ function launchToolWithPrompt(
       });
     }
 
-    const output = child.stdout || "";
-    const resolvedPath = resolve(outputFile);
+    handleChildProcessError(child);
 
-    try {
-      writeFileSync(resolvedPath, output);
-      console.log(`\n✅ Analysis saved to: ${resolvedPath}`);
-    } catch (error) {
-      console.error(`\n❌ Failed to write output to ${resolvedPath}`);
-      console.error(error instanceof Error ? error.message : String(error));
-      process.exit(1);
+    if (outputFile) {
+      const output = child.stdout || "";
+      const resolvedPath = resolve(outputFile);
+
+      try {
+        writeFileSync(resolvedPath, output);
+        console.log(`\n✅ Analysis saved to: ${resolvedPath}`);
+      } catch (error) {
+        console.error(`\n❌ Failed to write output to ${resolvedPath}`);
+        console.error(error instanceof Error ? error.message : String(error));
+        process.exit(1);
+      }
     }
 
     process.exit(child.status ?? 0);
   }
 
-  // Original behavior when no output file
   if (useStdin) {
     const child = spawnSync(cmd, args, {
       input: prompt,
       stdio: ["pipe", "inherit", "inherit"],
       shell: true,
-    });
+    }) as SpawnSyncReturns<string | Buffer>;
+
+    handleChildProcessError(child);
+
     process.exit(child.status ?? 0);
   }
 
@@ -184,7 +199,9 @@ function launchToolWithPrompt(
 
   const child = spawnSync("sh", ["-c", finalCommand], {
     stdio: "inherit",
-  });
+  }) as SpawnSyncReturns<string | Buffer>;
+
+  handleChildProcessError(child);
 
   process.exit(child.status ?? 0);
 }
