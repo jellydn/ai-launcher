@@ -122,10 +122,16 @@ function launchToolWithPrompt(command: string, prompt: string, useStdin = false)
   }
 
   if (useStdin) {
+    // Validate individual arguments for security
+    if (!validateArguments(args)) {
+      console.error("Invalid argument format detected");
+      process.exit(1);
+    }
+
     const child = spawnSync(cmd, args, {
       input: prompt,
       stdio: ["pipe", "inherit", "inherit"],
-      shell: true,
+      shell: false,
     });
     process.exit(child.status ?? 1);
   }
