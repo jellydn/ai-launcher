@@ -31,7 +31,7 @@ export function getGitDiff(options: GitDiffOptions): GitDiffResult {
 
   const result = spawnSync("git", args, {
     encoding: "utf-8",
-    maxBuffer: 10 * 1024 * 1024, // 10MB
+    maxBuffer: 10 * 1024 * 1024, // 10MB - sufficient for most diffs, prevents memory issues
   });
 
   if (result.error) {

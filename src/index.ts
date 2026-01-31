@@ -120,7 +120,11 @@ function launchToolWithPrompt(command: string, prompt: string) {
     process.exit(1);
   }
 
-  const finalCommand = `${command} '${prompt.replace(/'/g, "'\\''")}'`;
+  // Escape single quotes in prompt by replacing ' with '\''
+  const escapedPrompt = prompt.replace(/'/g, "'\\''");
+
+  // Construct command with properly quoted prompt
+  const finalCommand = `${command} '${escapedPrompt}'`;
 
   const child = spawnSync("sh", ["-c", finalCommand], {
     stdio: "inherit",
@@ -206,11 +210,7 @@ async function main() {
 
     if (argsBeforeFlag.length > 0) {
       // Tool specified before flag
-      const toolQuery = argsBeforeFlag[0];
-      if (!toolQuery) {
-        console.error("Invalid tool specification");
-        process.exit(1);
-      }
+      const toolQuery = argsBeforeFlag[0] ?? "";
       const lookupResult = findToolByName(toolQuery, lookupItems);
       if (!lookupResult.success || !lookupResult.item) {
         console.error(lookupResult.error);
