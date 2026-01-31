@@ -188,3 +188,100 @@ describe("Argument Parsing Logic", () => {
     expect(result.afterDash).toEqual(["arg1", "arg2", "arg3"]);
   });
 });
+
+describe("Output Path Validation", () => {
+  function isValidOutputPath(path: string): boolean {
+    const normalized = path.replace(/\\/g, "/");
+
+    if (normalized.startsWith("/")) {
+      return false;
+    }
+
+    if (normalized.startsWith("..") || normalized.includes("/../")) {
+      return false;
+    }
+
+    const forbiddenPatterns = [
+      /^\./,
+      /\.git\//,
+      /\.config\//,
+      /etc\//,
+      /root\//,
+      /home\//,
+      /usr\//,
+      /var\//,
+    ];
+
+    for (const pattern of forbiddenPatterns) {
+      if (pattern.test(normalized)) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  function validateOutputFile(filePath: string): string | null {
+    if (!filePath || filePath.trim().length === 0) {
+      return "Output file path cannot be empty";
+    }
+
+    if (!isValidOutputPath(filePath)) {
+      return "Invalid output file path";
+    }
+
+    return null;
+  }
+
+  test("accepts simple relative path", () => {
+    expect(isValidOutputPath("analysis.md")).toBe(true);
+    expect(isValidOutputPath("output.txt")).toBe(true);
+  });
+
+  test("accepts relative path with subdirectory", () => {
+    expect(isValidOutputPath("results/analysis.md")).toBe(true);
+    expect(isValidOutputPath("docs/output.txt")).toBe(true);
+  });
+
+  test("rejects absolute paths", () => {
+    expect(isValidOutputPath("/etc/passwd")).toBe(false);
+    expect(isValidOutputPath("/home/user/file.md")).toBe(false);
+    expect(isValidOutputPath("/tmp/output.txt")).toBe(false);
+  });
+
+  test("rejects paths starting with dot", () => {
+    expect(isValidOutputPath(".hidden.md")).toBe(false);
+    expect(isValidOutputPath("./secret.txt")).toBe(false);
+  });
+
+  test("rejects paths with parent directory traversal", () => {
+    expect(isValidOutputPath("../file.md")).toBe(false);
+    expect(isValidOutputPath("sub/../../etc/passwd")).toBe(false);
+    expect(isValidOutputPath("..%2F..%2Fetc%2Fpasswd")).toBe(false);
+  });
+
+  test("rejects paths to protected directories", () => {
+    expect(isValidOutputPath(".git/config")).toBe(false);
+    expect(isValidOutputPath(".config/settings.json")).toBe(false);
+    expect(isValidOutputPath("etc/passwd")).toBe(false);
+    expect(isValidOutputPath("root/.bashrc")).toBe(false);
+    expect(isValidOutputPath("home/user/file.md")).toBe(false);
+    expect(isValidOutputPath("usr/bin/claude")).toBe(false);
+    expect(isValidOutputPath("var/log/syslog")).toBe(false);
+  });
+
+  test("validateOutputFile returns null for valid path", () => {
+    expect(validateOutputFile("analysis.md")).toBeNull();
+    expect(validateOutputFile("docs/output.txt")).toBeNull();
+  });
+
+  test("validateOutputFile returns error for empty path", () => {
+    expect(validateOutputFile("")).toBe("Output file path cannot be empty");
+    expect(validateOutputFile("   ")).toBe("Output file path cannot be empty");
+  });
+
+  test("validateOutputFile returns error for invalid path", () => {
+    expect(validateOutputFile("/etc/passwd")).toBe("Invalid output file path");
+    expect(validateOutputFile("../file.md")).toBe("Invalid output file path");
+  });
+});

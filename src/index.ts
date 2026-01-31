@@ -2,8 +2,8 @@
 
 import type { SpawnSyncReturns } from "node:child_process";
 import { spawnSync } from "node:child_process";
-import { readFileSync, writeFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, isAbsolute, normalize, resolve } from "node:path";
 import { executeDiffCommand, parseDiffArgs } from "./cli/diff";
 import { loadConfig } from "./config";
 import { detectInstalledTools, mergeTools } from "./detect";
@@ -14,13 +14,74 @@ import { isSafeCommand } from "./template";
 import { upgrade } from "./upgrade";
 import { VERSION } from "./version";
 
+const EXIT_CODE_SUCCESS = 0;
+const EXIT_CODE_VALIDATION_ERROR = 1;
+const EXIT_CODE_FILE_WRITE_ERROR = 2;
+const EXIT_CODE_PROCESS_ERROR = 3;
+
 function handleChildProcessError(child: SpawnSyncReturns<string | Buffer>): void {
   if (child.error || child.signal) {
     console.error(
       child.error?.message ?? `Process terminated by signal ${child.signal ?? "unknown"}`
     );
-    process.exit(1);
+    process.exit(EXIT_CODE_PROCESS_ERROR);
   }
+}
+
+function isValidOutputPath(filePath: string): boolean {
+  const normalized = normalize(filePath);
+
+  if (isAbsolute(normalized)) {
+    console.error("Error: Output file path must be relative, not absolute");
+    return false;
+  }
+
+  if (normalized.startsWith("..") || normalized.includes("/../") || normalized.includes("\\..\\")) {
+    console.error("Error: Output file path cannot escape current directory");
+    return false;
+  }
+
+  const forbiddenPatterns = [
+    /^\./,
+    /\.git\//,
+    /\.config\//,
+    /etc\//,
+    /root\//,
+    /home\//,
+    /usr\//,
+    /var\//,
+    /sys\//,
+    /proc\//,
+  ];
+
+  for (const pattern of forbiddenPatterns) {
+    if (pattern.test(normalized)) {
+      console.error("Error: Output file path points to a protected location");
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function validateOutputFile(filePath: string): string | null {
+  if (!filePath || filePath.trim().length === 0) {
+    return "Output file path cannot be empty";
+  }
+
+  if (!isValidOutputPath(filePath)) {
+    return "Invalid output file path";
+  }
+
+  const resolvedPath = resolve(filePath);
+
+  if (existsSync(resolvedPath)) {
+    console.error(`Warning: File already exists: ${resolvedPath}`);
+    console.error("Use a different filename or remove the existing file first");
+    return "File already exists";
+  }
+
+  return null;
 }
 
 function validateArguments(args: string[]): boolean {
@@ -144,6 +205,20 @@ function launchToolWithPrompt(
   }
 
   if (outputFile) {
+    const validationError = validateOutputFile(outputFile);
+    if (validationError) {
+      console.error(`Error: ${validationError}`);
+      process.exit(EXIT_CODE_VALIDATION_ERROR);
+    }
+
+    const resolvedPath = resolve(outputFile);
+    const outputDir = dirname(resolvedPath);
+
+    if (!existsSync(outputDir)) {
+      console.error(`Error: Output directory does not exist: ${outputDir}`);
+      process.exit(EXIT_CODE_VALIDATION_ERROR);
+    }
+
     let child: SpawnSyncReturns<string>;
 
     if (useStdin) {
@@ -166,18 +241,18 @@ function launchToolWithPrompt(
     handleChildProcessError(child);
 
     const output = child.stdout || "";
-    const resolvedPath = resolve(outputFile);
 
     try {
       writeFileSync(resolvedPath, output);
-      console.log(`\n✅ Analysis saved to: ${resolvedPath}`);
+      const fileSize = Buffer.byteLength(output, "utf-8");
+      console.log(`\n✅ Analysis saved to: ${resolvedPath} (${fileSize} bytes)`);
     } catch (error) {
       console.error(`\n❌ Failed to write output to ${resolvedPath}`);
       console.error(error instanceof Error ? error.message : String(error));
-      process.exit(1);
+      process.exit(EXIT_CODE_FILE_WRITE_ERROR);
     }
 
-    process.exit(child.status ?? 0);
+    process.exit(child.status ?? EXIT_CODE_SUCCESS);
   }
 
   if (useStdin) {

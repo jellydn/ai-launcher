@@ -36,3 +36,10 @@ export class GitCommandError extends GitDiffError {
     this.name = "GitCommandError";
   }
 }
+
+export class FileOutputError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "FileOutputError";
+  }
+}
