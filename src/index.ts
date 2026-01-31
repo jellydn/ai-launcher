@@ -9,7 +9,7 @@ import { loadConfig } from "./config";
 import { detectInstalledTools, mergeTools } from "./detect";
 import { fuzzySelect, promptForInput, toSelectableItems } from "./fuzzy-select";
 import { getColoredLogo } from "./logo";
-import { findToolByName, toLookupItems } from "./lookup";
+import { findToolByName } from "./lookup";
 import { isSafeCommand } from "./template";
 import { upgrade } from "./upgrade";
 import { VERSION } from "./version";
@@ -292,7 +292,7 @@ async function main() {
   const allTools = mergeTools(config.tools, detectedTools);
 
   const items = toSelectableItems(allTools, config.templates);
-  const lookupItems = toLookupItems(allTools, config.templates);
+  const lookupItems = items;
 
   if (items.length === 0) {
     console.error("❌ No AI tools found!\n");

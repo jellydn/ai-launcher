@@ -7,7 +7,6 @@ import {
 } from "../errors";
 import type { SelectionResult } from "../fuzzy-select";
 import { ensureGitRepository, getGitDiff } from "../git-diff";
-import type { LookupItem } from "../lookup";
 import { findToolByName } from "../lookup";
 import { buildDiffAnalysisPrompt } from "../prompts";
 import type { SelectableItem } from "../types";
@@ -21,7 +20,7 @@ export interface DiffCommandOptions {
 
 export interface DiffCommandContext {
   args: string[];
-  lookupItems: LookupItem[];
+  lookupItems: SelectableItem[];
   fuzzySelect: (items: SelectableItem[]) => Promise<SelectionResult>;
   items: SelectableItem[];
   outputFile?: string;
@@ -29,21 +28,15 @@ export interface DiffCommandContext {
 
 /**
  * Validate git reference format to prevent injection
- * Allows: alphanumeric, -, _, /, ., ~, ^, @, {, } and common ref patterns
  */
 function isValidGitRef(ref: string): boolean {
-  // Git ref pattern: allows HEAD, branch names, tags, commit SHAs, and ref operators including {}
   const validRefPattern = /^[a-zA-Z0-9._\-/~^@{}]+$/;
-  if (!validRefPattern.test(ref)) return false;
-
-  // Additional safety: reject refs that could be dangerous
-  const dangerousPatterns = [
-    /^-/, // Starts with dash (could be interpreted as flag)
-    /[;&|`$()<>[\]]/, // Shell metacharacters (excluding {} which git uses)
-    /\.\./g, // Multiple consecutive dots can be confusing
-  ];
-
-  return !dangerousPatterns.some((pattern) => pattern.test(ref));
+  return (
+    validRefPattern.test(ref) &&
+    !ref.startsWith("-") &&
+    !ref.includes("..") &&
+    !/[;&|`$()<>[\]]/.test(ref)
+  );
 }
 
 /**

@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { validateConfig } from "./config";
-import { findToolByName, toLookupItems } from "./lookup";
+import { toSelectableItems } from "./fuzzy-select";
+import { findToolByName } from "./lookup";
 import type { Tool } from "./types";
 
 describe("Template Validation", () => {
@@ -137,7 +138,7 @@ describe("Template Lookup", () => {
   ];
 
   test("finds template by exact name", () => {
-    const items = toLookupItems(tools, templates);
+    const items = toSelectableItems(tools, templates);
     const result = findToolByName("review", items);
     expect(result.success).toBe(true);
     expect(result.item?.name).toBe("review");
@@ -145,21 +146,21 @@ describe("Template Lookup", () => {
   });
 
   test("finds template by alias", () => {
-    const items = toLookupItems(tools, templates);
+    const items = toSelectableItems(tools, templates);
     const result = findToolByName("rev", items);
     expect(result.success).toBe(true);
     expect(result.item?.name).toBe("review");
   });
 
   test("finds template by fuzzy match", () => {
-    const items = toLookupItems(tools, templates);
+    const items = toSelectableItems(tools, templates);
     const result = findToolByName("revie", items);
     expect(result.success).toBe(true);
     expect(result.item?.name).toBe("review");
   });
 
   test("distinguishes tools from templates", () => {
-    const items = toLookupItems(tools, templates);
+    const items = toSelectableItems(tools, templates);
 
     const toolResult = findToolByName("claude", items);
     expect(toolResult.success).toBe(true);
@@ -171,7 +172,7 @@ describe("Template Lookup", () => {
   });
 
   test("template lookup is case insensitive", () => {
-    const items = toLookupItems(tools, templates);
+    const items = toSelectableItems(tools, templates);
     const result = findToolByName("REVIEW", items);
     expect(result.success).toBe(true);
     expect(result.item?.name).toBe("review");
