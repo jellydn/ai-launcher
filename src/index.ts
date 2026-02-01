@@ -140,7 +140,7 @@ EXAMPLES:
     ai upgrade                       Upgrade to latest version
 
 CONFIG:
-    ~/.config/ai-switcher/config.json   Add custom tools, aliases, templates
+    ~/.config/ai-launcher/config.json   Add custom tools, aliases, templates
 `);
   process.exit(0);
 }
@@ -302,7 +302,7 @@ async function main() {
     console.error("   • amp       - Sourcegraph Amp CLI");
     console.error("   • codex     - OpenAI Codex CLI");
     console.error("   • ccs       - Claude Code Switch");
-    console.error("\n📝 Or add custom tools to ~/.config/ai-switcher/config.json");
+    console.error("\n📝 Or add custom tools to ~/.config/ai-launcher/config.json");
     process.exit(1);
   }
 
