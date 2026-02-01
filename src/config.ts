@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { isSafeCommand } from "./template";
 import type { Config, ConfigValidationError, Template } from "./types";
 
-const CONFIG_DIR = join(homedir(), ".config", "ai-switcher");
+const CONFIG_DIR = join(homedir(), ".config", "ai-launcher");
 const CONFIG_PATH = join(CONFIG_DIR, "config.json");
 
 const DEFAULT_TEMPLATES: Template[] = [

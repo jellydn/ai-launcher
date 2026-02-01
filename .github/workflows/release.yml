@@ -165,7 +165,7 @@ jobs:
 
             ### One-line install (macOS/Linux)
             ```sh
-            curl -fsSL https://raw.githubusercontent.com/jellydn/ai-cli-switcher/main/install.sh | sh
+            curl -fsSL https://raw.githubusercontent.com/jellydn/ai-launcher/main/install.sh | sh
             ```
 
             ### Homebrew
@@ -194,7 +194,7 @@ jobs:
       - name: Checkout main repo for formula
         uses: actions/checkout@v6
         with:
-          repository: jellydn/ai-cli-switcher
+          repository: jellydn/ai-launcher
           path: source
           token: ${{ secrets.GITHUB_TOKEN }}
 

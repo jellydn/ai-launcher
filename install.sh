@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-REPO="jellydn/ai-cli-switcher"
+REPO="jellydn/ai-launcher"
 BINARY_NAME="ai"
 INSTALL_DIR="${AI_INSTALL_DIR:-$HOME/.local/bin}"
 

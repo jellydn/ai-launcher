@@ -1,6 +1,6 @@
-# AI CLI Switcher Documentation
+# AI Launcher Documentation
 
-This directory contains the Docsify-powered documentation site for AI CLI Switcher.
+This directory contains the Docsify-powered documentation site for AI Launcher.
 
 ## Local Development
 
