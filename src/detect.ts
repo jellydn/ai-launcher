@@ -32,7 +32,7 @@ const KNOWN_TOOLS: Array<{
     name: "codex",
     command: "codex",
     description: "OpenAI Codex CLI",
-    promptCommand: "codex -p",
+    promptCommand: "codex",
   },
 ];
 
