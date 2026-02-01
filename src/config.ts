@@ -61,7 +61,7 @@ const DEFAULT_TEMPLATES: Template[] = [
     command:
       "ccs mm --permission-mode plan -p 'Explain this code in detail: 1) What it does 2) How it works 3) Design decisions: $@'",
     description: "Code explanation",
-    aliases: ["wtf", "explain-code"],
+    aliases: ["explain-code"],
   },
 ];
 

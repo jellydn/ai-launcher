@@ -436,7 +436,7 @@ Expand your toolkit with these templates that work with your existing tools:
       "name": "explain",
       "command": "claude -p 'Explain this code in detail: 1) What it does 2) How it works 3) Design decisions: $@'",
       "description": "Code explanation",
-      "aliases": ["wtf", "explain-code"]
+      "aliases": ["explain-code"]
     }
   ]
 }
