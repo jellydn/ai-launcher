@@ -342,7 +342,7 @@ Different AI CLIs accept prompts in different ways. The `promptCommand` and `pro
 }
 ```
 
-This tells ai-switcher: when running `ai opencode --diff-staged`, pipe the diff prompt to `opencode run` via stdin instead of passing it as an argument.
+This tells ai-launcher: when running `ai opencode --diff-staged`, pipe the diff prompt to `opencode run` via stdin instead of passing it as an argument.
 
 ### 🔍 Auto-Detection
 
