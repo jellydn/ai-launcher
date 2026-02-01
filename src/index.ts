@@ -300,6 +300,7 @@ async function main() {
     console.error("   • claude    - Anthropic Claude CLI");
     console.error("   • opencode  - OpenCode AI assistant");
     console.error("   • amp       - Sourcegraph Amp CLI");
+    console.error("   • codex     - OpenAI Codex CLI");
     console.error("   • ccs       - Claude Code Switch");
     console.error("\n📝 Or add custom tools to ~/.config/ai-switcher/config.json");
     process.exit(1);

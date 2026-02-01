@@ -17,6 +17,12 @@
       "command": "amp",
       "description": "Frontier coding agent for terminal and editor",
       "aliases": ["a"]
+    },
+    {
+      "name": "codex",
+      "command": "codex",
+      "description": "OpenAI Codex CLI",
+      "aliases": ["cx"]
     }
   ],
   "templates": [

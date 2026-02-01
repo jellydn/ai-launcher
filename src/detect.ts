@@ -28,6 +28,12 @@ const KNOWN_TOOLS: Array<{
     promptCommand: "amp -x",
     promptUseStdin: true,
   },
+  {
+    name: "codex",
+    command: "codex",
+    description: "OpenAI Codex CLI",
+    promptCommand: "codex exec",
+  },
 ];
 
 const CLI_PROXY_PROVIDERS: Array<{ name: string; description: string }> = [
