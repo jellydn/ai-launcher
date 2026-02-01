@@ -10,7 +10,7 @@ import { detectInstalledTools, mergeTools } from "./detect";
 import { fuzzySelect, promptForInput, toSelectableItems } from "./fuzzy-select";
 import { getColoredLogo } from "./logo";
 import { findToolByName } from "./lookup";
-import { isSafeCommand } from "./template";
+import { isSafeCommand, parseTemplateCommand } from "./template";
 import { upgrade } from "./upgrade";
 import { VERSION } from "./version";
 
@@ -174,8 +174,7 @@ function launchTool(command: string, extraArgs: string[] = [], stdinContent: str
       ? `${command} ${inputString}`
       : command;
 
-  const parts = finalCommand.split(/\s+/).filter((p) => p !== "");
-  const [cmd, ...args] = parts;
+  const { cmd, args } = parseTemplateCommand(finalCommand);
   if (!cmd) {
     console.error("Empty command");
     process.exit(1);
@@ -202,8 +201,7 @@ function launchToolWithPrompt(
     process.exit(1);
   }
 
-  const parts = command.split(/\s+/).filter((p) => p !== "");
-  const [cmd, ...args] = parts;
+  const { cmd, args } = parseTemplateCommand(command);
   if (!cmd) {
     console.error("Empty command");
     process.exit(1);

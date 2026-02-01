@@ -7,67 +7,15 @@ import type { Config, ConfigValidationError, Template, Tool } from "./types";
 const CONFIG_DIR = join(homedir(), ".config", "ai-switcher");
 const CONFIG_PATH = join(CONFIG_DIR, "config.json");
 
-const DEFAULT_TEMPLATES: Template[] = [
-  {
-    name: "review",
-    command:
-      "opencode run --model opencode/big-pickle --agent plan 'Review the following changes and provide feedback: $@'",
-    description: "Code review with OpenCode",
-    aliases: ["rev", "code-review"],
-  },
-  {
-    name: "commit-zen",
-    command:
-      "opencode run --model opencode/big-pickle --agent plan 'Review the following changes on git and generate a concise git commit message, group by logical changes with commitizen convention, do atomic commit message'",
-    description: "Generate commit message with OpenCode",
-    aliases: ["zen", "logical-commit"],
-  },
-  {
-    name: "architecture-explanation",
-    command: "ccs gemini 'Explain this codebase architecture'",
-    description: "Explain architecture with Gemini",
-    aliases: ["arch", "arch-explanation"],
-  },
-  {
-    name: "draft-pull-request",
-    command:
-      "ccs glm --permission-mode acceptEdits -p 'Create draft pr with what why how by gh cli'",
-    description: "Create draft pull request with GLM",
-    aliases: ["pr", "draft-pr"],
-  },
-  {
-    name: "types",
-    command:
-      "ccs mm --permission-mode acceptEdits -p 'Improve TypeScript types: Remove any, add proper type guards, ensure strict mode compliance for: $@'",
-    description: "Enhance type safety",
-    aliases: ["typescript"],
-  },
-  {
-    name: "test",
-    command:
-      "ccs mm --permission-mode acceptEdits -p 'Write tests using Arrange-Act-Assert pattern. Focus on behavior, not implementation details for: $@'",
-    description: "Generate tests",
-    aliases: ["spec", "tests"],
-  },
-  {
-    name: "docs",
-    command:
-      "ccs mm --permission-mode acceptEdits -p 'Add JSDoc comments with @param and @returns. Include usage examples for: $@'",
-    description: "Add documentation",
-    aliases: ["document"],
-  },
-  {
-    name: "explain",
-    command:
-      "ccs mm --permission-mode plan -p 'Explain this code in detail: 1) What it does 2) How it works 3) Design decisions: $@'",
-    description: "Code explanation",
-    aliases: ["wtf", "explain-code"],
-  },
-];
+const SAFE_COMMAND_PATTERN = /^[a-zA-Z0-9._\s-]+$/;
+
+function countPlaceholders(command: string): number {
+  return (command.match(/\$@/g) || []).length;
+}
 
 const DEFAULT_CONFIG: Config = {
   tools: [],
-  templates: DEFAULT_TEMPLATES,
+  templates: [],
 };
 
 const CATEGORY_PROMPTS: Array<{
@@ -173,22 +121,26 @@ function pickTool(detectedTools: Tool[], preferredTools: string[]): Tool | undef
   return undefined;
 }
 
+function escapeSingleQuotes(str: string): string {
+  return str.replace(/'/g, "'\\''");
+}
+
 function buildCommandForTool(tool: Tool, prompt: string): string | null {
   const name = normalizeName(tool.name);
   if (name === "opencode") {
-    return `opencode run --model opencode/big-pickle --agent plan '${prompt}'`;
+    return `opencode run --model opencode/big-pickle --agent plan '${escapeSingleQuotes(prompt)}'`;
   }
   if (name === "claude") {
-    return `claude --permission-mode plan -p '${prompt}'`;
+    return `claude --permission-mode plan -p '${escapeSingleQuotes(prompt)}'`;
   }
   if (name === "amp") {
-    return `amp -x '${prompt}'`;
+    return `amp -x '${escapeSingleQuotes(prompt)}'`;
   }
   if (name === "codex") {
-    return `codex exec '${prompt}'`;
+    return `codex exec '${escapeSingleQuotes(prompt)}'`;
   }
   if (name.startsWith("ccs:") && tool.promptCommand) {
-    return `${tool.promptCommand} '${prompt}'`;
+    return `${tool.promptCommand} '${escapeSingleQuotes(prompt)}'`;
   }
 
   return null;
@@ -207,7 +159,7 @@ function buildDefaultTemplates(detectedTools: Tool[]): Template[] {
       continue;
     }
 
-    const prompt = category.requiresInput ? category.prompt : category.prompt.replace(": $@", "");
+    const prompt = category.prompt;
     const command = buildCommandForTool(tool, prompt);
     if (!command) {
       continue;
@@ -241,45 +193,33 @@ function validateAliases(aliases: unknown, path: string): ConfigValidationError[
 }
 
 function validateTool(tool: unknown, index: number): ConfigValidationError[] {
-  const errors: ConfigValidationError[] = [];
   const path = `tools[${index}]`;
   const t = tool as Record<string, unknown>;
 
-  const hasValidName = typeof t.name === "string" && t.name.trim() !== "";
-  if (!hasValidName) {
-    errors.push({
-      path: `${path}.name`,
-      message: "Tool name is required and must be a non-empty string",
-    });
+  if (typeof t.name !== "string" || t.name.trim() === "") {
+    return [
+      { path: `${path}.name`, message: "Tool name is required and must be a non-empty string" },
+    ];
   }
 
   if (typeof t.command !== "string" || t.command.trim() === "") {
-    errors.push({
-      path: `${path}.command`,
-      message: "Tool command is required and must be a non-empty string",
-    });
-  } else {
-    const safeCommandPattern = /^[a-zA-Z0-9._\s-]+$/;
-    const isSafe = safeCommandPattern.test(t.command.trim());
-    if (!isSafe) {
-      errors.push({
+    return [
+      {
         path: `${path}.command`,
-        message: "Tool command contains unsafe characters",
-      });
-    }
+        message: "Tool command is required and must be a non-empty string",
+      },
+    ];
   }
 
-  const hasInvalidDescription = t.description !== undefined && typeof t.description !== "string";
-  if (hasInvalidDescription) {
-    errors.push({
-      path: `${path}.description`,
-      message: "Tool description must be a string",
-    });
+  if (!SAFE_COMMAND_PATTERN.test(t.command.trim())) {
+    return [{ path: `${path}.command`, message: "Tool command contains unsafe characters" }];
   }
 
-  errors.push(...validateAliases(t.aliases, `${path}.aliases`));
+  if (t.description !== undefined && typeof t.description !== "string") {
+    return [{ path: `${path}.description`, message: "Tool description must be a string" }];
+  }
 
-  return errors;
+  return validateAliases(t.aliases, `${path}.aliases`);
 }
 
 export function validateTemplate(template: unknown, path: string): ConfigValidationError[] {
@@ -304,7 +244,7 @@ export function validateTemplate(template: unknown, path: string): ConfigValidat
       message: "Template command contains unsafe characters or patterns",
     });
   } else {
-    const placeholderCount = (t.command.match(/\$@/g) || []).length;
+    const placeholderCount = countPlaceholders(t.command);
     if (placeholderCount > 1) {
       errors.push({
         path: `${path}.command`,
@@ -312,7 +252,6 @@ export function validateTemplate(template: unknown, path: string): ConfigValidat
           "Template command should contain at most one $@ placeholder. Multiple placeholders are not supported.",
       });
     }
-
     if (placeholderCount === 1 && t.command.trim().startsWith("$@")) {
       errors.push({
         path: `${path}.command`,
@@ -323,15 +262,17 @@ export function validateTemplate(template: unknown, path: string): ConfigValidat
   }
 
   if (typeof t.description !== "string" || t.description.trim() === "") {
-    errors.push({
-      path: `${path}.description`,
-      message: "Template description is required and must be a non-empty string",
-    });
+    return [
+      ...errors,
+      {
+        path: `${path}.description`,
+        message: "Template description is required and must be a non-empty string",
+      },
+      ...validateAliases(t.aliases, `${path}.aliases`),
+    ];
   }
 
-  errors.push(...validateAliases(t.aliases, `${path}.aliases`));
-
-  return errors;
+  return [...errors, ...validateAliases(t.aliases, `${path}.aliases`)];
 }
 
 export function validateConfig(config: unknown): ConfigValidationError[] {
