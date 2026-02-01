@@ -1,0 +1,40 @@
+name: Sync README to Docs
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'README.md'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync-readme:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Sync README to docs
+        run: |
+          cp README.md docs/_README.md
+          echo "✓ Synced README.md to docs/_README.md"
+
+      - name: Check for changes
+        id: changes
+        run: |
+          git diff --quiet docs/_README.md || echo "changed=true" >> $GITHUB_OUTPUT
+
+      - name: Commit and push if changed
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add docs/_README.md
+          git commit -m "docs: sync README.md to docs/_README.md [skip ci]"
+          git push
