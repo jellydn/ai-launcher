@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { isSafeCommand } from "./template";
@@ -6,6 +6,8 @@ import type { Config, ConfigValidationError, Template } from "./types";
 
 const CONFIG_DIR = join(homedir(), ".config", "ai-launcher");
 const CONFIG_PATH = join(CONFIG_DIR, "config.json");
+const OLD_CONFIG_DIR = join(homedir(), ".config", "ai-switcher");
+const OLD_CONFIG_PATH = join(OLD_CONFIG_DIR, "config.json");
 
 const DEFAULT_TEMPLATES: Template[] = [
   {
@@ -223,12 +225,30 @@ function ensureConfigDir(): void {
   }
 }
 
+function migrateOldConfig(): void {
+  // If old config exists and new config doesn't, migrate it
+  if (existsSync(OLD_CONFIG_PATH) && !existsSync(CONFIG_PATH)) {
+    ensureConfigDir();
+    try {
+      copyFileSync(OLD_CONFIG_PATH, CONFIG_PATH);
+      console.error(`✓ Migrated config from ${OLD_CONFIG_PATH} to ${CONFIG_PATH}`);
+    } catch (error) {
+      console.error(
+        `⚠️  Failed to migrate config: ${error instanceof Error ? error.message : error}`
+      );
+    }
+  }
+}
+
 function createDefaultConfig(): void {
   ensureConfigDir();
   writeFileSync(CONFIG_PATH, `${JSON.stringify(DEFAULT_CONFIG, null, 2)}\n`);
 }
 
 export function loadConfig(): Config {
+  // Try to migrate old config first
+  migrateOldConfig();
+
   if (!existsSync(CONFIG_PATH)) {
     createDefaultConfig();
     return { ...DEFAULT_CONFIG };
