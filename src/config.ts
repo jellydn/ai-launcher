@@ -2,73 +2,169 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { isSafeCommand } from "./template";
-import type { Config, ConfigValidationError, Template } from "./types";
+import type { Config, ConfigValidationError, Template, Tool } from "./types";
 
 const CONFIG_DIR = join(homedir(), ".config", "ai-switcher");
 const CONFIG_PATH = join(CONFIG_DIR, "config.json");
 
-const DEFAULT_TEMPLATES: Template[] = [
+const DEFAULT_CONFIG: Config = {
+  tools: [],
+  templates: [],
+};
+
+const CATEGORY_PROMPTS: Array<{
+  name: string;
+  description: string;
+  aliases?: string[];
+  prompt: string;
+  requiresInput: boolean;
+  preferredTools: string[];
+}> = [
   {
     name: "review",
-    command:
-      "opencode run --model opencode/big-pickle --agent plan 'Review the following changes and provide feedback: $@'",
-    description: "Code review with OpenCode",
+    description: "Code review",
     aliases: ["rev", "code-review"],
+    prompt: "Review the following changes and provide feedback: $@",
+    requiresInput: true,
+    preferredTools: ["opencode", "claude", "amp", "codex", "ccs:mm", "ccs:*"],
   },
   {
     name: "commit-zen",
-    command:
-      "opencode run --model opencode/big-pickle --agent plan 'Review the following changes on git and generate a concise git commit message, group by logical changes with commitizen convention, do atomic commit message'",
-    description: "Generate commit message with OpenCode",
+    description: "Generate commit message",
     aliases: ["zen", "logical-commit"],
+    prompt:
+      "Review the following changes and generate a concise git commit message, group by logical changes with commitizen convention, do atomic commit message: $@",
+    requiresInput: true,
+    preferredTools: ["opencode", "claude", "amp", "codex", "ccs:mm", "ccs:*"],
   },
   {
     name: "architecture-explanation",
-    command: "ccs gemini 'Explain this codebase architecture'",
-    description: "Explain architecture with Gemini",
+    description: "Explain architecture",
     aliases: ["arch", "arch-explanation"],
+    prompt: "Explain this codebase architecture",
+    requiresInput: false,
+    preferredTools: ["ccs:gemini", "claude", "codex", "opencode", "amp", "ccs:*"],
   },
   {
     name: "draft-pull-request",
-    command:
-      "ccs glm --permission-mode acceptEdits -p 'Create draft pr with what why how by gh cli'",
-    description: "Create draft pull request with GLM",
+    description: "Create draft pull request",
     aliases: ["pr", "draft-pr"],
+    prompt: "Create draft pr with what why how by gh cli",
+    requiresInput: false,
+    preferredTools: ["ccs:glm", "claude", "opencode", "amp", "codex", "ccs:*"],
   },
   {
     name: "types",
-    command:
-      "ccs mm --permission-mode acceptEdits -p 'Improve TypeScript types: Remove any, add proper type guards, ensure strict mode compliance for: $@'",
     description: "Enhance type safety",
     aliases: ["typescript"],
+    prompt:
+      "Improve TypeScript types: Remove any, add proper type guards, ensure strict mode compliance for: $@",
+    requiresInput: true,
+    preferredTools: ["ccs:mm", "claude", "opencode", "amp", "codex", "ccs:*"],
   },
   {
     name: "test",
-    command:
-      "ccs mm --permission-mode acceptEdits -p 'Write tests using Arrange-Act-Assert pattern. Focus on behavior, not implementation details for: $@'",
     description: "Generate tests",
     aliases: ["spec", "tests"],
+    prompt:
+      "Write tests using Arrange-Act-Assert pattern. Focus on behavior, not implementation details for: $@",
+    requiresInput: true,
+    preferredTools: ["ccs:mm", "claude", "opencode", "amp", "codex", "ccs:*"],
   },
   {
     name: "docs",
-    command:
-      "ccs mm --permission-mode acceptEdits -p 'Add JSDoc comments with @param and @returns. Include usage examples for: $@'",
     description: "Add documentation",
     aliases: ["document"],
+    prompt: "Add JSDoc comments with @param and @returns. Include usage examples for: $@",
+    requiresInput: true,
+    preferredTools: ["ccs:mm", "claude", "opencode", "amp", "codex", "ccs:*"],
   },
   {
     name: "explain",
-    command:
-      "ccs mm --permission-mode plan -p 'Explain this code in detail: 1) What it does 2) How it works 3) Design decisions: $@'",
     description: "Code explanation",
     aliases: ["wtf", "explain-code"],
+    prompt: "Explain this code in detail: 1) What it does 2) How it works 3) Design decisions: $@",
+    requiresInput: true,
+    preferredTools: ["ccs:mm", "claude", "opencode", "amp", "codex", "ccs:*"],
   },
 ];
 
-const DEFAULT_CONFIG: Config = {
-  tools: [],
-  templates: DEFAULT_TEMPLATES,
-};
+function normalizeName(name: string): string {
+  return name.trim().toLowerCase();
+}
+
+function pickTool(detectedTools: Tool[], preferredTools: string[]): Tool | undefined {
+  const toolsByName = new Map(detectedTools.map((tool) => [normalizeName(tool.name), tool]));
+
+  for (const preferred of preferredTools) {
+    const normalized = normalizeName(preferred);
+    if (normalized === "ccs:*") {
+      const ccsProfile = detectedTools.find((tool) => normalizeName(tool.name).startsWith("ccs:"));
+      if (ccsProfile) {
+        return ccsProfile;
+      }
+      continue;
+    }
+
+    const directMatch = toolsByName.get(normalized);
+    if (directMatch) {
+      return directMatch;
+    }
+  }
+
+  return undefined;
+}
+
+function buildCommandForTool(tool: Tool, prompt: string): string | null {
+  const name = normalizeName(tool.name);
+  if (name === "opencode") {
+    return `opencode run --model opencode/big-pickle --agent plan '${prompt}'`;
+  }
+  if (name === "claude") {
+    return `claude --permission-mode plan -p '${prompt}'`;
+  }
+  if (name === "amp") {
+    return `amp -x '${prompt}'`;
+  }
+  if (name === "codex") {
+    return `codex exec '${prompt}'`;
+  }
+  if (name.startsWith("ccs:") && tool.promptCommand) {
+    return `${tool.promptCommand} '${prompt}'`;
+  }
+
+  return null;
+}
+
+function buildDefaultTemplates(detectedTools: Tool[]): Template[] {
+  if (detectedTools.length === 0) {
+    return [];
+  }
+
+  const templates: Template[] = [];
+
+  for (const category of CATEGORY_PROMPTS) {
+    const tool = pickTool(detectedTools, category.preferredTools);
+    if (!tool) {
+      continue;
+    }
+
+    const prompt = category.requiresInput ? category.prompt : category.prompt.replace(": $@", "");
+    const command = buildCommandForTool(tool, prompt);
+    if (!command) {
+      continue;
+    }
+
+    templates.push({
+      name: category.name,
+      command,
+      description: `${category.description} with ${tool.name}`,
+      aliases: category.aliases,
+    });
+  }
+
+  return templates;
+}
 
 function validateAliases(aliases: unknown, path: string): ConfigValidationError[] {
   if (!Array.isArray(aliases)) {
@@ -223,15 +319,20 @@ function ensureConfigDir(): void {
   }
 }
 
-function createDefaultConfig(): void {
+function createDefaultConfig(templates: Template[]): void {
   ensureConfigDir();
-  writeFileSync(CONFIG_PATH, `${JSON.stringify(DEFAULT_CONFIG, null, 2)}\n`);
+  const defaultConfig: Config = {
+    ...DEFAULT_CONFIG,
+    templates,
+  };
+  writeFileSync(CONFIG_PATH, `${JSON.stringify(defaultConfig, null, 2)}\n`);
 }
 
-export function loadConfig(): Config {
+export function loadConfig(detectedTools: Tool[] = []): Config {
   if (!existsSync(CONFIG_PATH)) {
-    createDefaultConfig();
-    return { ...DEFAULT_CONFIG };
+    const templates = buildDefaultTemplates(detectedTools);
+    createDefaultConfig(templates);
+    return { ...DEFAULT_CONFIG, templates };
   }
 
   const rawContent = readFileSync(CONFIG_PATH, "utf-8");

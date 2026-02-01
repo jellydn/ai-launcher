@@ -287,8 +287,8 @@ function launchToolWithPrompt(
 async function main() {
   const stdinContent = readStdin();
 
-  const config = loadConfig();
   const detectedTools = detectInstalledTools();
+  const config = loadConfig(detectedTools);
   const allTools = mergeTools(config.tools, detectedTools);
 
   const items = toSelectableItems(allTools, config.templates);
