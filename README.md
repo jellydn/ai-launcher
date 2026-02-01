@@ -3,7 +3,7 @@
 </p>
 
 <h1 align="center">AI Launcher</h1>
- 
+
 <p align="center">
   A fast, secure launcher CLI tool that lets you switch between different AI coding assistants using fuzzy search. Built with TypeScript and Bun for optimal performance.
 </p>
@@ -89,7 +89,7 @@ Verify installation:
 ai --help
 ```
 
-[![ai --help](https://i.gyazo.com/271b43515723f8f95a492882fb5cf4c4.png)](https://gyazo.com/271b43515723f8f95a492882fb5cf4c4)
+[![AI help command](https://i.gyazo.com/d465f083a051200140bcc23a102b42cb.png)](https://gyazo.com/d465f083a051200140bcc23a102b42cb)
 
 ## Usage
 
@@ -103,13 +103,13 @@ ai
 
 **Controls:**
 
-| Key | Action |
-|-----|--------|
-| Type | Filter tools and templates |
-| `↑` / `Ctrl+P` / `Shift+Tab` | Move up |
-| `↓` / `Ctrl+N` / `Tab` | Move down |
-| `Enter` | Select and launch |
-| `Esc` / `Ctrl+C` | Cancel |
+| Key                          | Action                     |
+| ---------------------------- | -------------------------- |
+| Type                         | Filter tools and templates |
+| `↑` / `Ctrl+P` / `Shift+Tab` | Move up                    |
+| `↓` / `Ctrl+N` / `Tab`       | Move down                  |
+| `Enter`                      | Select and launch          |
+| `Esc` / `Ctrl+C`             | Cancel                     |
 
 > **Note:** Tab/Shift+Tab navigate the list (not shell completion) since the UI runs in raw mode.
 
@@ -302,34 +302,34 @@ A default config is created on first run. Example:
 
 **tools**: Array of AI tools
 
-| Field | Required | Description |
-|-------|----------|-------------|
-| `name` | ✅ | Display name and primary lookup key |
-| `command` | ✅ | The CLI command to execute |
-| `description` | ❌ | Shown in fuzzy search list |
-| `aliases` | ❌ | Array of short aliases (e.g., `["c", "cl"]`) |
-| `promptCommand` | ❌ | Alternative command for `--diff-*` prompts |
-| `promptUseStdin` | ❌ | If `true`, pipe prompt via stdin instead of argument |
+| Field            | Required | Description                                          |
+| ---------------- | -------- | ---------------------------------------------------- |
+| `name`           | ✅       | Display name and primary lookup key                  |
+| `command`        | ✅       | The CLI command to execute                           |
+| `description`    | ❌       | Shown in fuzzy search list                           |
+| `aliases`        | ❌       | Array of short aliases (e.g., `["c", "cl"]`)         |
+| `promptCommand`  | ❌       | Alternative command for `--diff-*` prompts           |
+| `promptUseStdin` | ❌       | If `true`, pipe prompt via stdin instead of argument |
 
 **templates**: Array of command templates
 
-| Field | Required | Description |
-|-------|----------|-------------|
-| `name` | ✅ | Template name (shown with [T] indicator) |
-| `command` | ✅ | Command string, use `$@` for argument substitution |
-| `description` | ✅ | Template description |
-| `aliases` | ❌ | Array of short aliases |
+| Field         | Required | Description                                        |
+| ------------- | -------- | -------------------------------------------------- |
+| `name`        | ✅       | Template name (shown with [T] indicator)           |
+| `command`     | ✅       | Command string, use `$@` for argument substitution |
+| `description` | ✅       | Template description                               |
+| `aliases`     | ❌       | Array of short aliases                             |
 
 ### Git Diff Prompt Configuration
 
 Different AI CLIs accept prompts in different ways. The `promptCommand` and `promptUseStdin` fields configure how `--diff-staged` and `--diff-commit` send prompts:
 
-| Tool | Prompt Command | Why |
-|------|----------------|-----|
-| `claude` | `claude --permission-mode plan -p 'prompt'` | Uses plan mode for read-only analysis |
-| `ccs` | `ccs <profile> --permission-mode plan -p 'prompt'` | Uses plan mode for read-only analysis |
-| `opencode` | `echo 'prompt' &#124; opencode run` | First arg is treated as project path, needs stdin |
-| `amp` | `echo 'prompt' &#124; amp -x` | Execute mode works best with stdin |
+| Tool       | Prompt Command                                     | Why                                               |
+| ---------- | -------------------------------------------------- | ------------------------------------------------- |
+| `claude`   | `claude --permission-mode plan -p 'prompt'`        | Uses plan mode for read-only analysis             |
+| `ccs`      | `ccs <profile> --permission-mode plan -p 'prompt'` | Uses plan mode for read-only analysis             |
+| `opencode` | `echo 'prompt' &#124; opencode run`                | First arg is treated as project path, needs stdin |
+| `amp`      | `echo 'prompt' &#124; amp -x`                      | Execute mode works best with stdin                |
 
 **Example configuration:**
 
@@ -613,6 +613,7 @@ cat src/complex.ts | ai simplify       # Simplify over-engineered code
    - **Amp**: Lightweight alternative for quick tasks
 
 3. **Chain operations**: Use shell pipes to create workflows
+
    ```bash
    git diff | ai review                  # Review staged changes
    cat file.ts | ai test > file.test.ts  # Generate test file
@@ -625,6 +626,7 @@ cat src/complex.ts | ai simplify       # Simplify over-engineered code
    - `ai rev-se` → matches `review-security` (if added)
 
 5. **CCS profiles**: Extend with more models as needed
+
    ```json
    {
      "name": "review-gpt4",
@@ -741,6 +743,14 @@ bun run src/index.ts --diff-commit HEAD~1
 4. Test on your platform
 5. Submit PR with description
 
-## 📄 License
+👤 **Huynh Duc Dung**
 
-MIT
+- Website: [https://productsway.com/](https://productsway.com/)
+- Twitter: [@jellydn](https://twitter.com/jellydn)
+- GitHub: [@jellydn](https://github.com/jellydn)
+
+## Show your support
+
+If this project has been helpful, please give it a ⭐️.
+
+[![kofi](https://img.shields.io/badge/Ko--fi-F16061?style=flat&logo=ko-fi&logoColor=white)](https://ko-fi.com/dunghd) [![paypal](https://img.shields.io/badge/PayPal-00457C?style=flat&logo=paypal&logoColor=white)](https://paypal.me/dunghd) [![buymeacoffee](https://img.shields.io/badge/Buy_Me_A_Coffee-FFDD00?style=flat&logo=buy-me-a-coffee&logoColor=black)](https://www.buymeacoffee.com/dunghd)

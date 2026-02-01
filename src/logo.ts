@@ -1,6 +1,6 @@
 export const logo = `
     ╔═══════════════════════════════════════════╗
-    ║   ▲ ▲  AI  LAUNCHER  ▲ ▲                  ║
+    ║   ▲ ▲     AI LAUNCHER      ▲ ▲            ║
     ║   │ │        ││││││        │ │            ║
     ║   └─┘──┬──►  ││││││  ◄──┬──┘              ║
     ║        │      ││││││    │                 ║
@@ -10,14 +10,14 @@ export const logo = `
 `;
 
 export const smallLogo = `
-    ▲ ▲  AI  LAUNCHER  ▲ ▲
+    ▲ ▲    AI  LAUNCHER      ▲ ▲
     │ │        ││││││        │ │
     └─┘──►─────││││││─────◄──┘
               ││││││
 `;
 
 export const minimalLogo = `
-    ▲ ▲  AI  LAUNCHER  ▲ ▲
+    ▲ ▲    AI  LAUNCHER      ▲ ▲
     │ │        ││││││        │ │
               ││││││
 `;
