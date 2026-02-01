@@ -244,52 +244,55 @@ A default config is created on first run. Example:
 
 ```json
 {
-  "tools": [
-    {
-      "name": "claude",
-      "command": "claude",
-      "description": "Anthropic Claude CLI",
-      "aliases": ["c"],
-      "promptCommand": "claude --permission-mode plan -p"
-    },
-    {
-      "name": "opencode",
-      "command": "opencode",
-      "description": "OpenCode AI assistant",
-      "aliases": ["o", "oc"],
-      "promptCommand": "opencode run",
-      "promptUseStdin": true
-    },
-    {
-      "name": "amp",
-      "command": "amp",
-      "description": "Sourcegraph Amp CLI",
-      "aliases": ["a"],
-      "promptCommand": "amp -x",
-      "promptUseStdin": true
-    }
-  ],
+  "tools": [],
   "templates": [
     {
-      "name": "summarize",
-      "command": "claude -p 'Summarize this file: $@'",
-      "description": "Summarize a file with Claude"
-    },
-    {
       "name": "review",
-      "command": "amp -p 'Review this code: $@'",
-      "description": "Code review with Amp"
+      "command": "opencode run --model opencode/big-pickle --agent plan 'Review the following changes and provide feedback: $@'",
+      "description": "Code review with OpenCode",
+      "aliases": ["rev", "code-review"]
     },
     {
       "name": "commit-zen",
-      "command": "opencode run 'Generate commit message: $@'",
-      "description": "Generate commit message with OpenCode"
+      "command": "opencode run --model opencode/big-pickle --agent plan 'Review the following changes on git and generate a concise git commit message, group by logical changes with commitizen convention, do atomic commit message'",
+      "description": "Generate commit message with OpenCode",
+      "aliases": ["zen", "logical-commit"]
     },
     {
-      "name": "gemini-arch",
+      "name": "architecture-explanation",
       "command": "ccs gemini 'Explain this codebase architecture'",
       "description": "Explain architecture with Gemini",
-      "aliases": ["arch"]
+      "aliases": ["arch", "arch-explanation"]
+    },
+    {
+      "name": "draft-pull-request",
+      "command": "ccs glm --permission-mode acceptEdits -p 'Create draft pr with what why how by gh cli'",
+      "description": "Create draft pull request with GLM",
+      "aliases": ["pr", "draft-pr"]
+    },
+    {
+      "name": "types",
+      "command": "ccs mm --permission-mode acceptEdits -p 'Improve TypeScript types: Remove any, add proper type guards, ensure strict mode compliance for: $@'",
+      "description": "Enhance type safety",
+      "aliases": ["typescript"]
+    },
+    {
+      "name": "test",
+      "command": "ccs mm --permission-mode acceptEdits -p 'Write tests using Arrange-Act-Assert pattern. Focus on behavior, not implementation details for: $@'",
+      "description": "Generate tests",
+      "aliases": ["spec", "tests"]
+    },
+    {
+      "name": "docs",
+      "command": "ccs mm --permission-mode acceptEdits -p 'Add JSDoc comments with @param and @returns. Include usage examples for: $@'",
+      "description": "Add documentation",
+      "aliases": ["document"]
+    },
+    {
+      "name": "explain",
+      "command": "ccs mm --permission-mode plan -p 'Explain this code in detail: 1) What it does 2) How it works 3) Design decisions: $@'",
+      "description": "Code explanation",
+      "aliases": ["explain-code"]
     }
   ]
 }
