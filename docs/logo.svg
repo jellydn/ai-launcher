@@ -40,7 +40,7 @@
 
   <!-- Right: Text -->
   <g transform="translate(160, 32)">
-    <text x="0" y="25" font-family="Arial, sans-serif" font-size="28" font-weight="bold" fill="#1f2937">CLI Switcher</text>
+    <text x="0" y="25" font-family="Arial, sans-serif" font-size="28" font-weight="bold" fill="#1f2937">Launcher</text>
     <text x="0" y="50" font-family="Arial, sans-serif" font-size="12" fill="#6b7280">Switch between AI assistants instantly</text>
   </g>
 

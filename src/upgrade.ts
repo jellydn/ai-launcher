@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { gte as semverGte } from "semver";
 import { VERSION } from "./version";
 
-const GITHUB_RELEASES_URL = "https://api.github.com/repos/jellydn/ai-cli-switcher/releases/latest";
+const GITHUB_RELEASES_URL = "https://api.github.com/repos/jellydn/ai-launcher/releases/latest";
 
 interface GitHubAsset {
   name: string;

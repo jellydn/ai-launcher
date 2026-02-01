@@ -4,7 +4,7 @@ Guidelines for agentic coding agents working on this codebase.
 
 ## Project Overview
 
-**ai-cli-switcher** - A fast, secure launcher CLI tool that switches between AI coding assistants using fuzzy search. Built with TypeScript and Bun.
+**ai-launcher** - A fast, secure launcher CLI tool that switches between AI coding assistants using fuzzy search. Built with TypeScript and Bun.
 
 ## Commands
 

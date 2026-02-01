@@ -102,7 +102,7 @@ function readStdin(): string | null {
 }
 
 function showVersion() {
-  console.log(`ai-cli-switcher v${VERSION}`);
+  console.log(`ai-launcher v${VERSION}`);
   process.exit(0);
 }
 
@@ -140,7 +140,7 @@ EXAMPLES:
     ai upgrade                       Upgrade to latest version
 
 CONFIG:
-    ~/.config/ai-switcher/config.json   Add custom tools, aliases, templates
+    ~/.config/ai-launcher/config.json   Add custom tools, aliases, templates
 `);
   process.exit(0);
 }
@@ -285,6 +285,22 @@ function launchToolWithPrompt(
 }
 
 async function main() {
+  const args = process.argv.slice(2);
+
+  // Handle --help, --version, and upgrade before loading config
+  if (args[0] === "--help" || args[0] === "-h") {
+    showHelp();
+  }
+
+  if (args[0] === "--version" || args[0] === "-v") {
+    showVersion();
+  }
+
+  if (args[0] === "upgrade") {
+    await upgrade();
+    return;
+  }
+
   const stdinContent = readStdin();
 
   const config = loadConfig();
@@ -302,23 +318,8 @@ async function main() {
     console.error("   • amp       - Sourcegraph Amp CLI");
     console.error("   • codex     - OpenAI Codex CLI");
     console.error("   • ccs       - Claude Code Switch");
-    console.error("\n📝 Or add custom tools to ~/.config/ai-switcher/config.json");
+    console.error("\n📝 Or add custom tools to ~/.config/ai-launcher/config.json");
     process.exit(1);
-  }
-
-  const args = process.argv.slice(2);
-
-  if (args[0] === "--help" || args[0] === "-h") {
-    showHelp();
-  }
-
-  if (args[0] === "--version" || args[0] === "-v") {
-    showVersion();
-  }
-
-  if (args[0] === "upgrade") {
-    await upgrade();
-    return;
   }
 
   const diffParsed = parseDiffArgs(args);

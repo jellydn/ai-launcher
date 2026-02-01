@@ -53,7 +53,7 @@ Set up automated CI/CD pipeline with GitHub Actions that builds cross-platform b
 - [x] Installs to `~/.local/bin` or `/usr/local/bin`
 - [x] Adds to PATH if needed (with instructions)
 - [x] Works on Linux and macOS
-- [x] Usage: `curl -fsSL https://raw.githubusercontent.com/jellydn/ai-cli-switcher/main/install.sh | sh`
+- [x] Usage: `curl -fsSL https://raw.githubusercontent.com/jellydn/ai-launcher/main/install.sh | sh`
 
 ### US-005: Homebrew formula
 **Description:** As a macOS/Linux user, I want to install via Homebrew for familiar package management.

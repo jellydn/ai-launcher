@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="docs/logo.svg" alt="AI CLI Switcher Logo" width="400">
+  <img src="docs/logo.svg" alt="AI Launcher Logo" width="400">
 </p>
 
-<h1 align="center">AI CLI Switcher</h1>
+<h1 align="center">AI Launcher</h1>
  
 <p align="center">
   A fast, secure launcher CLI tool that lets you switch between different AI coding assistants using fuzzy search. Built with TypeScript and Bun for optimal performance.
@@ -34,14 +34,14 @@
 ### One-line Install (macOS/Linux)
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/jellydn/ai-cli-switcher/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/jellydn/ai-launcher/main/install.sh | sh
 ```
 
 <details>
 <summary>Safer alternative (inspect before running)</summary>
 
 ```sh
-curl -fsSL -o install.sh https://raw.githubusercontent.com/jellydn/ai-cli-switcher/main/install.sh
+curl -fsSL -o install.sh https://raw.githubusercontent.com/jellydn/ai-launcher/main/install.sh
 less install.sh  # inspect the script
 sh install.sh
 ```
@@ -56,15 +56,15 @@ brew install jellydn/tap/ai
 
 ### Windows
 
-Download the latest `ai-windows-x64.exe` from [Releases](https://github.com/jellydn/ai-cli-switcher/releases) and add to your PATH.
+Download the latest `ai-windows-x64.exe` from [Releases](https://github.com/jellydn/ai-launcher/releases) and add to your PATH.
 
 ### Build from Source
 
 Requires [Bun](https://bun.sh):
 
 ```bash
-git clone https://github.com/jellydn/ai-cli-switcher
-cd ai-cli-switcher
+git clone https://github.com/jellydn/ai-launcher
+cd ai-launcher
 bun install
 bun run build
 ```
@@ -238,7 +238,7 @@ The feature automatically constructs a prompt with the diff and sends it to your
 
 ## Configuration
 
-Config file location: `~/.config/ai-switcher/config.json`
+Config file location: `~/.config/ai-launcher/config.json`
 
 A default config is created on first run. Example:
 
@@ -342,7 +342,7 @@ Different AI CLIs accept prompts in different ways. The `promptCommand` and `pro
 }
 ```
 
-This tells ai-switcher: when running `ai opencode --diff-staged`, pipe the diff prompt to `opencode run` via stdin instead of passing it as an argument.
+This tells ai-launcher: when running `ai opencode --diff-staged`, pipe the diff prompt to `opencode run` via stdin instead of passing it as an argument.
 
 ### 🔍 Auto-Detection
 

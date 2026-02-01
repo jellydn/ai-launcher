@@ -1,25 +1,25 @@
 class Ai < Formula
   desc "Fast launcher CLI to switch between AI coding assistants using fuzzy search"
-  homepage "https://github.com/jellydn/ai-cli-switcher"
+  homepage "https://github.com/jellydn/ai-launcher"
   license "MIT"
 
   on_macos do
     on_arm do
-      url "https://github.com/jellydn/ai-cli-switcher/releases/latest/download/ai-darwin-arm64"
+      url "https://github.com/jellydn/ai-launcher/releases/latest/download/ai-darwin-arm64"
     end
 
     on_intel do
-      url "https://github.com/jellydn/ai-cli-switcher/releases/latest/download/ai-darwin-x64"
+      url "https://github.com/jellydn/ai-launcher/releases/latest/download/ai-darwin-x64"
     end
   end
 
   on_linux do
     on_arm do
-      url "https://github.com/jellydn/ai-cli-switcher/releases/latest/download/ai-linux-arm64"
+      url "https://github.com/jellydn/ai-launcher/releases/latest/download/ai-linux-arm64"
     end
 
     on_intel do
-      url "https://github.com/jellydn/ai-cli-switcher/releases/latest/download/ai-linux-x64"
+      url "https://github.com/jellydn/ai-launcher/releases/latest/download/ai-linux-x64"
     end
   end
 
@@ -36,7 +36,7 @@ class Ai < Formula
       To get started, run:
         ai --help
 
-      For configuration, see: https://github.com/jellydn/ai-cli-switcher
+      For configuration, see: https://github.com/jellydn/ai-launcher
     EOS
   end
 
