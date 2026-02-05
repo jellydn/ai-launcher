@@ -37,7 +37,7 @@ const KNOWN_TOOLS: Array<{
   {
     name: "kilo",
     command: "kilo",
-    description: "Kilo AI CLI",
+    description: "Kilo Code CLI",
   },
 ];
 

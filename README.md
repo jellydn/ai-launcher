@@ -352,7 +352,7 @@ The following CLIs are auto-detected if installed and available in PATH:
 - `opencode` - OpenCode AI assistant
 - `amp` - Sourcegraph Amp CLI
 - `codex` - OpenAI Codex CLI
-- `kilo` - Kilo AI CLI
+- `kilo` - Kilo Code CLI
 - `ccs` - **Claude Code Switch** (with profile detection via `ccs api list`)
 
 **Precedence Rules:**
