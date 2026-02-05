@@ -34,6 +34,11 @@ const KNOWN_TOOLS: Array<{
     description: "OpenAI Codex CLI",
     promptCommand: "codex exec",
   },
+  {
+    name: "kilo",
+    command: "kilo",
+    description: "Kilo Code CLI",
+  },
 ];
 
 const CLI_PROXY_PROVIDERS: Array<{ name: string; description: string }> = [
