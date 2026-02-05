@@ -4,14 +4,12 @@ on:
   push:
     tags:
       - "v*"
-  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
   build:
-    needs: version
     strategy:
       matrix:
         include:
@@ -42,9 +40,15 @@ jobs:
       - name: Get version from tag
         id: version
         run: |
-          VERSION=${GITHUB_REF#refs/tags/v}
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Version: $VERSION"
+          # Validate that this is a tag trigger
+          if [[ "${{ github.ref }}" =~ ^refs/tags/v[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+            VERSION="${GITHUB_REF#refs/tags/v}"
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "Version: $VERSION"
+          else
+            echo "Error: Workflow must be triggered from a version tag (refs/tags/vX.X.X)"
+            exit 1
+          fi
 
       - name: Generate version.ts
         run: |
@@ -83,6 +87,9 @@ jobs:
       - name: Make binaries executable
         run: chmod +x dist/ai-*
 
+      - name: Fetch latest tags
+        run: git fetch --tags origin
+
       - name: Generate checksums
         run: |
           cd dist
@@ -92,18 +99,29 @@ jobs:
       - name: Get version from tag
         id: version
         run: |
-          VERSION=${GITHUB_REF#refs/tags/v}
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Version: $VERSION"
+          # Validate that this is a tag trigger
+          if [[ "${{ github.ref }}" =~ ^refs/tags/v[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+            VERSION="${GITHUB_REF#refs/tags/v}"
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "Version: $VERSION"
+          else
+            echo "Error: Workflow must be triggered from a version tag (refs/tags/vX.X.X)"
+            exit 1
+          fi
 
       - name: Generate changelog
         id: changelog
         run: |
-          PREV_TAG=$(git describe --tags --abbrev=0^0 2>/dev/null || echo "")
+          # Get the previous tag (second most recent)
+          PREV_TAG=$(git tag --sort=-version:refname | head -2 | tail -1 2>/dev/null || echo "")
+          CURRENT_TAG="${{ github.ref_name }}"
+
           if [ -z "$PREV_TAG" ]; then
+            # First release - show recent commits
             CHANGELOG=$(git log --oneline -10)
           else
-            CHANGELOG=$(git log --oneline $PREV_TAG..${{ github.ref_name }})
+            # Get commits between previous tag and current tag
+            CHANGELOG=$(git log --oneline $PREV_TAG..$CURRENT_TAG)
           fi
           echo "changelog<<EOF" >> $GITHUB_OUTPUT
           echo "$CHANGELOG" >> $GITHUB_OUTPUT

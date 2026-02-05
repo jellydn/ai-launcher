@@ -16,6 +16,9 @@ permissions:
 jobs:
   version:
     runs-on: ubuntu-latest
+    concurrency:
+      group: version-${{ github.ref }}
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v6
         with:
@@ -33,12 +36,14 @@ jobs:
           LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
 
           if [ -z "$LATEST_TAG" ]; then
-            # No tags yet, check all commits
+            # First release: check all commits to determine initial version
+            # This will create the first version tag based on all historical commits
             COMMITS=$(git log --oneline | grep -v "\[skip ci\]" | wc -l | tr -d ' ')
             echo "commits=$COMMITS" >> $GITHUB_OUTPUT
             echo "tag=none" >> $GITHUB_OUTPUT
           else
-            # Check commits since last tag
+            # Check commits since last tag, filtering out [skip ci] commits
+            # [skip ci] commits are typically docs-only changes that shouldn't trigger releases
             COMMITS=$(git log --oneline $LATEST_TAG..HEAD | grep -v "\[skip ci\]" | wc -l | tr -d ' ')
             echo "commits=$COMMITS" >> $GITHUB_OUTPUT
             echo "tag=$LATEST_TAG" >> $GITHUB_OUTPUT
@@ -59,6 +64,18 @@ jobs:
 
           echo "Running: $BUMP_CMD"
           $BUMP_CMD
+
+      - name: Verify version consistency
+        if: steps.check.outputs.commits != '0' && github.event.inputs.version != 'skip'
+        run: |
+          # Ensure the created tag matches package.json version
+          TAG_VERSION=$(git describe --tags --abbrev=0 | sed 's/^v//')
+          JSON_VERSION=$(jq -r .version package.json)
+          if [ "$TAG_VERSION" != "$JSON_VERSION" ]; then
+            echo "Version mismatch: tag=$TAG_VERSION, package.json=$JSON_VERSION"
+            exit 1
+          fi
+          echo "Version consistency verified: $TAG_VERSION"
 
       - name: Output result
         run: |
