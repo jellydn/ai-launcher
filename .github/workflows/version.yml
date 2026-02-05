@@ -1,0 +1,71 @@
+name: Version
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version bump type (major/minor/patch) or \"skip\""
+        required: false
+        default: "skip"
+
+permissions:
+  contents: write
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Check if version bump needed
+        id: check
+        run: |
+          # Get latest tag
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+
+          if [ -z "$LATEST_TAG" ]; then
+            # No tags yet, check all commits
+            COMMITS=$(git log --oneline | grep -v "\[skip ci\]" | wc -l | tr -d ' ')
+            echo "commits=$COMMITS" >> $GITHUB_OUTPUT
+            echo "tag=none" >> $GITHUB_OUTPUT
+          else
+            # Check commits since last tag
+            COMMITS=$(git log --oneline $LATEST_TAG..HEAD | grep -v "\[skip ci\]" | wc -l | tr -d ' ')
+            echo "commits=$COMMITS" >> $GITHUB_OUTPUT
+            echo "tag=$LATEST_TAG" >> $GITHUB_OUTPUT
+          fi
+
+          echo "Commits to process: $COMMITS"
+
+      - name: Bump version
+        if: steps.check.outputs.commits != '0' && github.event.inputs.version != 'skip'
+        run: |
+          # Build bumpp command
+          BUMP_CMD="bunx bumpp --yes --commit --tag --push"
+
+          # Add version override if specified
+          if [ "${{ github.event.inputs.version }}" != "" ] && [ "${{ github.event.inputs.version }}" != "skip" ]; then
+            BUMP_CMD="$BUMP_CMD --release ${{ github.event.inputs.version }}"
+          fi
+
+          echo "Running: $BUMP_CMD"
+          $BUMP_CMD
+
+      - name: Output result
+        run: |
+          if [ "${{ steps.check.outputs.commits }}" == "0" ]; then
+            echo "No commits to process (all have [skip ci])"
+          elif [ "${{ github.event.inputs.version }}" == "skip" ]; then
+            echo "Versioning skipped via workflow_dispatch"
+          else
+            echo "Version bumped successfully"
+          fi

@@ -2,57 +2,14 @@ name: Release
 
 on:
   push:
-    branches: [main]
+    tags:
+      - "v*"
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
-  version:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
-      - name: Get current version
-        id: version
-        run: |
-          VERSION=$(jq -r .version package.json)
-          echo "current=$VERSION" >> $GITHUB_OUTPUT
-
-      - name: Bump patch version
-        id: bump
-        run: |
-          CURRENT="${{ steps.version.outputs.current }}"
-          IFS='.' read -r major minor patch <<< "$CURRENT"
-          NEW_PATCH=$((patch + 1))
-          NEW_VERSION="$major.$minor.$NEW_PATCH"
-          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
-          jq ".version = \"$NEW_VERSION\"" package.json > tmp.json && mv tmp.json package.json
-
-      - name: Commit version bump
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add package.json
-          git commit -m "chore: bump version to ${{ steps.bump.outputs.version }}" || echo "No changes to commit"
-          git push
-
-      - name: Output new version
-        run: echo "${{ steps.bump.outputs.version }}" > version.txt
-
-      - name: Upload version
-        uses: actions/upload-artifact@v6
-        with:
-          name: version
-          path: version.txt
-
   build:
     needs: version
     strategy:
@@ -77,22 +34,21 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v6
-        with:
-          ref: main
 
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
 
-      - name: Download version artifact
-        uses: actions/download-artifact@v7
-        with:
-          name: version
-          path: .
+      - name: Get version from tag
+        id: version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
 
       - name: Generate version.ts
         run: |
-          VERSION=$(cat version.txt)
+          VERSION="${{ steps.version.outputs.version }}"
           echo "// This file is generated at build time by scripts/build.sh or CI" > src/version.ts
           echo "// Do not edit manually - it will be overwritten on next build" >> src/version.ts
           echo "export const VERSION = \"$VERSION\";" >> src/version.ts
@@ -133,20 +89,21 @@ jobs:
           sha256sum ai-* > checksums.txt
           cat checksums.txt
 
-      - name: Get version from artifact
+      - name: Get version from tag
         id: version
         run: |
-          VERSION=$(cat dist/version.txt 2>/dev/null || echo "unknown")
+          VERSION=${GITHUB_REF#refs/tags/v}
           echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
 
       - name: Generate changelog
         id: changelog
         run: |
-          PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          PREV_TAG=$(git describe --tags --abbrev=0^0 2>/dev/null || echo "")
           if [ -z "$PREV_TAG" ]; then
             CHANGELOG=$(git log --oneline -10)
           else
-            CHANGELOG=$(git log --oneline $PREV_TAG..HEAD)
+            CHANGELOG=$(git log --oneline $PREV_TAG..${{ github.ref_name }})
           fi
           echo "changelog<<EOF" >> $GITHUB_OUTPUT
           echo "$CHANGELOG" >> $GITHUB_OUTPUT
