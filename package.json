@@ -1,6 +1,6 @@
 {
   "name": "ai-launcher",
-  "version": "0.2.4",
+  "version": "0.3.0",
   "description": "A quick launcher CLI to switch between AI coding assistants using fuzzy search",
   "module": "src/index.ts",
   "type": "module",
