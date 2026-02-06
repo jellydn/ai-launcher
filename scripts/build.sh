@@ -22,7 +22,7 @@ if command -v upx >/dev/null 2>&1; then
   if [[ "$OSTYPE" == "darwin"* ]]; then
     echo "Note: UPX compression is disabled on macOS due to compatibility issues."
     echo "      UPX-compressed binaries cannot run on modern macOS (terminated by SIGKILL)."
-    echo "      The binary will remain at ~57M. Linux builds will still be compressed in CI."
+    echo "      The binary will be larger than Linux builds, but will function correctly."
   else
     # Linux/other systems - standard UPX
     echo "Compressing with UPX..."
