@@ -78,7 +78,12 @@ jobs:
 
       - name: Compress with UPX
         if: runner.os != 'Windows'
-        run: upx --best --lzma dist/${{ matrix.artifact }} || echo "UPX compression skipped or failed"
+        run: |
+          # Try LZMA compression first (best compression)
+          if ! upx --best --lzma dist/${{ matrix.artifact }} 2>/dev/null; then
+            echo "LZMA compression failed, trying standard compression..."
+            upx --best dist/${{ matrix.artifact }} || echo "UPX compression skipped - not supported for this binary"
+          fi
 
       - uses: actions/upload-artifact@v6
         with:
