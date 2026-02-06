@@ -60,7 +60,24 @@ jobs:
       - run: bun install --frozen-lockfile
 
       - name: Build for ${{ matrix.target }}
-        run: bun build src/index.ts --compile --target=${{ matrix.target }} --outfile dist/${{ matrix.artifact }}
+        run: bun build src/index.ts --compile --minify --target=${{ matrix.target }} --outfile dist/${{ matrix.artifact }}
+
+      - name: Strip debug symbols (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: strip dist/${{ matrix.artifact }} || true
+
+      - name: Install UPX
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y upx
+
+      - name: Install UPX (macOS)
+        if: runner.os == 'macOS'
+        run: brew install upx
+
+      - name: Compress with UPX
+        run: upx --best --lzma dist/${{ matrix.artifact }} || echo "UPX compression skipped or failed"
 
       - uses: actions/upload-artifact@v6
         with:
