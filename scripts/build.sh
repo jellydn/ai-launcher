@@ -18,19 +18,15 @@ fi
 
 # Compress with UPX if available (major size reduction)
 if command -v upx >/dev/null 2>&1; then
-  echo "Compressing with UPX..."
-  SKIP_MSG="UPX compression skipped - not supported for this binary"
-  
   # Detect if we're on macOS
   if [[ "$OSTYPE" == "darwin"* ]]; then
-    echo "Detected macOS - using --force-macos flag..."
-    # Try LZMA compression first with --force-macos (best compression)
-    if ! upx --best --lzma --force-macos dist/ai 2>/dev/null; then
-      echo "LZMA compression failed, trying standard compression..."
-      upx --best --force-macos dist/ai || echo "$SKIP_MSG"
-    fi
+    echo "Note: UPX compression is disabled on macOS due to compatibility issues."
+    echo "      UPX-compressed binaries cannot run on modern macOS (terminated by SIGKILL)."
+    echo "      The binary will remain at ~57M. Linux builds will still be compressed in CI."
   else
     # Linux/other systems - standard UPX
+    echo "Compressing with UPX..."
+    SKIP_MSG="UPX compression skipped - not supported for this binary"
     # Try LZMA compression first (best compression)
     if ! upx --best --lzma dist/ai 2>/dev/null; then
       echo "LZMA compression failed, trying standard compression..."
@@ -38,7 +34,8 @@ if command -v upx >/dev/null 2>&1; then
     fi
   fi
 else
-  echo "Note: UPX not found. Install with 'brew install upx' (macOS) or 'apt-get install upx' (Linux) for better compression."
+  echo "Note: UPX not found. Install with 'apt-get install upx' (Linux) for better compression."
+  echo "      Note: UPX is not recommended on macOS due to compatibility issues."
 fi
 
 echo ""
