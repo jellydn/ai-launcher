@@ -79,10 +79,20 @@ jobs:
       - name: Compress with UPX
         if: runner.os != 'Windows'
         run: |
-          # Try LZMA compression first (best compression)
-          if ! upx --best --lzma dist/${{ matrix.artifact }} 2>/dev/null; then
-            echo "LZMA compression failed, trying standard compression..."
-            upx --best dist/${{ matrix.artifact }} || echo "UPX compression skipped - not supported for this binary"
+          # macOS requires --force-macos flag
+          if [[ "${{ runner.os }}" == "macOS" ]]; then
+            echo "Compressing with UPX (macOS)..."
+            if ! upx --best --lzma --force-macos dist/${{ matrix.artifact }} 2>/dev/null; then
+              echo "LZMA compression failed, trying standard compression..."
+              upx --best --force-macos dist/${{ matrix.artifact }} || echo "UPX compression skipped - not supported for this binary"
+            fi
+          else
+            echo "Compressing with UPX (Linux)..."
+            # Try LZMA compression first (best compression)
+            if ! upx --best --lzma dist/${{ matrix.artifact }} 2>/dev/null; then
+              echo "LZMA compression failed, trying standard compression..."
+              upx --best dist/${{ matrix.artifact }} || echo "UPX compression skipped - not supported for this binary"
+            fi
           fi
 
       - uses: actions/upload-artifact@v6
