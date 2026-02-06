@@ -2,59 +2,14 @@ name: Release
 
 on:
   push:
-    branches: [main]
+    tags:
+      - "v*"
 
 permissions:
   contents: write
 
 jobs:
-  version:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
-      - name: Get current version
-        id: version
-        run: |
-          VERSION=$(jq -r .version package.json)
-          echo "current=$VERSION" >> $GITHUB_OUTPUT
-
-      - name: Bump patch version
-        id: bump
-        run: |
-          CURRENT="${{ steps.version.outputs.current }}"
-          IFS='.' read -r major minor patch <<< "$CURRENT"
-          NEW_PATCH=$((patch + 1))
-          NEW_VERSION="$major.$minor.$NEW_PATCH"
-          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
-          jq ".version = \"$NEW_VERSION\"" package.json > tmp.json && mv tmp.json package.json
-
-      - name: Commit version bump
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add package.json
-          git commit -m "chore: bump version to ${{ steps.bump.outputs.version }}" || echo "No changes to commit"
-          git push
-
-      - name: Output new version
-        run: echo "${{ steps.bump.outputs.version }}" > version.txt
-
-      - name: Upload version
-        uses: actions/upload-artifact@v6
-        with:
-          name: version
-          path: version.txt
-
   build:
-    needs: version
     strategy:
       matrix:
         include:
@@ -77,22 +32,27 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v6
-        with:
-          ref: main
 
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
 
-      - name: Download version artifact
-        uses: actions/download-artifact@v7
-        with:
-          name: version
-          path: .
+      - name: Get version from tag
+        id: version
+        run: |
+          # Validate that this is a tag trigger
+          if [[ "${{ github.ref }}" =~ ^refs/tags/v[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+            VERSION="${GITHUB_REF#refs/tags/v}"
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "Version: $VERSION"
+          else
+            echo "Error: Workflow must be triggered from a version tag (refs/tags/vX.X.X)"
+            exit 1
+          fi
 
       - name: Generate version.ts
         run: |
-          VERSION=$(cat version.txt)
+          VERSION="${{ steps.version.outputs.version }}"
           echo "// This file is generated at build time by scripts/build.sh or CI" > src/version.ts
           echo "// Do not edit manually - it will be overwritten on next build" >> src/version.ts
           echo "export const VERSION = \"$VERSION\";" >> src/version.ts
@@ -127,26 +87,41 @@ jobs:
       - name: Make binaries executable
         run: chmod +x dist/ai-*
 
+      - name: Fetch latest tags
+        run: git fetch --tags origin
+
       - name: Generate checksums
         run: |
           cd dist
           sha256sum ai-* > checksums.txt
           cat checksums.txt
 
-      - name: Get version from artifact
+      - name: Get version from tag
         id: version
         run: |
-          VERSION=$(cat dist/version.txt 2>/dev/null || echo "unknown")
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          # Validate that this is a tag trigger
+          if [[ "${{ github.ref }}" =~ ^refs/tags/v[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+            VERSION="${GITHUB_REF#refs/tags/v}"
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "Version: $VERSION"
+          else
+            echo "Error: Workflow must be triggered from a version tag (refs/tags/vX.X.X)"
+            exit 1
+          fi
 
       - name: Generate changelog
         id: changelog
         run: |
-          PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          # Get the previous tag (second most recent)
+          PREV_TAG=$(git tag --sort=-version:refname | head -2 | tail -1 2>/dev/null || echo "")
+          CURRENT_TAG="${{ github.ref_name }}"
+
           if [ -z "$PREV_TAG" ]; then
+            # First release - show recent commits
             CHANGELOG=$(git log --oneline -10)
           else
-            CHANGELOG=$(git log --oneline $PREV_TAG..HEAD)
+            # Get commits between previous tag and current tag
+            CHANGELOG=$(git log --oneline $PREV_TAG..$CURRENT_TAG)
           fi
           echo "changelog<<EOF" >> $GITHUB_OUTPUT
           echo "$CHANGELOG" >> $GITHUB_OUTPUT
