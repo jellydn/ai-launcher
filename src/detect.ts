@@ -5,6 +5,7 @@ const KNOWN_TOOLS: Array<{
   name: string;
   command: string;
   description: string;
+  execCommand?: string;
   promptCommand?: string;
   promptUseStdin?: boolean;
 }> = [
@@ -38,6 +39,12 @@ const KNOWN_TOOLS: Array<{
     name: "kilo",
     command: "kilo",
     description: "Kilo Code CLI",
+  },
+  {
+    name: "ollama",
+    command: "ollama",
+    execCommand: "ollama launch --model minimax-m2.5:cloud",
+    description: "Ollama CLI",
   },
 ];
 
@@ -130,7 +137,7 @@ export function detectInstalledTools(): Tool[] {
     if (commandExists(tool.command)) {
       detected.push({
         name: tool.name,
-        command: tool.command,
+        command: tool.execCommand ?? tool.command,
         description: tool.description,
         promptCommand: tool.promptCommand,
         promptUseStdin: tool.promptUseStdin,
