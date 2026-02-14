@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { detectCliProxyProfiles, parseCcsApiList } from "./detect";
+import { detectCliProxyProfiles, detectInstalledTools, parseCcsApiList } from "./detect";
 
 const CCS_API_LIST_OUTPUT = `CCS API Profiles
 
@@ -136,5 +136,19 @@ describe("detectCliProxyProfiles", () => {
     const profiles = detectCliProxyProfiles();
 
     expect(profiles).toHaveLength(7);
+  });
+});
+
+describe("detectInstalledTools", () => {
+  test("includes ollama with correct configuration when available", () => {
+    const tools = detectInstalledTools();
+    const ollama = tools.find((t) => t.name === "ollama");
+
+    // If ollama is installed, verify it has the correct command
+    if (ollama) {
+      expect(ollama.command).toBe("ollama launch --model minimax-m2.5:cloud");
+      expect(ollama.description).toBe("Ollama CLI");
+      expect(ollama.name).toBe("ollama");
+    }
   });
 });

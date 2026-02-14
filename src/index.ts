@@ -317,6 +317,7 @@ async function main() {
     console.error("   • opencode  - OpenCode AI assistant");
     console.error("   • amp       - Sourcegraph Amp CLI");
     console.error("   • codex     - OpenAI Codex CLI");
+    console.error("   • ollama    - Ollama CLI");
     console.error("   • ccs       - Claude Code Switch");
     console.error("\n📝 Or add custom tools to ~/.config/ai-launcher/config.json");
     process.exit(1);
