@@ -19,7 +19,7 @@
 ## ✨ Features
 
 - **🔍 Fuzzy Search**: Interactive terminal UI with real-time filtering and keyboard navigation
-- **🔧 Auto-Detection**: Automatically finds installed AI CLIs (claude, opencode, amp, codex, kilo, ccs)
+- **🔧 Auto-Detection**: Automatically finds installed AI CLIs (claude, opencode, amp, codex, kilo, ollama, ccs)
 - **⚡ Direct Invocation**: Skip the menu with `ai <toolname>` or fuzzy matching
 - **🏷️ Aliases**: Define short aliases for frequently used tools (e.g., `ai c` for claude)
 - **📋 Templates**: Create command shortcuts with `$@` argument/stdin placeholders
