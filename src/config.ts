@@ -128,7 +128,7 @@ function escapeSingleQuotes(str: string): string {
 function buildCommandForTool(tool: Tool, prompt: string): string | null {
   const name = normalizeName(tool.name);
   if (name === "opencode") {
-    return `opencode run --model opencode/big-pickle --agent plan '${escapeSingleQuotes(prompt)}'`;
+    return `opencode run --model opencode/minimax-m2.5-free --agent plan '${escapeSingleQuotes(prompt)}'`;
   }
   if (name === "claude") {
     return `claude --permission-mode plan -p '${escapeSingleQuotes(prompt)}'`;
