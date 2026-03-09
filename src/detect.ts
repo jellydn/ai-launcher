@@ -41,6 +41,11 @@ const KNOWN_TOOLS: Array<{
     description: "Kilo Code CLI",
   },
   {
+    name: "pi",
+    command: "pi",
+    description: "Pi AI CLI (pi.dev)",
+  },
+  {
     name: "ollama",
     command: "ollama",
     execCommand: "ollama launch --model minimax-m2.5:cloud",

@@ -19,7 +19,7 @@
 ## ✨ Features
 
 - **🔍 Fuzzy Search**: Interactive terminal UI with real-time filtering and keyboard navigation
-- **🔧 Auto-Detection**: Automatically finds installed AI CLIs (claude, opencode, amp, codex, kilo, ollama, ccs)
+- **🔧 Auto-Detection**: Automatically finds installed AI CLIs (claude, opencode, amp, codex, kilo, pi, ollama, ccs)
 - **⚡ Direct Invocation**: Skip the menu with `ai <toolname>` or fuzzy matching
 - **🏷️ Aliases**: Define short aliases for frequently used tools (e.g., `ai c` for claude)
 - **📋 Templates**: Create command shortcuts with `$@` argument/stdin placeholders
@@ -353,6 +353,7 @@ The following CLIs are auto-detected if installed and available in PATH:
 - `amp` - Sourcegraph Amp CLI
 - `codex` - OpenAI Codex CLI
 - `kilo` - Kilo Code CLI
+- `pi` - Pi AI CLI ([pi.dev](https://pi.dev/))
 - `ccs` - **Claude Code Switch** (with profile detection via `ccs api list`)
 
 **Precedence Rules:**

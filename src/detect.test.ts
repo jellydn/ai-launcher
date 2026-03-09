@@ -151,4 +151,16 @@ describe("detectInstalledTools", () => {
       expect(ollama.name).toBe("ollama");
     }
   });
+
+  test("includes pi with correct configuration when available", () => {
+    const tools = detectInstalledTools();
+    const pi = tools.find((t) => t.name === "pi");
+
+    // If pi is installed, verify it has the correct command
+    if (pi) {
+      expect(pi.command).toBe("pi");
+      expect(pi.description).toBe("Pi AI CLI (pi.dev)");
+      expect(pi.name).toBe("pi");
+    }
+  });
 });
