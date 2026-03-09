@@ -1,5 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import { detectCliProxyProfiles, detectInstalledTools, parseCcsApiList } from "./detect";
+import {
+  KNOWN_TOOLS,
+  detectCliProxyProfiles,
+  detectInstalledTools,
+  parseCcsApiList,
+} from "./detect";
 
 const CCS_API_LIST_OUTPUT = `CCS API Profiles
 
@@ -140,27 +145,33 @@ describe("detectCliProxyProfiles", () => {
 });
 
 describe("detectInstalledTools", () => {
-  test("includes ollama with correct configuration when available", () => {
-    const tools = detectInstalledTools();
-    const ollama = tools.find((t) => t.name === "ollama");
+  test("ollama is in KNOWN_TOOLS with correct configuration", () => {
+    const ollama = KNOWN_TOOLS.find((t) => t.name === "ollama");
 
-    // If ollama is installed, verify it has the correct command
-    if (ollama) {
-      expect(ollama.command).toBe("ollama launch --model minimax-m2.5:cloud");
-      expect(ollama.description).toBe("Ollama CLI");
-      expect(ollama.name).toBe("ollama");
-    }
+    expect(ollama).toBeDefined();
+    expect(ollama?.name).toBe("ollama");
+    expect(ollama?.command).toBe("ollama");
+    expect(ollama?.execCommand).toBe("ollama launch --model minimax-m2.5:cloud");
+    expect(ollama?.description).toBe("Ollama CLI");
   });
 
-  test("includes pi with correct configuration when available", () => {
-    const tools = detectInstalledTools();
-    const pi = tools.find((t) => t.name === "pi");
+  test("pi is in KNOWN_TOOLS with correct configuration", () => {
+    const pi = KNOWN_TOOLS.find((t) => t.name === "pi");
 
-    // If pi is installed, verify it has the correct command
-    if (pi) {
-      expect(pi.command).toBe("pi");
-      expect(pi.description).toBe("Pi AI CLI");
-      expect(pi.name).toBe("pi");
+    expect(pi).toBeDefined();
+    expect(pi?.name).toBe("pi");
+    expect(pi?.command).toBe("pi");
+    expect(pi?.description).toBe("Pi AI CLI");
+  });
+
+  test("returns only installed tools from KNOWN_TOOLS", () => {
+    const tools = detectInstalledTools();
+
+    // All returned tools must originate from KNOWN_TOOLS or ccs detection
+    for (const tool of tools) {
+      const isCcs = tool.name === "ccs" || tool.name.startsWith("ccs:");
+      const isKnown = KNOWN_TOOLS.some((k) => k.name === tool.name);
+      expect(isCcs || isKnown).toBe(true);
     }
   });
 });

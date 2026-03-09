@@ -354,6 +354,7 @@ The following CLIs are auto-detected if installed and available in PATH:
 - `codex` - OpenAI Codex CLI
 - `kilo` - Kilo Code CLI
 - `pi` - Pi AI CLI
+- `ollama` - Ollama CLI
 - `ccs` - **Claude Code Switch** (with profile detection via `ccs api list`)
 
 **Precedence Rules:**
