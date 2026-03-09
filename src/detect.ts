@@ -43,7 +43,7 @@ const KNOWN_TOOLS: Array<{
   {
     name: "pi",
     command: "pi",
-    description: "Pi AI CLI (pi.dev)",
+    description: "Pi AI CLI",
   },
   {
     name: "ollama",

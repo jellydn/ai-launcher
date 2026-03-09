@@ -353,7 +353,7 @@ The following CLIs are auto-detected if installed and available in PATH:
 - `amp` - Sourcegraph Amp CLI
 - `codex` - OpenAI Codex CLI
 - `kilo` - Kilo Code CLI
-- `pi` - Pi AI CLI ([pi.dev](https://pi.dev/))
+- `pi` - Pi AI CLI
 - `ccs` - **Claude Code Switch** (with profile detection via `ccs api list`)
 
 **Precedence Rules:**

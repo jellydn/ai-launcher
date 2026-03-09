@@ -159,7 +159,7 @@ describe("detectInstalledTools", () => {
     // If pi is installed, verify it has the correct command
     if (pi) {
       expect(pi.command).toBe("pi");
-      expect(pi.description).toBe("Pi AI CLI (pi.dev)");
+      expect(pi.description).toBe("Pi AI CLI");
       expect(pi.name).toBe("pi");
     }
   });
