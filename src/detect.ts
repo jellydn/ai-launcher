@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
 import type { Tool } from "./types";
 
-const KNOWN_TOOLS: Array<{
+export const KNOWN_TOOLS: Array<{
   name: string;
   command: string;
   description: string;
@@ -39,6 +39,11 @@ const KNOWN_TOOLS: Array<{
     name: "kilo",
     command: "kilo",
     description: "Kilo Code CLI",
+  },
+  {
+    name: "pi",
+    command: "pi",
+    description: "Pi AI CLI",
   },
   {
     name: "ollama",
