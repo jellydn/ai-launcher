@@ -183,7 +183,6 @@ function launchTool(command: string, extraArgs: string[] = [], stdinContent: str
 
   const child = spawnSync(cmd, args, {
     stdio: "inherit",
-    shell: true,
   });
 
   handleChildProcessError(child);
@@ -230,7 +229,6 @@ function launchToolWithPrompt(
       child = spawnSync(cmd, args, {
         input: prompt,
         stdio: ["pipe", "pipe", "inherit"],
-        shell: true,
         encoding: "utf-8",
       });
     } else {
@@ -264,7 +262,6 @@ function launchToolWithPrompt(
     const child = spawnSync(cmd, args, {
       input: prompt,
       stdio: ["pipe", "inherit", "inherit"],
-      shell: true,
     }) as SpawnSyncReturns<string | Buffer>;
 
     handleChildProcessError(child);
