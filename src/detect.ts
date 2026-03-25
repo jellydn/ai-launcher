@@ -80,6 +80,33 @@ function commandExists(command: string): boolean {
   return result.status === 0;
 }
 
+export function detectGhCopilot(): Tool | null {
+  if (!commandExists("gh")) {
+    return null;
+  }
+
+  try {
+    const result = spawnSync("gh", ["copilot", "--version"], {
+      encoding: "utf-8",
+      stdio: ["pipe", "pipe", "pipe"],
+      timeout: 3000,
+    });
+
+    if (result.status === 0) {
+      return {
+        name: "gh-copilot",
+        command: "gh copilot",
+        description: "GitHub Copilot CLI",
+        promptCommand: "gh copilot suggest",
+      };
+    }
+  } catch {
+    // Extension not installed or not available
+  }
+
+  return null;
+}
+
 function stripAnsi(str: string): string {
   return str.replace(/\x1b\[[0-9;]*m/g, "");
 }
@@ -159,6 +186,11 @@ export function detectInstalledTools(): Tool[] {
 
     detected.push(...detectCcsProfiles());
     detected.push(...detectCliProxyProfiles());
+  }
+
+  const ghCopilot = detectGhCopilot();
+  if (ghCopilot) {
+    detected.push(ghCopilot);
   }
 
   return detected;

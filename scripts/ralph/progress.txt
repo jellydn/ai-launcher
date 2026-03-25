@@ -121,4 +121,3 @@ Thread: https://ampcode.com/threads/T-019baf51-4f6d-7698-8e42-c355454318f4
   - Provide both sudo and non-sudo install options for flexibility
   - Always verify installation with a simple command like `ai --help`
 ---
-

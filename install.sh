@@ -49,7 +49,7 @@ if [ -n "$CHECKSUM_URL" ]; then
   echo "Verifying checksum..."
   CHECKSUMS=$(curl -fsSL "$CHECKSUM_URL")
   EXPECTED=$(echo "$CHECKSUMS" | grep "$ARTIFACT" | awk '{print $1}')
-  
+
   if [ -n "$EXPECTED" ]; then
     if command -v sha256sum >/dev/null 2>&1; then
       ACTUAL=$(sha256sum "${INSTALL_DIR}/${BINARY_NAME}" | awk '{print $1}')
@@ -59,7 +59,7 @@ if [ -n "$CHECKSUM_URL" ]; then
       echo "Warning: No sha256sum or shasum found, skipping verification"
       ACTUAL="$EXPECTED"
     fi
-    
+
     if [ "$EXPECTED" != "$ACTUAL" ]; then
       echo "Error: Checksum verification failed!"
       echo "Expected: $EXPECTED"
