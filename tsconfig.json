@@ -1,7 +1,8 @@
 {
   "compilerOptions": {
-    "ignoreDeprecations": "5.0",
-    "lib": ["ESNext"],
+    "ignoreDeprecations": "6.0",
+    "lib": ["ESNext", "DOM"],
+    "types": ["bun"],
     "target": "ESNext",
     "module": "Preserve",
     "moduleDetection": "force",
