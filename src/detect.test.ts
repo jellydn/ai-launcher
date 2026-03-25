@@ -1,8 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import {
-  KNOWN_TOOLS,
   detectCliProxyProfiles,
+  detectGhCopilot,
   detectInstalledTools,
+  KNOWN_TOOLS,
   parseCcsApiList,
 } from "./detect";
 
@@ -167,11 +168,28 @@ describe("detectInstalledTools", () => {
   test("returns only installed tools from KNOWN_TOOLS", () => {
     const tools = detectInstalledTools();
 
-    // All returned tools must originate from KNOWN_TOOLS or ccs detection
+    // All returned tools must originate from KNOWN_TOOLS, ccs detection, or gh-copilot
     for (const tool of tools) {
       const isCcs = tool.name === "ccs" || tool.name.startsWith("ccs:");
+      const isGhCopilot = tool.name === "gh-copilot";
       const isKnown = KNOWN_TOOLS.some((k) => k.name === tool.name);
-      expect(isCcs || isKnown).toBe(true);
+      expect(isCcs || isGhCopilot || isKnown).toBe(true);
+    }
+  });
+});
+
+describe("detectGhCopilot", () => {
+  test("returns null or a correctly shaped tool", () => {
+    const tool = detectGhCopilot();
+
+    if (tool === null) {
+      // gh is not installed or the copilot extension is absent — that is fine
+      expect(tool).toBeNull();
+    } else {
+      expect(tool.name).toBe("gh-copilot");
+      expect(tool.command).toBe("gh copilot");
+      expect(tool.description).toBe("GitHub Copilot CLI");
+      expect(tool.promptCommand).toBe("gh copilot suggest");
     }
   });
 });
