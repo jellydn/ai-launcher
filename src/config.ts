@@ -25,6 +25,8 @@ const CATEGORY_PROMPTS: Array<{
   prompt: string;
   requiresInput: boolean;
   preferredTools: string[];
+  permissionMode?: "plan" | "acceptEdits";
+  agent?: "plan" | "build";
 }> = [
   {
     name: "review",
@@ -33,15 +35,28 @@ const CATEGORY_PROMPTS: Array<{
     prompt: "Review the following changes and provide feedback: $@",
     requiresInput: true,
     preferredTools: ["opencode", "claude", "amp", "codex", "ccs:mm", "ccs:*"],
+    permissionMode: "plan",
   },
   {
     name: "commit-zen",
     description: "Generate commit message",
     aliases: ["zen", "logical-commit"],
     prompt:
-      "Review the following changes and generate a concise git commit message, group by logical changes with commitizen convention, do atomic commit message: $@",
+      "Review the following changes on git and generate a concise git commit message, group by logical changes with commitizen convention, do atomic commit message: $@",
     requiresInput: true,
     preferredTools: ["opencode", "claude", "amp", "codex", "ccs:mm", "ccs:*"],
+    permissionMode: "plan",
+  },
+  {
+    name: "commit-atomic",
+    description: "Atomic commit message",
+    aliases: ["ac", "auto-commit"],
+    prompt:
+      "Run git diff --staged then do atomic commit message for the change with commitizen convention. Write clear, informative commit messages that explain the what and why behind changes, not just the how.",
+    requiresInput: false,
+    preferredTools: ["opencode", "claude", "amp", "codex", "ccs:glm", "ccs:*"],
+    permissionMode: "plan",
+    agent: "build",
   },
   {
     name: "architecture-explanation",
@@ -50,6 +65,7 @@ const CATEGORY_PROMPTS: Array<{
     prompt: "Explain this codebase architecture",
     requiresInput: false,
     preferredTools: ["ccs:gemini", "claude", "codex", "opencode", "amp", "ccs:*"],
+    permissionMode: "plan",
   },
   {
     name: "draft-pull-request",
@@ -58,6 +74,7 @@ const CATEGORY_PROMPTS: Array<{
     prompt: "Create draft pr with what why how by gh cli",
     requiresInput: false,
     preferredTools: ["ccs:glm", "claude", "opencode", "amp", "codex", "ccs:*"],
+    permissionMode: "acceptEdits",
   },
   {
     name: "types",
@@ -67,6 +84,7 @@ const CATEGORY_PROMPTS: Array<{
       "Improve TypeScript types: Remove any, add proper type guards, ensure strict mode compliance for: $@",
     requiresInput: true,
     preferredTools: ["ccs:mm", "claude", "opencode", "amp", "codex", "ccs:*"],
+    permissionMode: "acceptEdits",
   },
   {
     name: "test",
@@ -76,6 +94,7 @@ const CATEGORY_PROMPTS: Array<{
       "Write tests using Arrange-Act-Assert pattern. Focus on behavior, not implementation details for: $@",
     requiresInput: true,
     preferredTools: ["ccs:mm", "claude", "opencode", "amp", "codex", "ccs:*"],
+    permissionMode: "acceptEdits",
   },
   {
     name: "docs",
@@ -84,6 +103,7 @@ const CATEGORY_PROMPTS: Array<{
     prompt: "Add JSDoc comments with @param and @returns. Include usage examples for: $@",
     requiresInput: true,
     preferredTools: ["ccs:mm", "claude", "opencode", "amp", "codex", "ccs:*"],
+    permissionMode: "acceptEdits",
   },
   {
     name: "explain",
@@ -92,6 +112,97 @@ const CATEGORY_PROMPTS: Array<{
     prompt: "Explain this code in detail: 1) What it does 2) How it works 3) Design decisions: $@",
     requiresInput: true,
     preferredTools: ["ccs:mm", "claude", "opencode", "amp", "codex", "ccs:*"],
+    permissionMode: "plan",
+  },
+  {
+    name: "review-security",
+    description: "Security-focused review",
+    aliases: ["sec", "security"],
+    prompt:
+      "Security review: Check for injection vulnerabilities, input validation, auth issues, and sensitive data handling in: $@",
+    requiresInput: true,
+    preferredTools: ["ccs:glm", "claude", "opencode", "amp", "codex", "ccs:*"],
+    permissionMode: "plan",
+  },
+  {
+    name: "review-refactor",
+    description: "Refactoring recommendations",
+    aliases: ["refactor"],
+    prompt:
+      "Refactor suggestion: Improve readability, eliminate complexity, and apply clean code principles to: $@",
+    requiresInput: true,
+    preferredTools: ["ccs:glm", "claude", "opencode", "amp", "codex", "ccs:*"],
+    permissionMode: "plan",
+  },
+  {
+    name: "review-performance",
+    description: "Performance review",
+    aliases: ["perf", "optimize"],
+    prompt:
+      "Analyze performance: Identify bottlenecks, suggest optimizations with measurable impact for: $@",
+    requiresInput: true,
+    preferredTools: ["ccs:glm", "claude", "opencode", "amp", "codex", "ccs:*"],
+    permissionMode: "plan",
+  },
+  {
+    name: "remove-verbal",
+    description: "Clean verbal comments that explain 'what' the code is doing rather than 'why'",
+    aliases: ["verbal", "comments"],
+    prompt:
+      "Analyze code: Identify verbal comment and remove it, and ensure consistency in style for: $@",
+    requiresInput: true,
+    preferredTools: ["ccs:glm", "claude", "opencode", "amp", "codex", "ccs:*"],
+    permissionMode: "acceptEdits",
+  },
+  {
+    name: "remove-ai-slop",
+    description: "Remove AI-generated code patterns",
+    aliases: ["slop", "clean-ai"],
+    prompt:
+      "You're reviewing code cleanup. Remove: 1) Excessive comments that break existing documentation style 2) Defensive checks that don't match the codebase's trust model 3) Type escape hatches (any casts, assertions) 4) Generic patterns that feel imported rather than native. Match the file's existing voice and conventions. Report what you removed in 1-3 sentences: $@",
+    requiresInput: true,
+    preferredTools: ["ccs:glm", "claude", "opencode", "amp", "codex", "ccs:*"],
+    permissionMode: "acceptEdits",
+  },
+  {
+    name: "tidy-first",
+    description: "Tidy code before making changes",
+    aliases: ["tidy"],
+    prompt:
+      "Apply Tidy First principles: 1) Use guard clauses 2) Extract helper variables for complex expressions 3) Remove dead code 4) Normalize symmetries. Focus on making the code easier to understand: $@",
+    requiresInput: true,
+    preferredTools: ["ccs:glm", "claude", "opencode", "amp", "codex", "ccs:*"],
+    permissionMode: "acceptEdits",
+  },
+  {
+    name: "simplify",
+    description: "Simplify over-engineered code",
+    aliases: ["simple"],
+    prompt:
+      "Simplify this code: Remove unnecessary complexity, eliminate over-engineering, reduce coupling. Keep solutions simple and focused on what's actually needed: $@",
+    requiresInput: true,
+    preferredTools: ["ccs:glm", "claude", "opencode", "amp", "codex", "ccs:*"],
+    permissionMode: "acceptEdits",
+  },
+  {
+    name: "simplifier",
+    description:
+      "Simplifies and refines code for clarity, consistency, and maintainability while preserving all functionality",
+    aliases: ["simplify-code"],
+    prompt: "@code-simplifier:code-simplifier",
+    requiresInput: false,
+    preferredTools: ["ccs:glm", "ccs:*"],
+    permissionMode: "acceptEdits",
+  },
+  {
+    name: "logical-grouping-pull-request",
+    description: "Create a draft pull request for the git changes with logical grouping",
+    aliases: ["split-pr"],
+    prompt:
+      "Analyze the git changes and create a draft PR, plan: 1) Group changes into logical, independent commits 2) Order them by dependency (low-level to high-level) 3) Run commit commit for each change group 4) Write PR description with what why how.",
+    requiresInput: false,
+    preferredTools: ["ccs:glm", "claude", "opencode", "amp", "codex", "ccs:*"],
+    permissionMode: "acceptEdits",
   },
 ];
 
@@ -125,13 +236,18 @@ function escapeSingleQuotes(str: string): string {
   return str.replace(/'/g, "'\\''");
 }
 
-function buildCommandForTool(tool: Tool, prompt: string): string | null {
+function buildCommandForTool(
+  tool: Tool,
+  prompt: string,
+  permissionMode: "plan" | "acceptEdits" = "plan",
+  agent: "plan" | "build" = "plan"
+): string | null {
   const name = normalizeName(tool.name);
   if (name === "opencode") {
-    return `opencode run --model opencode/minimax-m2.5-free --agent plan '${escapeSingleQuotes(prompt)}'`;
+    return `opencode run --model opencode/minimax-m2.5-free --agent ${agent} '${escapeSingleQuotes(prompt)}'`;
   }
   if (name === "claude") {
-    return `claude --permission-mode plan -p '${escapeSingleQuotes(prompt)}'`;
+    return `claude --permission-mode ${permissionMode} -p '${escapeSingleQuotes(prompt)}'`;
   }
   if (name === "amp") {
     return `amp -x '${escapeSingleQuotes(prompt)}'`;
@@ -140,7 +256,11 @@ function buildCommandForTool(tool: Tool, prompt: string): string | null {
     return `codex exec '${escapeSingleQuotes(prompt)}'`;
   }
   if (name.startsWith("ccs:") && tool.promptCommand) {
-    return `${tool.promptCommand} '${escapeSingleQuotes(prompt)}'`;
+    const cmd = tool.promptCommand.replace(
+      "--permission-mode plan",
+      `--permission-mode ${permissionMode}`
+    );
+    return `${cmd} '${escapeSingleQuotes(prompt)}'`;
   }
 
   return null;
@@ -159,8 +279,12 @@ function buildDefaultTemplates(detectedTools: Tool[]): Template[] {
       continue;
     }
 
-    const prompt = category.prompt;
-    const command = buildCommandForTool(tool, prompt);
+    const command = buildCommandForTool(
+      tool,
+      category.prompt,
+      category.permissionMode,
+      category.agent
+    );
     if (!command) {
       continue;
     }
@@ -193,33 +317,32 @@ function validateAliases(aliases: unknown, path: string): ConfigValidationError[
 }
 
 function validateTool(tool: unknown, index: number): ConfigValidationError[] {
+  const errors: ConfigValidationError[] = [];
   const path = `tools[${index}]`;
   const t = tool as Record<string, unknown>;
 
-  if (typeof t.name !== "string" || t.name.trim() === "") {
-    return [
-      { path: `${path}.name`, message: "Tool name is required and must be a non-empty string" },
-    ];
+  const hasValidName = typeof t.name === "string" && t.name.trim() !== "";
+  if (!hasValidName) {
+    errors.push({
+      path: `${path}.name`,
+      message: "Tool name is required and must be a non-empty string",
+    });
   }
 
   if (typeof t.command !== "string" || t.command.trim() === "") {
-    return [
-      {
-        path: `${path}.command`,
-        message: "Tool command is required and must be a non-empty string",
-      },
-    ];
-  }
-
-  if (!SAFE_COMMAND_PATTERN.test(t.command.trim())) {
-    return [{ path: `${path}.command`, message: "Tool command contains unsafe characters" }];
+    errors.push({
+      path: `${path}.command`,
+      message: "Tool command is required and must be a non-empty string",
+    });
+  } else if (!SAFE_COMMAND_PATTERN.test(t.command.trim())) {
+    errors.push({ path: `${path}.command`, message: "Tool command contains unsafe characters" });
   }
 
   if (t.description !== undefined && typeof t.description !== "string") {
-    return [{ path: `${path}.description`, message: "Tool description must be a string" }];
+    errors.push({ path: `${path}.description`, message: "Tool description must be a string" });
   }
 
-  return validateAliases(t.aliases, `${path}.aliases`);
+  return [...errors, ...validateAliases(t.aliases, `${path}.aliases`)];
 }
 
 export function validateTemplate(template: unknown, path: string): ConfigValidationError[] {
