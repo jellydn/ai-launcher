@@ -146,6 +146,17 @@ describe("detectCliProxyProfiles", () => {
 });
 
 describe("detectInstalledTools", () => {
+  test("copilot is in KNOWN_TOOLS with correct configuration", () => {
+    const copilot = KNOWN_TOOLS.find((t) => t.name === "copilot");
+
+    expect(copilot).toBeDefined();
+    expect(copilot?.name).toBe("copilot");
+    expect(copilot?.command).toBe("copilot");
+    expect(copilot?.description).toBe("GitHub Copilot CLI");
+    expect(copilot?.promptCommand).toBe("copilot suggest");
+    expect(copilot?.promptUseStdin).toBe(true);
+  });
+
   test("ollama is in KNOWN_TOOLS with correct configuration", () => {
     const ollama = KNOWN_TOOLS.find((t) => t.name === "ollama");
 

@@ -13,6 +13,12 @@
       "aliases": ["o", "oc"]
     },
     {
+      "name": "copilot",
+      "command": "copilot",
+      "description": "GitHub Copilot CLI",
+      "aliases": ["cp"]
+    },
+    {
       "name": "amp",
       "command": "amp",
       "description": "Frontier coding agent for terminal and editor",

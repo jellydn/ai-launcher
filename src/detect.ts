@@ -30,6 +30,13 @@ export const KNOWN_TOOLS: Array<{
     promptUseStdin: true,
   },
   {
+    name: "copilot",
+    command: "copilot",
+    description: "GitHub Copilot CLI",
+    promptCommand: "copilot suggest",
+    promptUseStdin: true,
+  },
+  {
     name: "codex",
     command: "codex",
     description: "OpenAI Codex CLI",
