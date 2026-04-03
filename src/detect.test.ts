@@ -167,6 +167,15 @@ describe("detectInstalledTools", () => {
     expect(ollama?.description).toBe("Ollama CLI");
   });
 
+  test("droid is in KNOWN_TOOLS with correct configuration", () => {
+    const droid = KNOWN_TOOLS.find((t) => t.name === "droid");
+
+    expect(droid).toBeDefined();
+    expect(droid?.name).toBe("droid");
+    expect(droid?.command).toBe("droid");
+    expect(droid?.description).toBe("Factory Droid CLI");
+  });
+
   test("pi is in KNOWN_TOOLS with correct configuration", () => {
     const pi = KNOWN_TOOLS.find((t) => t.name === "pi");
 
