@@ -53,8 +53,8 @@ export const KNOWN_TOOLS: Array<{
     description: "Pi AI CLI",
   },
   {
-    name: "droids",
-    command: "droids",
+    name: "droid",
+    command: "droid",
     description: "Factory Droid CLI",
   },
   {
