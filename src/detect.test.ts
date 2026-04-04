@@ -146,6 +146,16 @@ describe("detectCliProxyProfiles", () => {
 });
 
 describe("detectInstalledTools", () => {
+  test("gemini is in KNOWN_TOOLS with correct configuration", () => {
+    const gemini = KNOWN_TOOLS.find((t) => t.name === "gemini");
+
+    expect(gemini).toBeDefined();
+    expect(gemini?.name).toBe("gemini");
+    expect(gemini?.command).toBe("gemini");
+    expect(gemini?.description).toBe("Google Gemini CLI");
+    expect(gemini?.promptCommand).toBe("gemini -p");
+  });
+
   test("copilot is in KNOWN_TOOLS with correct configuration", () => {
     const copilot = KNOWN_TOOLS.find((t) => t.name === "copilot");
 
