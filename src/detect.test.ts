@@ -186,6 +186,15 @@ describe("detectInstalledTools", () => {
     expect(droid?.description).toBe("Factory Droid CLI");
   });
 
+  test("cursor is in KNOWN_TOOLS with correct configuration", () => {
+    const cursor = KNOWN_TOOLS.find((t) => t.name === "cursor");
+
+    expect(cursor).toBeDefined();
+    expect(cursor?.name).toBe("cursor");
+    expect(cursor?.command).toBe("cursor");
+    expect(cursor?.description).toBe("Cursor AI Editor");
+  });
+
   test("pi is in KNOWN_TOOLS with correct configuration", () => {
     const pi = KNOWN_TOOLS.find((t) => t.name === "pi");
 
