@@ -16,6 +16,12 @@ export const KNOWN_TOOLS: Array<{
     promptCommand: "claude --permission-mode plan -p",
   },
   {
+    name: "gemini",
+    command: "gemini",
+    description: "Google Gemini CLI",
+    promptCommand: "gemini -p",
+  },
+  {
     name: "opencode",
     command: "opencode",
     description: "OpenCode CLI",

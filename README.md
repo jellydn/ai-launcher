@@ -19,7 +19,7 @@
 ## ✨ Features
 
 - **🔍 Fuzzy Search**: Interactive terminal UI with real-time filtering and keyboard navigation
-- **🔧 Auto-Detection**: Automatically finds installed AI CLIs (claude, opencode, amp, codex, kilo, pi, ollama, ccs)
+- **🔧 Auto-Detection**: Automatically finds installed AI CLIs (claude, gemini, opencode, amp, codex, kilo, pi, ollama, ccs)
 - **⚡ Direct Invocation**: Skip the menu with `ai <toolname>` or fuzzy matching
 - **🏷️ Aliases**: Define short aliases for frequently used tools (e.g., `ai c` for claude)
 - **📋 Templates**: Create command shortcuts with `$@` argument/stdin placeholders
@@ -349,6 +349,7 @@ This tells ai-launcher: when running `ai opencode --diff-staged`, pipe the diff 
 The following CLIs are auto-detected if installed and available in PATH:
 
 - `claude` - Anthropic Claude CLI
+- `gemini` - Google Gemini CLI
 - `opencode` - OpenCode AI assistant
 - `amp` - Sourcegraph Amp CLI
 - `codex` - OpenAI Codex CLI
