@@ -191,7 +191,7 @@ describe("detectInstalledTools", () => {
 
     expect(cursor).toBeDefined();
     expect(cursor?.name).toBe("cursor");
-    expect(cursor?.command).toBe("cursor");
+    expect(cursor?.command).toBe("agent");
     expect(cursor?.description).toBe("Cursor AI Editor");
   });
 

@@ -71,7 +71,7 @@ export const KNOWN_TOOLS: Array<{
   },
   {
     name: "cursor",
-    command: "cursor",
+    command: "agent",
     description: "Cursor AI Editor",
   },
 ];
