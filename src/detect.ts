@@ -69,6 +69,11 @@ export const KNOWN_TOOLS: Array<{
     execCommand: "ollama launch --model minimax-m2.5:cloud",
     description: "Ollama CLI",
   },
+  {
+    name: "cursor",
+    command: "agent",
+    description: "Cursor AI Editor",
+  },
 ];
 
 const CLI_PROXY_PROVIDERS: Array<{ name: string; description: string }> = [
