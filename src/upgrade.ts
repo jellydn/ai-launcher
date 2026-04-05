@@ -18,22 +18,39 @@ interface GitHubRelease {
   assets: GitHubAsset[];
 }
 
+const isWindows = process.platform === "win32";
+const binaryExt = isWindows ? ".exe" : "";
+
 async function findBinaryPath(): Promise<string | null> {
+  const binaryName = `ai${binaryExt}`;
+
   try {
-    const pathFromWhich = execSync("which ai", { encoding: "utf-8" }).trim();
-    if (pathFromWhich.length > 0) {
+    const whichCmd = isWindows ? "where ai" : "which ai";
+    const pathFromWhich = execSync(whichCmd, { encoding: "utf-8" }).trim().split("\n")[0];
+    if (pathFromWhich && pathFromWhich.length > 0) {
       await access(pathFromWhich);
       return pathFromWhich;
     }
   } catch {}
 
-  const possiblePaths = ["/usr/local/bin/ai"];
+  const possiblePaths: string[] = [];
 
-  if (process.env.HOME) {
-    possiblePaths.unshift(join(process.env.HOME, ".local/bin/ai"));
+  if (isWindows) {
+    if (process.env.LOCALAPPDATA) {
+      possiblePaths.push(join(process.env.LOCALAPPDATA, "ai-launcher", binaryName));
+    }
+    if (process.env.HOME) {
+      possiblePaths.push(join(process.env.HOME, ".local", "bin", binaryName));
+    }
+  } else {
+    if (process.env.HOME) {
+      possiblePaths.unshift(join(process.env.HOME, ".local", "bin", binaryName));
+    }
+    possiblePaths.push(`/usr/local/bin/${binaryName}`);
   }
 
-  if (process.execPath.endsWith("/ai")) {
+  const execSuffix = isWindows ? "\\ai.exe" : "/ai";
+  if (process.execPath.endsWith(execSuffix)) {
     possiblePaths.unshift(process.execPath);
   }
 
@@ -50,15 +67,19 @@ async function findBinaryPath(): Promise<string | null> {
 }
 
 export async function upgrade() {
-  if (process.platform !== "darwin" && process.platform !== "linux") {
-    console.error("❌ Upgrade is only supported on macOS and Linux");
+  if (
+    process.platform !== "darwin" &&
+    process.platform !== "linux" &&
+    process.platform !== "win32"
+  ) {
+    console.error("❌ Upgrade is not supported on this platform");
     console.error(`   Detected platform: ${process.platform}`);
     process.exit(1);
   }
 
-  const os = process.platform;
+  const os = isWindows ? "windows" : process.platform;
   const arch = process.arch === "arm64" ? "arm64" : "x64";
-  const artifact = `ai-${os}-${arch}`;
+  const artifact = `ai-${os}-${arch}${binaryExt}`;
 
   console.log(`Checking for updates...`);
 
@@ -141,8 +162,13 @@ export async function upgrade() {
     if (!binaryPath) {
       console.error("❌ Could not locate installed binary");
       console.error("Expected locations:");
-      console.error("  • ~/.local/bin/ai");
-      console.error("  • /usr/local/bin/ai");
+      if (isWindows) {
+        console.error("  • %LOCALAPPDATA%\\ai-launcher\\ai.exe");
+        console.error("  • ~/.local/bin/ai.exe");
+      } else {
+        console.error("  • ~/.local/bin/ai");
+        console.error("  • /usr/local/bin/ai");
+      }
       await unlink(tempBinaryPath);
       process.exit(1);
     }
@@ -153,7 +179,9 @@ export async function upgrade() {
     let needsRestore = false;
 
     try {
-      await chmod(tempBinaryPath, 0o755);
+      if (!isWindows) {
+        await chmod(tempBinaryPath, 0o755);
+      }
       await rename(binaryPath, backupPath);
       needsRestore = true;
       await rename(tempBinaryPath, binaryPath);
@@ -166,8 +194,12 @@ export async function upgrade() {
         (error.code === "EACCES" || error.code === "EPERM")
       ) {
         console.error(`❌ Permission denied to write to ${binaryPath}\n`);
-        console.error("Run the upgrade with elevated permissions:\n");
-        console.error("    sudo ai upgrade\n");
+        if (isWindows) {
+          console.error("Run the upgrade from an elevated terminal (Run as Administrator).\n");
+        } else {
+          console.error("Run the upgrade with elevated permissions:\n");
+          console.error("    sudo ai upgrade\n");
+        }
       } else {
         console.error(`❌ Failed to install: ${error instanceof Error ? error.message : error}`);
       }

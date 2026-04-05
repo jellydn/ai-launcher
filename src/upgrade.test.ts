@@ -2,17 +2,23 @@ import { describe, expect, test } from "bun:test";
 
 describe("upgrade module", () => {
   test("generates valid platform artifact names for supported platforms", () => {
-    const supportedPlatforms = ["darwin", "linux"];
-    const os = supportedPlatforms.includes(process.platform) ? process.platform : "darwin";
+    const supportedPlatforms = ["darwin", "linux", "win32"];
+    const isWindows = process.platform === "win32";
+    const os = supportedPlatforms.includes(process.platform)
+      ? isWindows
+        ? "windows"
+        : process.platform
+      : "darwin";
     const arch = process.arch === "arm64" ? "arm64" : "x64";
-    const artifact = `ai-${os}-${arch}`;
+    const ext = isWindows ? ".exe" : "";
+    const artifact = `ai-${os}-${arch}${ext}`;
 
-    expect(artifact).toMatch(/^ai-(darwin|linux)-(arm64|x64)$/);
+    expect(artifact).toMatch(/^ai-(darwin|linux|windows)-(arm64|x64)(\.exe)?$/);
   });
 
-  test("uses process.platform directly (darwin or linux only)", () => {
-    const os = process.platform;
-    expect(["darwin", "linux"]).toContain(os);
+  test("uses mapped os name for artifact", () => {
+    const platform = process.platform;
+    expect(["darwin", "linux", "win32"]).toContain(platform);
   });
 
   test("checksum parsing extracts expected hash", () => {
@@ -53,19 +59,19 @@ def456 ai-linux-x64`;
   });
 
   test("platform validation rejects unsupported platforms", () => {
-    const unsupportedPlatforms = ["win32", "freebsd", "openbsd", "aix"];
+    const unsupportedPlatforms = ["freebsd", "openbsd", "aix"];
 
     for (const platform of unsupportedPlatforms) {
-      const isValid = platform === "darwin" || platform === "linux";
+      const isValid = platform === "darwin" || platform === "linux" || platform === "win32";
       expect(isValid).toBe(false);
     }
   });
 
   test("platform validation accepts supported platforms", () => {
-    const supportedPlatforms = ["darwin", "linux"];
+    const supportedPlatforms = ["darwin", "linux", "win32"];
 
     for (const platform of supportedPlatforms) {
-      const isValid = platform === "darwin" || platform === "linux";
+      const isValid = platform === "darwin" || platform === "linux" || platform === "win32";
       expect(isValid).toBe(true);
     }
   });
