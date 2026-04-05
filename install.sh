@@ -7,10 +7,15 @@ INSTALL_DIR="${AI_INSTALL_DIR:-$HOME/.local/bin}"
 
 # Detect OS
 OS="$(uname -s)"
+IS_WINDOWS=false
 case "$OS" in
-  Linux*)  OS="linux" ;;
-  Darwin*) OS="darwin" ;;
-  *)       echo "Unsupported OS: $OS"; exit 1 ;;
+  Linux*)           OS="linux" ;;
+  Darwin*)          OS="darwin" ;;
+  MINGW*|MSYS*|CYGWIN*)
+    OS="windows"
+    IS_WINDOWS=true
+    ;;
+  *)  echo "Unsupported OS: $OS"; exit 1 ;;
 esac
 
 # Detect architecture
@@ -22,7 +27,12 @@ case "$ARCH" in
   *)       echo "Unsupported architecture: $ARCH"; exit 1 ;;
 esac
 
-ARTIFACT="ai-${OS}-${ARCH}"
+if [ "$IS_WINDOWS" = true ]; then
+  ARTIFACT="ai-${OS}-${ARCH}.exe"
+  BINARY_NAME="ai.exe"
+else
+  ARTIFACT="ai-${OS}-${ARCH}"
+fi
 echo "Detected: $OS-$ARCH"
 
 # Get latest release URL
@@ -71,7 +81,9 @@ if [ -n "$CHECKSUM_URL" ]; then
   fi
 fi
 
-chmod +x "${INSTALL_DIR}/${BINARY_NAME}"
+if [ "$IS_WINDOWS" = false ]; then
+  chmod +x "${INSTALL_DIR}/${BINARY_NAME}"
+fi
 
 echo ""
 echo "✓ Installed $BINARY_NAME to ${INSTALL_DIR}/${BINARY_NAME}"
