@@ -23,14 +23,15 @@
     "release:version": "bumpp --commit --tag --push"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.3.11",
+    "@biomejs/biome": "2.4.10",
+    "@biomejs/cli-win32-arm64": "^2.4.10",
     "@types/bun": "latest",
     "@types/semver": "^7.7.1",
     "bumpp": "^11.0.0",
     "typescript": "^6.0.0"
   },
   "dependencies": {
-    "fuse.js": "^7.1.0",
+    "fuse.js": "^7.3.0",
     "semver": "^7.6.0"
   }
 }
