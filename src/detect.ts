@@ -74,6 +74,12 @@ export const KNOWN_TOOLS: Array<{
     command: "agent",
     description: "Cursor AI Editor",
   },
+  {
+    name: "cmd",
+    command: "cmd",
+    description: "Command Code CLI",
+    promptCommand: "cmd -p",
+  },
 ];
 
 const CLI_PROXY_PROVIDERS: Array<{ name: string; description: string }> = [
