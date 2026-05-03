@@ -1,6 +1,6 @@
 {
   "name": "ai-launcher",
-  "version": "0.6.1",
+  "version": "0.7.0",
   "description": "A quick launcher CLI to switch between AI coding assistants using fuzzy search",
   "module": "src/index.ts",
   "type": "module",
@@ -24,14 +24,14 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.10",
-    "@biomejs/cli-win32-arm64": "^2.4.10",
+    "@biomejs/cli-win32-arm64": "^2.4.14",
     "@types/bun": "latest",
     "@types/semver": "^7.7.1",
-    "bumpp": "^11.0.0",
-    "typescript": "^6.0.0"
+    "bumpp": "^11.0.1",
+    "typescript": "^6.0.3"
   },
   "dependencies": {
     "fuse.js": "^7.3.0",
-    "semver": "^7.6.0"
+    "semver": "^7.7.4"
   }
 }
