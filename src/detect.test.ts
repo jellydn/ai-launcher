@@ -156,6 +156,16 @@ describe("detectInstalledTools", () => {
     expect(gemini?.promptCommand).toBe("gemini -p");
   });
 
+  test("agy is in KNOWN_TOOLS with correct configuration", () => {
+    const agy = KNOWN_TOOLS.find((t) => t.name === "agy");
+
+    expect(agy).toBeDefined();
+    expect(agy?.name).toBe("agy");
+    expect(agy?.command).toBe("agy");
+    expect(agy?.description).toBe("Google Antigravity CLI");
+    expect(agy?.promptCommand).toBeUndefined();
+  });
+
   test("copilot is in KNOWN_TOOLS with correct configuration", () => {
     const copilot = KNOWN_TOOLS.find((t) => t.name === "copilot");
 
