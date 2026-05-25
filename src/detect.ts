@@ -22,6 +22,11 @@ export const KNOWN_TOOLS: Array<{
     promptCommand: "gemini -p",
   },
   {
+    name: "agy",
+    command: "agy",
+    description: "Google Antigravity CLI",
+  },
+  {
     name: "opencode",
     command: "opencode",
     description: "OpenCode CLI",

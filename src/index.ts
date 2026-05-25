@@ -314,6 +314,7 @@ async function main() {
     console.error("❌ No AI tools found!\n");
     console.error("💡 Install one or more of these tools:");
     console.error("   • claude    - Anthropic Claude CLI");
+    console.error("   • agy       - Google Antigravity CLI");
     console.error("   • opencode  - OpenCode AI assistant");
     console.error("   • amp       - Sourcegraph Amp CLI");
     console.error("   • codex     - OpenAI Codex CLI");
