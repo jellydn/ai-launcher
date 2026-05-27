@@ -23,7 +23,7 @@
     "release:version": "bumpp --commit --tag --push"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.4.15",
+    "@biomejs/biome": "2.4.16",
     "@biomejs/cli-win32-arm64": "^2.4.14",
     "@types/bun": "latest",
     "@types/semver": "^7.7.1",
