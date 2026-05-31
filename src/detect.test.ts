@@ -214,6 +214,18 @@ describe("detectInstalledTools", () => {
     expect(pi?.description).toBe("Pi AI CLI");
   });
 
+  test("freebuff is in KNOWN_TOOLS with correct configuration", () => {
+    const freebuff = KNOWN_TOOLS.find((t) => t.name === "freebuff");
+
+    expect(freebuff).toBeDefined();
+    expect(freebuff?.name).toBe("freebuff");
+    expect(freebuff?.command).toBe("freebuff");
+    expect(freebuff?.description).toBe(
+      "Freebuff - Free ad-supported AI coding agent (Codebuff variant)"
+    );
+    expect(freebuff?.promptCommand).toBeUndefined();
+  });
+
   test("returns only installed tools from KNOWN_TOOLS", () => {
     const tools = detectInstalledTools();
 

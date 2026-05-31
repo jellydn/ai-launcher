@@ -19,7 +19,7 @@
 ## ✨ Features
 
 - **🔍 Fuzzy Search**: Interactive terminal UI with real-time filtering and keyboard navigation
-- **🔧 Auto-Detection**: Automatically finds installed AI CLIs (claude, gemini, agy, opencode, amp, copilot, codex, kilo, pi, droid, ollama, cursor, ccs, cmd)
+- **🔧 Auto-Detection**: Automatically finds installed AI CLIs (claude, gemini, agy, opencode, amp, copilot, codex, kilo, pi, droid, ollama, cursor, ccs, cmd, freebuff)
 - **⚡ Direct Invocation**: Skip the menu with `ai <toolname>` or fuzzy matching
 - **🏷️ Aliases**: Define short aliases for frequently used tools (e.g., `ai c` for claude)
 - **📋 Templates**: Create command shortcuts with `$@` argument/stdin placeholders
@@ -362,6 +362,7 @@ The following CLIs are auto-detected if installed and available in PATH:
 - `cursor` - Cursor AI Editor
 - `ccs` - **Claude Code Switch** (with profile detection via `ccs api list`)
 - `cmd` - Command Code CLI
+- `freebuff` - Freebuff, free ad-supported AI coding agent (Codebuff variant)
 
 **Precedence Rules:**
 

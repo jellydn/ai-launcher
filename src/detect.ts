@@ -85,6 +85,11 @@ export const KNOWN_TOOLS: Array<{
     description: "Command Code CLI",
     promptCommand: "cmd -p",
   },
+  {
+    name: "freebuff",
+    command: "freebuff",
+    description: "Freebuff - Free ad-supported AI coding agent (Codebuff variant)",
+  },
 ];
 
 const CLI_PROXY_PROVIDERS: Array<{ name: string; description: string }> = [
