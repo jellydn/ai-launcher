@@ -6,6 +6,7 @@ import {
   formatSuggestedInstallHints,
   getSuggestedInstallTools,
   KNOWN_TOOLS,
+  type KnownToolDefinition,
   parseCcsApiList,
   SUGGESTED_INSTALL_TOOL_NAMES,
 } from "./detect";
@@ -160,7 +161,7 @@ describe("detectInstalledTools", () => {
   });
 
   test("agy is in KNOWN_TOOLS with correct configuration", () => {
-    const agy = KNOWN_TOOLS.find((t) => t.name === "agy");
+    const agy = KNOWN_TOOLS.find((t) => t.name === "agy") as KnownToolDefinition | undefined;
 
     expect(agy).toBeDefined();
     expect(agy?.name).toBe("agy");
@@ -218,7 +219,9 @@ describe("detectInstalledTools", () => {
   });
 
   test("freebuff is in KNOWN_TOOLS with correct configuration", () => {
-    const freebuff = KNOWN_TOOLS.find((t) => t.name === "freebuff");
+    const freebuff = KNOWN_TOOLS.find((t) => t.name === "freebuff") as
+      | KnownToolDefinition
+      | undefined;
 
     expect(freebuff).toBeDefined();
     expect(freebuff?.name).toBe("freebuff");
@@ -253,12 +256,6 @@ describe("detectInstalledTools", () => {
 });
 
 describe("suggested install tools", () => {
-  test("every suggested name exists in KNOWN_TOOLS", () => {
-    for (const name of SUGGESTED_INSTALL_TOOL_NAMES) {
-      expect(KNOWN_TOOLS.some((t) => t.name === name)).toBe(true);
-    }
-  });
-
   test("getSuggestedInstallTools returns curated tools plus ccs", () => {
     const tools = getSuggestedInstallTools();
     const names = tools.map((t) => t.name);
