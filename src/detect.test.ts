@@ -226,6 +226,16 @@ describe("detectInstalledTools", () => {
     expect(freebuff?.promptCommand).toBeUndefined();
   });
 
+  test("grok is in KNOWN_TOOLS with correct configuration", () => {
+    const grok = KNOWN_TOOLS.find((t) => t.name === "grok");
+
+    expect(grok).toBeDefined();
+    expect(grok?.name).toBe("grok");
+    expect(grok?.command).toBe("grok");
+    expect(grok?.description).toBe("xAI Grok Build CLI");
+    expect(grok?.promptCommand).toBe("grok --permission-mode plan -p");
+  });
+
   test("returns only installed tools from KNOWN_TOOLS", () => {
     const tools = detectInstalledTools();
 
