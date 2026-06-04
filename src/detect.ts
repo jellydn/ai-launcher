@@ -90,6 +90,12 @@ export const KNOWN_TOOLS: Array<{
     command: "freebuff",
     description: "Freebuff - Free ad-supported AI coding agent (Codebuff variant)",
   },
+  {
+    name: "grok",
+    command: "grok",
+    description: "xAI Grok Build CLI",
+    promptCommand: "grok --permission-mode plan -p",
+  },
 ];
 
 const CLI_PROXY_PROVIDERS: Array<{ name: string; description: string }> = [
