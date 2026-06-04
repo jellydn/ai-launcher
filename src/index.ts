@@ -6,7 +6,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, normalize, resolve } from "node:path";
 import { executeDiffCommand, parseDiffArgs } from "./cli/diff";
 import { loadConfig } from "./config";
-import { detectInstalledTools, mergeTools } from "./detect";
+import { detectInstalledTools, formatSuggestedInstallHints, mergeTools } from "./detect";
 import { fuzzySelect, promptForInput, toSelectableItems } from "./fuzzy-select";
 import { getColoredLogo } from "./logo";
 import { findToolByName } from "./lookup";
@@ -313,14 +313,9 @@ async function main() {
   if (items.length === 0) {
     console.error("❌ No AI tools found!\n");
     console.error("💡 Install one or more of these tools:");
-    console.error("   • claude    - Anthropic Claude CLI");
-    console.error("   • agy       - Google Antigravity CLI");
-    console.error("   • opencode  - OpenCode AI assistant");
-    console.error("   • amp       - Sourcegraph Amp CLI");
-    console.error("   • codex     - OpenAI Codex CLI");
-    console.error("   • grok      - xAI Grok Build CLI");
-    console.error("   • ollama    - Ollama CLI");
-    console.error("   • ccs       - Claude Code Switch");
+    for (const line of formatSuggestedInstallHints()) {
+      console.error(line);
+    }
     console.error("\n📝 Or add custom tools to ~/.config/ai-launcher/config.json");
     process.exit(1);
   }

@@ -1,14 +1,16 @@
 import { spawnSync } from "node:child_process";
 import type { Tool } from "./types";
 
-export const KNOWN_TOOLS: Array<{
+export type KnownToolDefinition = {
   name: string;
   command: string;
   description: string;
   execCommand?: string;
   promptCommand?: string;
   promptUseStdin?: boolean;
-}> = [
+};
+
+export const KNOWN_TOOLS = [
   {
     name: "claude",
     command: "claude",
@@ -96,7 +98,50 @@ export const KNOWN_TOOLS: Array<{
     description: "xAI Grok Build CLI",
     promptCommand: "grok --permission-mode plan -p",
   },
-];
+] as const satisfies readonly KnownToolDefinition[];
+
+export type KnownToolName = (typeof KNOWN_TOOLS)[number]["name"];
+
+/** Curated subset of KNOWN_TOOLS shown when no AI tools are detected. */
+export const SUGGESTED_INSTALL_TOOL_NAMES = [
+  "claude",
+  "agy",
+  "opencode",
+  "amp",
+  "codex",
+  "grok",
+  "ollama",
+] as const satisfies readonly KnownToolName[];
+
+export type SuggestedInstallTool = {
+  name: string;
+  description: string;
+};
+
+const CCS_SUGGESTED_INSTALL_TOOL: SuggestedInstallTool = {
+  name: "ccs",
+  description: "CCS CLI (Claude Code Switch)",
+};
+
+function findKnownToolByName(name: KnownToolName): KnownToolDefinition {
+  return KNOWN_TOOLS.find((t) => t.name === name) as KnownToolDefinition;
+}
+
+export function getSuggestedInstallTools(): SuggestedInstallTool[] {
+  const fromKnown = SUGGESTED_INSTALL_TOOL_NAMES.map((name) => {
+    const tool = findKnownToolByName(name);
+    return { name: tool.name, description: tool.description };
+  });
+
+  return [...fromKnown, CCS_SUGGESTED_INSTALL_TOOL];
+}
+
+export function formatSuggestedInstallHints(): string[] {
+  const tools = getSuggestedInstallTools();
+  const nameWidth = Math.max(...tools.map((t) => t.name.length));
+
+  return tools.map((tool) => `   • ${tool.name.padEnd(nameWidth)} - ${tool.description}`);
+}
 
 const CLI_PROXY_PROVIDERS: Array<{ name: string; description: string }> = [
   { name: "gemini", description: "Google Gemini (OAuth)" },
@@ -210,7 +255,8 @@ export function detectCliProxyProfiles(): Tool[] {
 export function detectInstalledTools(): Tool[] {
   const detected: Tool[] = [];
 
-  for (const tool of KNOWN_TOOLS) {
+  for (const entry of KNOWN_TOOLS) {
+    const tool: KnownToolDefinition = entry;
     if (commandExists(tool.command)) {
       detected.push({
         name: tool.name,

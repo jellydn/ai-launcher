@@ -3,8 +3,12 @@ import {
   detectCliProxyProfiles,
   detectGhCopilot,
   detectInstalledTools,
+  formatSuggestedInstallHints,
+  getSuggestedInstallTools,
   KNOWN_TOOLS,
+  type KnownToolDefinition,
   parseCcsApiList,
+  SUGGESTED_INSTALL_TOOL_NAMES,
 } from "./detect";
 
 const CCS_API_LIST_OUTPUT = `CCS API Profiles
@@ -157,7 +161,7 @@ describe("detectInstalledTools", () => {
   });
 
   test("agy is in KNOWN_TOOLS with correct configuration", () => {
-    const agy = KNOWN_TOOLS.find((t) => t.name === "agy");
+    const agy = KNOWN_TOOLS.find((t) => t.name === "agy") as KnownToolDefinition | undefined;
 
     expect(agy).toBeDefined();
     expect(agy?.name).toBe("agy");
@@ -215,7 +219,9 @@ describe("detectInstalledTools", () => {
   });
 
   test("freebuff is in KNOWN_TOOLS with correct configuration", () => {
-    const freebuff = KNOWN_TOOLS.find((t) => t.name === "freebuff");
+    const freebuff = KNOWN_TOOLS.find((t) => t.name === "freebuff") as
+      | KnownToolDefinition
+      | undefined;
 
     expect(freebuff).toBeDefined();
     expect(freebuff?.name).toBe("freebuff");
@@ -246,6 +252,27 @@ describe("detectInstalledTools", () => {
       const isKnown = KNOWN_TOOLS.some((k) => k.name === tool.name);
       expect(isCcs || isGhCopilot || isKnown).toBe(true);
     }
+  });
+});
+
+describe("suggested install tools", () => {
+  test("getSuggestedInstallTools returns curated tools plus ccs", () => {
+    const tools = getSuggestedInstallTools();
+    const names = tools.map((t) => t.name);
+
+    expect(names).toEqual([...SUGGESTED_INSTALL_TOOL_NAMES, "ccs"]);
+    expect(tools[0]?.description).toBe("Anthropic Claude CLI");
+    expect(tools.at(-1)?.description).toBe("CCS CLI (Claude Code Switch)");
+  });
+
+  test("formatSuggestedInstallHints aligns names and includes grok", () => {
+    const lines = formatSuggestedInstallHints();
+
+    expect(lines).toHaveLength(SUGGESTED_INSTALL_TOOL_NAMES.length + 1);
+    expect(lines.some((line) => line.includes("grok") && line.includes("xAI Grok Build CLI"))).toBe(
+      true
+    );
+    expect(lines.every((line) => line.startsWith("   • "))).toBe(true);
   });
 });
 
