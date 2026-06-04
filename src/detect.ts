@@ -98,6 +98,50 @@ export const KNOWN_TOOLS: Array<{
   },
 ];
 
+/** Curated subset of KNOWN_TOOLS shown when no AI tools are detected. */
+export const SUGGESTED_INSTALL_TOOL_NAMES = [
+  "claude",
+  "agy",
+  "opencode",
+  "amp",
+  "codex",
+  "grok",
+  "ollama",
+] as const;
+
+export type SuggestedInstallTool = {
+  name: string;
+  description: string;
+};
+
+const CCS_SUGGESTED_INSTALL_TOOL: SuggestedInstallTool = {
+  name: "ccs",
+  description: "CCS CLI (Claude Code Switch)",
+};
+
+function findKnownToolByName(name: string): (typeof KNOWN_TOOLS)[number] | undefined {
+  return KNOWN_TOOLS.find((t) => t.name === name);
+}
+
+export function getSuggestedInstallTools(): SuggestedInstallTool[] {
+  const fromKnown = SUGGESTED_INSTALL_TOOL_NAMES.map((name) => {
+    const tool = findKnownToolByName(name);
+    if (!tool) {
+      throw new Error(`Suggested install tool "${name}" is not in KNOWN_TOOLS`);
+    }
+    return { name: tool.name, description: tool.description };
+  });
+
+  return [...fromKnown, CCS_SUGGESTED_INSTALL_TOOL];
+}
+
+export function formatSuggestedInstallHints(): string[] {
+  const tools = getSuggestedInstallTools();
+  const nameWidth = Math.max(...tools.map((t) => t.name.length));
+
+  return tools.map((tool) => `   • ${tool.name.padEnd(nameWidth)} - ${tool.description}`);
+}
+
 const CLI_PROXY_PROVIDERS: Array<{ name: string; description: string }> = [
   { name: "gemini", description: "Google Gemini (OAuth)" },
   { name: "codex", description: "OpenAI Codex (OAuth)" },
