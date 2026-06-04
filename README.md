@@ -19,7 +19,7 @@
 ## ✨ Features
 
 - **🔍 Fuzzy Search**: Interactive terminal UI with real-time filtering and keyboard navigation
-- **🔧 Auto-Detection**: Automatically finds installed AI CLIs (claude, gemini, agy, opencode, amp, copilot, codex, kilo, pi, droid, ollama, cursor, ccs, cmd, freebuff)
+- **🔧 Auto-Detection**: Automatically finds installed AI CLIs (claude, gemini, agy, opencode, amp, copilot, codex, kilo, pi, droid, ollama, cursor, ccs, cmd, freebuff, grok)
 - **⚡ Direct Invocation**: Skip the menu with `ai <toolname>` or fuzzy matching
 - **🏷️ Aliases**: Define short aliases for frequently used tools (e.g., `ai c` for claude)
 - **📋 Templates**: Create command shortcuts with `$@` argument/stdin placeholders
@@ -327,6 +327,7 @@ Different AI CLIs accept prompts in different ways. The `promptCommand` and `pro
 | Tool       | Prompt Command                                     | Why                                               |
 | ---------- | -------------------------------------------------- | ------------------------------------------------- |
 | `claude`   | `claude --permission-mode plan -p 'prompt'`        | Uses plan mode for read-only analysis             |
+| `grok`     | `grok --permission-mode plan -p 'prompt'`          | Uses plan mode for read-only analysis             |
 | `ccs`      | `ccs <profile> --permission-mode plan -p 'prompt'` | Uses plan mode for read-only analysis             |
 | `opencode` | `echo 'prompt' &#124; opencode run`                | First arg is treated as project path, needs stdin |
 | `amp`      | `echo 'prompt' &#124; amp -x`                      | Execute mode works best with stdin                |
@@ -363,6 +364,7 @@ The following CLIs are auto-detected if installed and available in PATH:
 - `ccs` - **Claude Code Switch** (with profile detection via `ccs api list`)
 - `cmd` - Command Code CLI
 - `freebuff` - Freebuff, free ad-supported AI coding agent (Codebuff variant)
+- `grok` - xAI Grok Build CLI
 
 **Precedence Rules:**
 
