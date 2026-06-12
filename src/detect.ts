@@ -117,6 +117,7 @@ export const SUGGESTED_INSTALL_TOOL_NAMES = [
   "codex",
   "grok",
   "ollama",
+  "mimo",
 ] as const satisfies readonly KnownToolName[];
 
 export type SuggestedInstallTool = {
