@@ -242,6 +242,16 @@ describe("detectInstalledTools", () => {
     expect(grok?.promptCommand).toBe("grok --permission-mode plan -p");
   });
 
+  test("mimo is in KNOWN_TOOLS with correct configuration", () => {
+    const mimo = KNOWN_TOOLS.find((t) => t.name === "mimo");
+
+    expect(mimo).toBeDefined();
+    expect(mimo?.name).toBe("mimo");
+    expect(mimo?.command).toBe("mimo");
+    expect(mimo?.description).toBe("Mi AI (mimocode) CLI");
+    expect(mimo?.promptCommand).toBe("mimo run");
+  });
+
   test("returns only installed tools from KNOWN_TOOLS", () => {
     const tools = detectInstalledTools();
 
@@ -265,13 +275,13 @@ describe("suggested install tools", () => {
     expect(tools.at(-1)?.description).toBe("CCS CLI (Claude Code Switch)");
   });
 
-  test("formatSuggestedInstallHints aligns names and includes grok", () => {
+  test("formatSuggestedInstallHints aligns names and includes mimo", () => {
     const lines = formatSuggestedInstallHints();
 
     expect(lines).toHaveLength(SUGGESTED_INSTALL_TOOL_NAMES.length + 1);
-    expect(lines.some((line) => line.includes("grok") && line.includes("xAI Grok Build CLI"))).toBe(
-      true
-    );
+    expect(
+      lines.some((line) => line.includes("mimo") && line.includes("Mi AI (mimocode) CLI"))
+    ).toBe(true);
     expect(lines.every((line) => line.startsWith("   • "))).toBe(true);
   });
 });
