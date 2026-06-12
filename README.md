@@ -19,7 +19,7 @@
 ## ✨ Features
 
 - **🔍 Fuzzy Search**: Interactive terminal UI with real-time filtering and keyboard navigation
-- **🔧 Auto-Detection**: Automatically finds installed AI CLIs (claude, gemini, agy, opencode, amp, copilot, codex, kilo, pi, droid, ollama, cursor, ccs, cmd, freebuff, grok)
+- **🔧 Auto-Detection**: Automatically finds installed AI CLIs (claude, gemini, agy, opencode, amp, copilot, codex, kilo, pi, droid, ollama, cursor, ccs, cmd, freebuff, grok, mimo)
 - **⚡ Direct Invocation**: Skip the menu with `ai <toolname>` or fuzzy matching
 - **🏷️ Aliases**: Define short aliases for frequently used tools (e.g., `ai c` for claude)
 - **📋 Templates**: Create command shortcuts with `$@` argument/stdin placeholders
@@ -365,6 +365,7 @@ The following CLIs are auto-detected if installed and available in PATH:
 - `cmd` - Command Code CLI
 - `freebuff` - Freebuff, free ad-supported AI coding agent (Codebuff variant)
 - `grok` - xAI Grok Build CLI
+- `mimo` - Mi AI (mimocode) CLI
 
 **Precedence Rules:**
 
