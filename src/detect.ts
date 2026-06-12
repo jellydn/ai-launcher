@@ -98,6 +98,12 @@ export const KNOWN_TOOLS = [
     description: "xAI Grok Build CLI",
     promptCommand: "grok --permission-mode plan -p",
   },
+  {
+    name: "mimo",
+    command: "mimo",
+    description: "Mi AI (mimocode) CLI",
+    promptCommand: "mimo run",
+  },
 ] as const satisfies readonly KnownToolDefinition[];
 
 export type KnownToolName = (typeof KNOWN_TOOLS)[number]["name"];
