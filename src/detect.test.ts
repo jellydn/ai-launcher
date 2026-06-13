@@ -200,13 +200,13 @@ describe("detectInstalledTools", () => {
     expect(droid?.description).toBe("Factory Droid CLI");
   });
 
-  test("cursor is in KNOWN_TOOLS with correct configuration", () => {
-    const cursor = KNOWN_TOOLS.find((t) => t.name === "cursor");
+  test("cursor-agent is in KNOWN_TOOLS with correct configuration", () => {
+    const cursorAgent = KNOWN_TOOLS.find((t) => t.name === "cursor-agent");
 
-    expect(cursor).toBeDefined();
-    expect(cursor?.name).toBe("cursor");
-    expect(cursor?.command).toBe("agent");
-    expect(cursor?.description).toBe("Cursor AI Editor");
+    expect(cursorAgent).toBeDefined();
+    expect(cursorAgent?.name).toBe("cursor-agent");
+    expect(cursorAgent?.command).toBe("cursor-agent");
+    expect(cursorAgent?.description).toBe("Cursor AI Editor");
   });
 
   test("pi is in KNOWN_TOOLS with correct configuration", () => {

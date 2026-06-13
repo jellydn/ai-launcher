@@ -77,8 +77,8 @@ export const KNOWN_TOOLS = [
     description: "Ollama CLI",
   },
   {
-    name: "cursor",
-    command: "agent",
+    name: "cursor-agent",
+    command: "cursor-agent",
     description: "Cursor AI Editor",
   },
   {
