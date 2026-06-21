@@ -325,6 +325,16 @@ describe("detectInstalledTools", () => {
     expect(jcode?.promptCommand).toBeUndefined();
   });
 
+  test("pool is in KNOWN_TOOLS with correct configuration", () => {
+    const pool = KNOWN_TOOLS.find((t) => t.name === "pool");
+
+    expect(pool).toBeDefined();
+    expect(pool?.name).toBe("pool");
+    expect(pool?.command).toBe("pool");
+    expect(pool?.description).toBe("Poolside ACP CLI");
+    expect(pool?.promptCommand).toBe("pool -q");
+  });
+
   test("returns only installed tools from KNOWN_TOOLS", () => {
     const tools = detectInstalledTools();
 

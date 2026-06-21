@@ -151,6 +151,12 @@ export const KNOWN_TOOLS = [
     command: "jcode",
     description: "J-Code - coding agent (Claude Max / ChatGPT Pro)",
   },
+  {
+    name: "pool",
+    command: "pool",
+    description: "Poolside ACP CLI",
+    promptCommand: "pool -q",
+  },
 ] as const satisfies readonly KnownToolDefinition[];
 
 export type KnownToolName = (typeof KNOWN_TOOLS)[number]["name"];
