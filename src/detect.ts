@@ -18,6 +18,12 @@ export const KNOWN_TOOLS = [
     promptCommand: "claude --permission-mode plan -p",
   },
   {
+    name: "cline",
+    command: "cline",
+    description: "Cline CLI - AI coding assistant",
+    promptCommand: "cline -p",
+  },
+  {
     name: "gemini",
     command: "gemini",
     description: "Google Gemini CLI",
