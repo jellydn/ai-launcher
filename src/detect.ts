@@ -110,6 +110,12 @@ export const KNOWN_TOOLS = [
     description: "Mi AI (mimocode) CLI",
     promptCommand: "mimo run",
   },
+  {
+    name: "pool",
+    command: "pool",
+    description: "Poolside ACP CLI",
+    promptCommand: "pool -q",
+  },
 ] as const satisfies readonly KnownToolDefinition[];
 
 export type KnownToolName = (typeof KNOWN_TOOLS)[number]["name"];
