@@ -110,6 +110,12 @@ export const KNOWN_TOOLS = [
     description: "Mi AI (mimocode) CLI",
     promptCommand: "mimo run",
   },
+  {
+    name: "kimi",
+    command: "kimi",
+    description: "Kimi Code - Moonshot AI CLI",
+    promptCommand: "kimi -p",
+  },
 ] as const satisfies readonly KnownToolDefinition[];
 
 export type KnownToolName = (typeof KNOWN_TOOLS)[number]["name"];
@@ -122,6 +128,7 @@ export const SUGGESTED_INSTALL_TOOL_NAMES = [
   "amp",
   "codex",
   "grok",
+  "kimi",
   "ollama",
   "mimo",
 ] as const satisfies readonly KnownToolName[];
