@@ -3,13 +3,18 @@ import type { Template } from "./types";
 export interface RouterSelection {
   template: string;
   arguments: string[];
-  dryRun?: boolean;
+}
+
+export interface RoutedTemplateSelection {
+  template: Template;
+  requiresConfirmation: boolean;
 }
 
 function formatTemplateSummary(template: Template): string {
-  const aliases = template.aliases && template.aliases.length > 0 ? template.aliases.join(", ") : "none";
+  const aliases =
+    template.aliases && template.aliases.length > 0 ? template.aliases.join(", ") : "none";
   const mode = template.mode ?? "unspecified";
-  const requiresConfirmation = template.requiresConfirmation === true ? "yes" : "no";
+  const requiresConfirmation = templateRequiresConfirmation(template) ? "yes" : "no";
 
   return [
     `- ${template.name}`,
@@ -29,7 +34,7 @@ export function buildRouterPrompt(
   const promptSections = [
     "You are a semantic router for ai-launcher.",
     "Select the single best template from the allowed list for the user's task.",
-    'Return ONLY valid JSON with this shape: {"template":"<name>","arguments":["..."],"dryRun":true}',
+    'Return ONLY valid JSON with this shape: {"template":"<name>","arguments":["..."]}',
     "Do not return markdown, explanations, or shell commands.",
     "Do not invent templates. Only choose from the allowed list.",
     "If the task is ambiguous, choose the most specific template and keep arguments conservative.",
@@ -104,18 +109,42 @@ export function parseRouterResponse(output: string): RouterSelection | null {
   }
 
   const argumentsValue = result.arguments;
-  if (!Array.isArray(argumentsValue) || !argumentsValue.every((item) => typeof item === "string")) {
-    return null;
-  }
-
-  const dryRun = result.dryRun === undefined ? true : typeof result.dryRun === "boolean" ? result.dryRun : null;
-  if (dryRun === null) {
+  if (
+    argumentsValue !== undefined &&
+    (!Array.isArray(argumentsValue) || !argumentsValue.every((item) => typeof item === "string"))
+  ) {
     return null;
   }
 
   return {
     template: result.template.trim(),
-    arguments: argumentsValue,
-    dryRun,
+    arguments: argumentsValue ?? [],
+  };
+}
+
+export function templateRequiresConfirmation(template: Template): boolean {
+  if (template.mode === "write") {
+    return true;
+  }
+
+  if (typeof template.requiresConfirmation === "boolean") {
+    return template.requiresConfirmation;
+  }
+
+  return template.mode !== "read-only";
+}
+
+export function resolveRouterSelection(
+  selection: RouterSelection,
+  templates: Template[]
+): RoutedTemplateSelection | null {
+  const template = templates.find((item) => item.name === selection.template);
+  if (!template) {
+    return null;
+  }
+
+  return {
+    template,
+    requiresConfirmation: templateRequiresConfirmation(template),
   };
 }

@@ -205,12 +205,13 @@ The router returns structured JSON like:
 ```json
 {
   "template": "review-security",
-  "arguments": ["src/auth.ts"],
-  "dryRun": true
+  "arguments": ["src/auth.ts"]
 }
 ```
 
 AI Launcher resolves that to the configured `review-security` template and enforces the template's safety metadata before execution.
+
+Missing metadata is treated conservatively: templates without explicit safety flags require confirmation.
 
 ### Git Diff Analysis
 

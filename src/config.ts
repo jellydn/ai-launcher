@@ -2,7 +2,7 @@ import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { isSafeCommand } from "./template";
-import type { Config, ConfigValidationError, RouterConfig, Template } from "./types";
+import type { Config, ConfigValidationError, Template } from "./types";
 
 const CONFIG_DIR = join(homedir(), ".config", "ai-launcher");
 const CONFIG_PATH = join(CONFIG_DIR, "config.json");
@@ -88,10 +88,20 @@ function validateAliases(aliases: unknown, path: string): ConfigValidationError[
   return [];
 }
 
+function isObjectRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 function validateTool(tool: unknown, index: number): ConfigValidationError[] {
   const errors: ConfigValidationError[] = [];
   const path = `tools[${index}]`;
-  const t = tool as Record<string, unknown>;
+
+  if (!isObjectRecord(tool)) {
+    errors.push({ path, message: "Tool configuration must be an object" });
+    return errors;
+  }
+
+  const t = tool;
 
   const hasValidName = typeof t.name === "string" && t.name.trim() !== "";
   if (!hasValidName) {
@@ -132,7 +142,13 @@ function validateTool(tool: unknown, index: number): ConfigValidationError[] {
 
 export function validateTemplate(template: unknown, path: string): ConfigValidationError[] {
   const errors: ConfigValidationError[] = [];
-  const t = template as Record<string, unknown>;
+
+  if (!isObjectRecord(template)) {
+    errors.push({ path, message: "Template configuration must be an object" });
+    return errors;
+  }
+
+  const t = template;
 
   if (typeof t.name !== "string" || t.name.trim() === "") {
     errors.push({
@@ -186,6 +202,13 @@ export function validateTemplate(template: unknown, path: string): ConfigValidat
     });
   }
 
+  if (t.mode === "write" && t.requiresConfirmation === false) {
+    errors.push({
+      path: `${path}.requiresConfirmation`,
+      message: "Write templates must require confirmation",
+    });
+  }
+
   if (t.requiresConfirmation !== undefined && typeof t.requiresConfirmation !== "boolean") {
     errors.push({
       path: `${path}.requiresConfirmation`,
@@ -198,7 +221,13 @@ export function validateTemplate(template: unknown, path: string): ConfigValidat
 
 function validateRouter(router: unknown, path: string): ConfigValidationError[] {
   const errors: ConfigValidationError[] = [];
-  const r = router as RouterConfig & Record<string, unknown>;
+
+  if (!isObjectRecord(router)) {
+    errors.push({ path, message: "Router configuration must be an object" });
+    return errors;
+  }
+
+  const r = router;
 
   if (typeof r.command !== "string" || r.command.trim() === "") {
     errors.push({
@@ -231,7 +260,12 @@ function validateRouter(router: unknown, path: string): ConfigValidationError[] 
 
 export function validateConfig(config: unknown): ConfigValidationError[] {
   const errors: ConfigValidationError[] = [];
-  const c = config as Record<string, unknown>;
+
+  if (!isObjectRecord(config)) {
+    return [{ path: "config", message: "Config must be an object" }];
+  }
+
+  const c = config;
 
   if (!Array.isArray(c.tools)) {
     errors.push({ path: "tools", message: "Config must have a 'tools' array" });
