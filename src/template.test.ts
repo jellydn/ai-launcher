@@ -297,6 +297,20 @@ describe("Template Execution", () => {
     expect(result.cmd).toBe("amp");
     expect(result.args).toContain("-x");
   });
+
+  test("parseCommand handles quoted arguments without preserving quotes", async () => {
+    const { parseCommand } = await import("./template");
+    const result = parseCommand('opencode run --model "custom model" --agent plan');
+    expect(result.cmd).toBe("opencode");
+    expect(result.args).toEqual(["run", "--model", "custom model", "--agent", "plan"]);
+  });
+
+  test("parseCommand handles backtick-delimited prompts", async () => {
+    const { parseCommand } = await import("./template");
+    const result = parseCommand("ccs gemini `Explain this codebase architecture`");
+    expect(result.cmd).toBe("ccs");
+    expect(result.args).toEqual(["gemini", "Explain this codebase architecture"]);
+  });
 });
 
 describe("Template Edge Cases", () => {

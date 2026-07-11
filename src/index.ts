@@ -13,10 +13,10 @@ import { getColoredLogo } from "./logo";
 import { findToolByName, type LookupResult } from "./lookup";
 import { main as meetingMain } from "./meeting/index.ts";
 import { formatPromptInspection, formatPromptList } from "./prompts/registry.ts";
-import { buildRouterPrompt, parseRouterResponse } from "./router";
+import { buildRouterPrompt, parseRouterResponse, resolveRouterSelection } from "./router";
 import { main as summaryMain } from "./summary/index.ts";
-import { isSafeCommand, parseTemplateCommand } from "./template";
-import type { SelectableItem, Template } from "./types";
+import { isSafeCommand, parseCommand, parseTemplateCommand } from "./template";
+import type { SelectableItem } from "./types";
 import { upgrade } from "./upgrade";
 import {
   checkOutputPath,
@@ -232,29 +232,24 @@ function runCommandWithPrompt(
     process.exit(1);
   }
 
-  // Quote-aware parse so flags like -p stay intact; shell:false keeps args literal.
-  const parsed = parseTemplateCommand(command);
-  const cmd = parsed.cmd;
-  const args = parsed.args;
-  if (!cmd) {
+  const parsedCommand = parseCommand(command);
+  if (!parsedCommand.cmd) {
     console.error("Empty command");
     process.exit(1);
   }
 
   if (useStdin) {
-    return spawnSync(cmd, args, {
+    return spawnSync(parsedCommand.cmd, parsedCommand.args, {
       input: prompt,
       stdio: ["pipe", "pipe", "inherit"],
-      shell: true,
+      shell: false,
       encoding: "utf-8",
     }) as SpawnSyncReturns<string | Buffer>;
   }
 
-  const escapedPrompt = prompt.replace(/'/g, "'\\''");
-  const finalCommand = `${command} '${escapedPrompt}'`;
-
-  return spawnSync("sh", ["-c", finalCommand], {
+  return spawnSync(parsedCommand.cmd, [...parsedCommand.args, prompt], {
     stdio: ["inherit", "pipe", "inherit"],
+    shell: false,
     encoding: "utf-8",
   }) as SpawnSyncReturns<string | Buffer>;
 }
@@ -374,10 +369,6 @@ export function runPromptCommand(args: string[]): { success: boolean; error?: st
   return { success: false, error: "Usage: ai prompt list | ai prompt inspect <id>" };
 }
 
-function templateNeedsConfirmation(template: Template): boolean {
-  return template.mode === "write" || template.requiresConfirmation === true;
-}
-
 async function confirmPrompt(message: string): Promise<boolean> {
   const answer = await promptForInput(message);
   return /^(y|yes)$/i.test(answer.trim());
@@ -401,6 +392,11 @@ async function routeNaturalLanguageTask(
   );
   handleChildProcessError(routerResult);
 
+  if ((routerResult.status ?? 0) !== 0) {
+    console.error(`Router command failed with exit code ${routerResult.status ?? "unknown"}`);
+    process.exit(routerResult.status ?? 1);
+  }
+
   const rawOutput = String(routerResult.stdout ?? "").trim();
   const selection = parseRouterResponse(rawOutput);
   if (!selection) {
@@ -408,24 +404,24 @@ async function routeNaturalLanguageTask(
     process.exit(1);
   }
 
-  const templateItems = toSelectableItems([], config.templates);
-  const lookupResult = findToolByName(selection.template, templateItems);
-  if (!lookupResult.success || !lookupResult.item) {
+  const resolved = resolveRouterSelection(selection, config.templates);
+  if (!resolved) {
     console.error(`Router selected unknown template '${selection.template}'`);
     process.exit(1);
   }
 
-  const template = lookupResult.item;
-  if (templateNeedsConfirmation(template)) {
-    console.log(`\nSelected template: ${template.name}`);
-    console.log(`Preview: ${template.command.replace("$@", selection.arguments.join(" "))}`);
+  if (resolved.requiresConfirmation) {
+    console.log(`\nSelected template: ${resolved.template.name}`);
+    console.log(
+      `Preview: ${resolved.template.command.replace("$@", selection.arguments.join(" "))}`
+    );
     const confirmed = await confirmPrompt("This template may modify files. Continue? [y/N] ");
     if (!confirmed) {
       process.exit(0);
     }
   }
 
-  launchTool(template.command, selection.arguments, stdinContent);
+  launchTool(resolved.template.command, selection.arguments, stdinContent);
 }
 
 async function main() {

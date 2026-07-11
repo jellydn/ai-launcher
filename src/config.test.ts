@@ -180,4 +180,30 @@ describe("validateConfig", () => {
     const errors = validateConfig(config);
     expect(errors.some((error) => error.path === "router.command")).toBe(true);
   });
+
+  test("rejects non-object router config", () => {
+    for (const router of [null, [], "opencode", 123]) {
+      const config = {
+        tools: [],
+        templates: [],
+        router,
+      };
+
+      const errors = validateConfig(config);
+      expect(errors.some((error) => error.path === "config" || error.path === "router")).toBe(true);
+    }
+  });
+
+  test("rejects write templates that disable confirmation", () => {
+    const template = {
+      name: "commit-atomic",
+      command: "opencode run 'Atomic commit: $@'",
+      description: "Atomic commit",
+      mode: "write",
+      requiresConfirmation: false,
+    };
+
+    const errors = validateTemplate(template, "templates[0]");
+    expect(errors.some((error) => error.path === "templates[0].requiresConfirmation")).toBe(true);
+  });
 });

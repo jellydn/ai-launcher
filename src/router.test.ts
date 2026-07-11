@@ -1,5 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import { buildRouterPrompt, parseRouterResponse } from "./router";
+import {
+  buildRouterPrompt,
+  parseRouterResponse,
+  resolveRouterSelection,
+  templateRequiresConfirmation,
+} from "./router";
 
 const TEMPLATES = [
   {
@@ -29,6 +34,7 @@ describe("buildRouterPrompt", () => {
     expect(prompt).toContain("check src/auth.ts for security problems");
     expect(prompt).toContain("mode: read-only");
     expect(prompt).toContain("requiresConfirmation: yes");
+    expect(prompt).not.toContain("dryRun");
   });
 
   test("includes stdin context when provided", () => {
@@ -42,35 +48,32 @@ describe("buildRouterPrompt", () => {
 describe("parseRouterResponse", () => {
   test("parses raw JSON", () => {
     const result = parseRouterResponse(
-      '{"template":"review-security","arguments":["src/auth.ts"],"dryRun":true}'
+      '{"template":"review-security","arguments":["src/auth.ts"]}'
     );
 
     expect(result).toEqual({
       template: "review-security",
       arguments: ["src/auth.ts"],
-      dryRun: true,
     });
   });
 
   test("parses fenced JSON", () => {
     const result = parseRouterResponse(
-      "```json\n{\"template\":\"commit-atomic\",\"arguments\":[\"feat: add tests\"],\"dryRun\":false}\n```"
+      '```json\n{"template":"commit-atomic","arguments":["feat: add tests"]}\n```'
     );
 
     expect(result).toEqual({
       template: "commit-atomic",
       arguments: ["feat: add tests"],
-      dryRun: false,
     });
   });
 
-  test("defaults dryRun to true when omitted", () => {
-    const result = parseRouterResponse('{"template":"review-security","arguments":[]}');
+  test("defaults arguments to an empty array when omitted", () => {
+    const result = parseRouterResponse('{"template":"review-security"}');
 
     expect(result).toEqual({
       template: "review-security",
       arguments: [],
-      dryRun: true,
     });
   });
 
@@ -78,5 +81,42 @@ describe("parseRouterResponse", () => {
     expect(parseRouterResponse("not json")).toBeNull();
     expect(parseRouterResponse('{"template":123,"arguments":[]}')).toBeNull();
     expect(parseRouterResponse('{"template":"review","arguments":"x"}')).toBeNull();
+  });
+});
+
+describe("router selection helpers", () => {
+  test("requires confirmation for write templates even when metadata is false", () => {
+    expect(
+      templateRequiresConfirmation({
+        name: "commit-atomic",
+        command: "opencode run 'Atomic commit'",
+        description: "Atomic commit",
+        mode: "write",
+        requiresConfirmation: false,
+      })
+    ).toBe(true);
+  });
+
+  test("defaults to confirmation when metadata is missing", () => {
+    expect(
+      templateRequiresConfirmation({
+        name: "review",
+        command: "claude -p 'Review: $@'",
+        description: "Code review",
+      })
+    ).toBe(true);
+  });
+
+  test("resolves a known template selection", () => {
+    expect(
+      resolveRouterSelection({ template: "review-security", arguments: ["src/auth.ts"] }, TEMPLATES)
+    ).toEqual({
+      template: TEMPLATES[0],
+      requiresConfirmation: false,
+    });
+  });
+
+  test("rejects unknown templates", () => {
+    expect(resolveRouterSelection({ template: "missing", arguments: [] }, TEMPLATES)).toBeNull();
   });
 });
