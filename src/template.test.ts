@@ -311,6 +311,34 @@ describe("Template Execution", () => {
     expect(result.cmd).toBe("ccs");
     expect(result.args).toEqual(["gemini", "Explain this codebase architecture"]);
   });
+
+  test("parseCommand handles backslash escapes outside quotes", async () => {
+    const { parseCommand } = await import("./template");
+    const result = parseCommand("cmd arg\\ with\\ space");
+    expect(result.cmd).toBe("cmd");
+    expect(result.args).toEqual(["arg with space"]);
+  });
+
+  test("parseCommand preserves backslashes inside single quotes", async () => {
+    const { parseCommand } = await import("./template");
+    const result = parseCommand("cmd 'path\\to\\file'");
+    expect(result.cmd).toBe("cmd");
+    expect(result.args).toEqual(["path\\to\\file"]);
+  });
+
+  test("parseCommand handles empty input", async () => {
+    const { parseCommand } = await import("./template");
+    const result = parseCommand("");
+    expect(result.cmd).toBe("");
+    expect(result.args).toEqual([]);
+  });
+
+  test("parseCommand handles unclosed quotes leniently", async () => {
+    const { parseCommand } = await import("./template");
+    const result = parseCommand("cmd 'unclosed text");
+    expect(result.cmd).toBe("cmd");
+    expect(result.args).toEqual(["unclosed text"]);
+  });
 });
 
 describe("Template Edge Cases", () => {
