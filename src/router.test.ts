@@ -108,10 +108,14 @@ describe("router selection helpers", () => {
   });
 
   test("resolves a known template selection", () => {
+    const template = TEMPLATES[0];
+    if (!template) {
+      throw new Error("missing test template");
+    }
     expect(
       resolveRouterSelection({ template: "review-security", arguments: ["src/auth.ts"] }, TEMPLATES)
     ).toEqual({
-      template: TEMPLATES[0],
+      template,
       requiresConfirmation: false,
     });
   });

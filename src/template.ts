@@ -88,7 +88,7 @@ export function parseCommand(command: string): ParsedCommand {
   let escapeNext = false;
 
   for (let i = 0; i < command.length; i++) {
-    const char = command[i];
+    const char = command[i] ?? "";
 
     if (escapeNext) {
       current += char;

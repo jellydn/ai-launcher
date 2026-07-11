@@ -173,7 +173,12 @@ function launchTool(command: string, extraArgs: string[] = [], stdinContent: str
   if (command.includes("$@")) {
     const placeholderIndex = args.findIndex((arg) => arg.includes("$@"));
     if (placeholderIndex !== -1) {
-      args[placeholderIndex] = args[placeholderIndex].replace("$@", inputString);
+      const placeholder = args[placeholderIndex];
+      if (placeholder) {
+        args[placeholderIndex] = placeholder.replace("$@", inputString);
+      } else {
+        args.push(inputString);
+      }
     } else {
       args.push(inputString);
     }
