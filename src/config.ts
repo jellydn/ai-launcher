@@ -2,7 +2,7 @@ import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { isSafeCommand } from "./template";
-import type { Config, ConfigValidationError, Template } from "./types";
+import type { Config, ConfigValidationError, RouterConfig, Template } from "./types";
 
 const CONFIG_DIR = join(homedir(), ".config", "ai-launcher");
 const CONFIG_PATH = join(CONFIG_DIR, "config.json");
@@ -179,6 +179,53 @@ export function validateTemplate(template: unknown, path: string): ConfigValidat
 
   errors.push(...validateAliases(t.aliases, `${path}.aliases`));
 
+  if (t.mode !== undefined && t.mode !== "read-only" && t.mode !== "write") {
+    errors.push({
+      path: `${path}.mode`,
+      message: "Template mode must be 'read-only' or 'write'",
+    });
+  }
+
+  if (t.requiresConfirmation !== undefined && typeof t.requiresConfirmation !== "boolean") {
+    errors.push({
+      path: `${path}.requiresConfirmation`,
+      message: "Template requiresConfirmation must be a boolean",
+    });
+  }
+
+  return errors;
+}
+
+function validateRouter(router: unknown, path: string): ConfigValidationError[] {
+  const errors: ConfigValidationError[] = [];
+  const r = router as RouterConfig & Record<string, unknown>;
+
+  if (typeof r.command !== "string" || r.command.trim() === "") {
+    errors.push({
+      path: `${path}.command`,
+      message: "Router command is required and must be a non-empty string",
+    });
+  } else if (!isSafeCommand(r.command)) {
+    errors.push({
+      path: `${path}.command`,
+      message: "Router command contains unsafe characters or patterns",
+    });
+  }
+
+  if (r.description !== undefined && typeof r.description !== "string") {
+    errors.push({
+      path: `${path}.description`,
+      message: "Router description must be a string",
+    });
+  }
+
+  if (r.promptUseStdin !== undefined && typeof r.promptUseStdin !== "boolean") {
+    errors.push({
+      path: `${path}.promptUseStdin`,
+      message: "Router promptUseStdin must be a boolean",
+    });
+  }
+
   return errors;
 }
 
@@ -203,6 +250,10 @@ export function validateConfig(config: unknown): ConfigValidationError[] {
     for (let i = 0; i < c.templates.length; i++) {
       errors.push(...validateTemplate(c.templates[i], `templates[${i}]`));
     }
+  }
+
+  if (c.router !== undefined) {
+    errors.push(...validateRouter(c.router, "router"));
   }
 
   return errors;
