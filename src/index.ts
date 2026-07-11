@@ -13,9 +13,10 @@ import { getColoredLogo } from "./logo";
 import { findToolByName, type LookupResult } from "./lookup";
 import { main as meetingMain } from "./meeting/index.ts";
 import { formatPromptInspection, formatPromptList } from "./prompts/registry.ts";
+import { buildRouterPrompt, parseRouterResponse } from "./router";
 import { main as summaryMain } from "./summary/index.ts";
 import { isSafeCommand, parseTemplateCommand } from "./template";
-import type { SelectableItem } from "./types";
+import type { SelectableItem, Template } from "./types";
 import { upgrade } from "./upgrade";
 import {
   checkOutputPath,
@@ -221,12 +222,11 @@ function launchTool(command: string, extraArgs: string[] = [], stdinContent: str
   process.exit(child.status ?? EXIT_CODE_SUCCESS);
 }
 
-function launchToolWithPrompt(
+function runCommandWithPrompt(
   command: string,
   prompt: string,
-  useStdin = false,
-  outputFile?: string
-): never {
+  useStdin = false
+): SpawnSyncReturns<string | Buffer> {
   if (!isSafeCommand(command)) {
     console.error("Invalid command format");
     process.exit(1);
@@ -241,6 +241,30 @@ function launchToolWithPrompt(
     process.exit(1);
   }
 
+  if (useStdin) {
+    return spawnSync(cmd, args, {
+      input: prompt,
+      stdio: ["pipe", "pipe", "inherit"],
+      shell: true,
+      encoding: "utf-8",
+    }) as SpawnSyncReturns<string | Buffer>;
+  }
+
+  const escapedPrompt = prompt.replace(/'/g, "'\\''");
+  const finalCommand = `${command} '${escapedPrompt}'`;
+
+  return spawnSync("sh", ["-c", finalCommand], {
+    stdio: ["inherit", "pipe", "inherit"],
+    encoding: "utf-8",
+  }) as SpawnSyncReturns<string | Buffer>;
+}
+
+function launchToolWithPrompt(
+  command: string,
+  prompt: string,
+  useStdin = false,
+  outputFile?: string
+): never {
   if (outputFile) {
     const validationError = validateOutputFile(outputFile);
     if (validationError) {
@@ -348,6 +372,60 @@ export function runPromptCommand(args: string[]): { success: boolean; error?: st
   }
 
   return { success: false, error: "Usage: ai prompt list | ai prompt inspect <id>" };
+}
+
+function templateNeedsConfirmation(template: Template): boolean {
+  return template.mode === "write" || template.requiresConfirmation === true;
+}
+
+async function confirmPrompt(message: string): Promise<boolean> {
+  const answer = await promptForInput(message);
+  return /^(y|yes)$/i.test(answer.trim());
+}
+
+async function routeNaturalLanguageTask(
+  request: string,
+  stdinContent: string | null,
+  config: Awaited<ReturnType<typeof loadConfig>>
+): Promise<void> {
+  if (!config.router) {
+    console.error(`No tool or template found matching '${request}'`);
+    process.exit(1);
+  }
+
+  const routingPrompt = buildRouterPrompt(request, config.templates, stdinContent ?? undefined);
+  const routerResult = runCommandWithPrompt(
+    config.router.command,
+    routingPrompt,
+    config.router.promptUseStdin ?? false
+  );
+  handleChildProcessError(routerResult);
+
+  const rawOutput = String(routerResult.stdout ?? "").trim();
+  const selection = parseRouterResponse(rawOutput);
+  if (!selection) {
+    console.error("Router did not return valid JSON selection");
+    process.exit(1);
+  }
+
+  const templateItems = toSelectableItems([], config.templates);
+  const lookupResult = findToolByName(selection.template, templateItems);
+  if (!lookupResult.success || !lookupResult.item) {
+    console.error(`Router selected unknown template '${selection.template}'`);
+    process.exit(1);
+  }
+
+  const template = lookupResult.item;
+  if (templateNeedsConfirmation(template)) {
+    console.log(`\nSelected template: ${template.name}`);
+    console.log(`Preview: ${template.command.replace("$@", selection.arguments.join(" "))}`);
+    const confirmed = await confirmPrompt("This template may modify files. Continue? [y/N] ");
+    if (!confirmed) {
+      process.exit(0);
+    }
+  }
+
+  launchTool(template.command, selection.arguments, stdinContent);
 }
 
 async function main() {
@@ -473,6 +551,11 @@ async function main() {
 
     if (result.success && result.item) {
       launchTool(result.item.command, extraArgs, stdinContent);
+      return;
+    }
+
+    if (config.router) {
+      await routeNaturalLanguageTask(args.join(" "), stdinContent, config);
       return;
     }
 

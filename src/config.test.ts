@@ -1,11 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import { validateTemplate } from "./config";
+import { validateConfig, validateTemplate } from "./config";
 
 describe("validateTemplate", () => {
   test("accepts valid template with $@ placeholder", () => {
     const template = {
       name: "review",
-      command: "amp -p 'Review: $@'",
+      command: "amp -x 'Review: $@'",
       description: "Code review",
     };
 
@@ -22,6 +22,41 @@ describe("validateTemplate", () => {
 
     const errors = validateTemplate(template, "templates[0]");
     expect(errors).toHaveLength(0);
+  });
+
+  test("accepts template metadata for read-only and mutating templates", () => {
+    const readOnlyTemplate = {
+      name: "review-security",
+      command: "claude -p 'Security review: $@'",
+      description: "Security review",
+      mode: "read-only",
+      requiresConfirmation: false,
+    };
+
+    const mutatingTemplate = {
+      name: "commit-atomic",
+      command: "opencode run 'Atomic commit: $@'",
+      description: "Atomic commit",
+      mode: "write",
+      requiresConfirmation: true,
+    };
+
+    expect(validateTemplate(readOnlyTemplate, "templates[0]")).toEqual([]);
+    expect(validateTemplate(mutatingTemplate, "templates[1]")).toEqual([]);
+  });
+
+  test("rejects invalid template metadata", () => {
+    const template = {
+      name: "bad",
+      command: "claude 'test'",
+      description: "Bad metadata",
+      mode: "dangerous",
+      requiresConfirmation: "yes",
+    };
+
+    const errors = validateTemplate(template, "templates[0]");
+    expect(errors.some((error) => error.path.includes("mode"))).toBe(true);
+    expect(errors.some((error) => error.path.includes("requiresConfirmation"))).toBe(true);
   });
 
   test("rejects template with multiple $@ placeholders", () => {
@@ -74,7 +109,7 @@ describe("validateTemplate", () => {
   test("accepts optional aliases array", () => {
     const template = {
       name: "review",
-      command: "amp -p 'Review: $@'",
+      command: "amp -x 'Review: $@'",
       description: "Code review",
       aliases: ["rev", "code-review"],
     };
@@ -116,5 +151,33 @@ describe("validateTemplate", () => {
 
     const errors = validateTemplate(template, "templates[0]");
     expect(errors).toHaveLength(0);
+  });
+});
+
+describe("validateConfig", () => {
+  test("accepts a router config with safe command and promptUseStdin", () => {
+    const config = {
+      tools: [],
+      templates: [],
+      router: {
+        command: "opencode run --model opencode/big-pickle --agent plan",
+        promptUseStdin: true,
+      },
+    };
+
+    expect(validateConfig(config)).toEqual([]);
+  });
+
+  test("rejects unsafe router command", () => {
+    const config = {
+      tools: [],
+      templates: [],
+      router: {
+        command: "rm -rf /",
+      },
+    };
+
+    const errors = validateConfig(config);
+    expect(errors.some((error) => error.path === "router.command")).toBe(true);
   });
 });
