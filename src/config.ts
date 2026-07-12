@@ -25,12 +25,6 @@ const DEFAULT_TEMPLATES: Template[] = [
     aliases: ["zen", "logical-commit"],
   },
   {
-    name: "meeting",
-    command: "ai meeting $@",
-    description: "Extract meeting summaries, action items, and risks",
-    aliases: ["meet", "meetings"],
-  },
-  {
     name: "architecture-explanation",
     command: "ccs gemini 'Explain this codebase architecture'",
     description: "Explain architecture with Gemini",

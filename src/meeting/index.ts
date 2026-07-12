@@ -27,19 +27,19 @@ interface MeetingConfig {
 }
 
 function showHelp(): never {
-  console.log(`ai-meeting
+  console.log(`ai meeting
 Extract summaries, action items, and risks from meeting notes.
 
 Usage:
-  ai-meeting <path-to-meeting-notes.md>
-  cat meeting.md | ai-meeting
-  cat meeting.md | ai-meeting --json
-  cat meeting.md | ai-meeting --model gpt-4o --temperature 0.2
+  ai meeting <path-to-meeting-notes.md>
+  cat meeting.md | ai meeting
+  cat meeting.md | ai meeting --json
+  cat meeting.md | ai meeting --model gpt-4o --temperature 0.2
 
 OpenRouter (cost-free dev/test):
-  ai-meeting meeting.md --openrouter
-  OPENROUTER_API_KEY=... ai-meeting meeting.md --openrouter --model openai/gpt-4o
-  ai-meeting meeting.md --base-url https://openrouter.ai/api/v1 --model google/gemini-2.0-flash-exp:free
+  ai meeting meeting.md --openrouter
+  OPENROUTER_API_KEY=... ai meeting meeting.md --openrouter --model openai/gpt-4o
+  ai meeting meeting.md --base-url https://openrouter.ai/api/v1 --model google/gemini-2.0-flash-exp:free
 
 Options:
   -h, --help              Show this help
@@ -146,7 +146,7 @@ export function resolveProviderConfig(options: MeetingOptions): MeetingConfig {
   if (options.openrouter) {
     apiKey = process.env.OPENROUTER_API_KEY;
   } else if (isOpenRouterBaseURL) {
-    apiKey = process.env.OPENAI_API_KEY ?? process.env.OPENROUTER_API_KEY;
+    apiKey = process.env.OPENROUTER_API_KEY ?? process.env.OPENAI_API_KEY;
   } else {
     apiKey = process.env.OPENAI_API_KEY;
   }

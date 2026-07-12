@@ -59,9 +59,14 @@ export async function summarizeMeeting(
   }
 
   const parsed = message?.parsed;
-  if (!parsed) {
+  if (parsed) {
+    return parsed;
+  }
+
+  const content = message?.content;
+  if (!content) {
     throw new Error("No parsed output received from the model");
   }
 
-  return parsed;
+  return MeetingSummarySchema.parse(JSON.parse(content));
 }
