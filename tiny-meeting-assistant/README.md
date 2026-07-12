@@ -28,10 +28,12 @@ tsconfig.json
 bun install
 ```
 
-Set your API key:
+Set your API key for OpenAI or OpenRouter:
 
 ```bash
 export OPENAI_API_KEY="sk-..."
+# or
+export OPENROUTER_API_KEY="sk-or-..."
 ```
 
 ## Usage
@@ -51,6 +53,11 @@ cat meeting.md | bun run src/cli.ts --progress
 
 # Tune the model and temperature
 bun run src/cli.ts meeting.md --model gpt-4o-mini-2024-07-18 --temperature 0.0
+
+# Use OpenRouter for free/cost-effective dev and test
+bun run src/cli.ts meeting.md --openrouter
+OPENROUTER_API_KEY=... bun run src/cli.ts meeting.md --openrouter --model openai/gpt-4o
+bun run src/cli.ts meeting.md --base-url https://openrouter.ai/api/v1 --model google/gemini-2.0-flash-exp:free
 ```
 
 ## Example output

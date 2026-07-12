@@ -18,9 +18,16 @@ export async function summarizeMeeting(
   transcript: string,
   options: SummarizeOptions = {}
 ): Promise<MeetingSummary> {
+  const isOpenRouter = options.baseURL?.includes("openrouter.ai") ?? false;
   const client = new OpenAI({
     apiKey: options.apiKey,
     baseURL: options.baseURL,
+    defaultHeaders: isOpenRouter
+      ? {
+          "HTTP-Referer": "https://github.com/jellydn/ai-launcher",
+          "X-OpenRouter-Title": "tiny-meeting-assistant",
+        }
+      : undefined,
   });
 
   const responseFormat = zodResponseFormat(MeetingSummarySchema, "meeting_summary");

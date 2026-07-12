@@ -4,10 +4,15 @@ import { readFileSync } from "node:fs";
 import type { MeetingSummary } from "./schema.ts";
 import { summarizeMeeting } from "./summarize.ts";
 
+const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
+const DEFAULT_OPENROUTER_MODEL = "openrouter/free";
+
 interface Options {
   path: string | undefined;
   json: boolean;
   progress: boolean;
+  openrouter: boolean;
+  baseURL: string | undefined;
   model: string | undefined;
   temperature: number | undefined;
 }
@@ -22,12 +27,19 @@ Usage:
   cat meeting.md | bun run src/cli.ts --json
   cat meeting.md | bun run src/cli.ts --model gpt-4o --temperature 0.2
 
+OpenRouter (cost-free dev/test):
+  bun run src/cli.ts meeting.md --openrouter
+  OPENROUTER_API_KEY=... bun run src/cli.ts meeting.md --openrouter --model openai/gpt-4o
+  bun run src/cli.ts meeting.md --base-url https://openrouter.ai/api/v1 --model google/gemini-2.0-flash-exp:free
+
 Options:
-  -h, --help          Show this help
-  --json              Output only structured JSON
-  --progress          Show the raw JSON stream as it arrives
-  --model <model>     OpenAI model to use
-  --temperature <n>   Sampling temperature (0.0-1.0)
+  -h, --help              Show this help
+  --json                  Output only structured JSON
+  --progress              Show the raw JSON stream as it arrives
+  --openrouter            Use OpenRouter (sets base URL and free-model default)
+  --base-url <url>        OpenAI-compatible API base URL
+  --model <model>         Model to use
+  --temperature <n>       Sampling temperature (0.0-1.0)
 `);
   process.exit(0);
 }
@@ -36,6 +48,8 @@ function parseArgs(args: string[]): Options {
   let path: string | undefined;
   let json = false;
   let progress = false;
+  let openrouter = false;
+  let baseURL: string | undefined;
   let model: string | undefined;
   let temperature: number | undefined;
 
@@ -51,6 +65,15 @@ function parseArgs(args: string[]): Options {
       json = true;
     } else if (arg === "--progress") {
       progress = true;
+    } else if (arg === "--openrouter") {
+      openrouter = true;
+    } else if (arg === "--base-url") {
+      const next = args[i + 1];
+      if (!next) {
+        throw new Error("--base-url requires a value");
+      }
+      baseURL = next;
+      i++;
     } else if (arg === "--model") {
       const next = args[i + 1];
       if (!next) {
@@ -76,7 +99,7 @@ function parseArgs(args: string[]): Options {
     }
   }
 
-  return { path, json, progress, model, temperature };
+  return { path, json, progress, openrouter, baseURL, model, temperature };
 }
 
 function readInput(path: string | undefined): string {
@@ -126,16 +149,26 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = options.openrouter
+    ? (process.env.OPENROUTER_API_KEY ?? process.env.OPENAI_API_KEY)
+    : (process.env.OPENAI_API_KEY ?? process.env.OPENROUTER_API_KEY);
   if (!apiKey) {
-    console.error("OPENAI_API_KEY is not set.");
+    console.error("OPENAI_API_KEY (or OPENROUTER_API_KEY when using --openrouter) is not set.");
     process.exit(1);
   }
+
+  let baseURL = options.baseURL ?? process.env.OPENAI_BASE_URL;
+  if (options.openrouter) {
+    baseURL ??= OPENROUTER_BASE_URL;
+  }
+
+  const model = options.model ?? (options.openrouter ? DEFAULT_OPENROUTER_MODEL : undefined);
 
   let streamed = false;
   const result = await summarizeMeeting(input, {
     apiKey,
-    model: options.model,
+    baseURL,
+    model,
     temperature: options.temperature,
     onChunk: (chunk) => {
       if (!options.progress) {
