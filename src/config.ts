@@ -26,7 +26,7 @@ const DEFAULT_TEMPLATES: Template[] = [
   },
   {
     name: "summary",
-    command: "ai-summary --provider opencode --mode tldr $@",
+    command: "ai summary --provider opencode --mode tldr $@",
     description: "Summarize content with OpenCode (free model)",
     aliases: ["sum", "summarize"],
   },
@@ -77,6 +77,34 @@ const DEFAULT_CONFIG: Config = {
   tools: [],
   templates: DEFAULT_TEMPLATES,
 };
+
+function mergeTemplates(existing: Template[], defaults: Template[]): Template[] {
+  const existingByName = new Map(existing.map((template) => [template.name, template]));
+  let changed = false;
+
+  for (const defaultTemplate of defaults) {
+    const existingTemplate = existingByName.get(defaultTemplate.name);
+    if (!existingTemplate) {
+      existingByName.set(defaultTemplate.name, defaultTemplate);
+      changed = true;
+    }
+  }
+
+  const summaryTemplate = existingByName.get("summary");
+  if (summaryTemplate?.command.startsWith("ai-summary")) {
+    existingByName.set("summary", {
+      ...summaryTemplate,
+      command: summaryTemplate.command.replace(/^\s*ai-summary(?!\S)/, "ai summary"),
+    });
+    changed = true;
+  }
+
+  if (!changed) {
+    return existing;
+  }
+
+  return Array.from(existingByName.values());
+}
 
 function validateAliases(aliases: unknown, path: string): ConfigValidationError[] {
   if (!Array.isArray(aliases)) {
@@ -268,7 +296,21 @@ export function loadConfig(): Config {
     throw new Error(formatValidationErrors(errors));
   }
 
-  return parsed as Config;
+  const config = parsed as Config;
+  const mergedTemplates = mergeTemplates(config.templates, DEFAULT_TEMPLATES);
+  const hasTemplateChanges = mergedTemplates !== config.templates;
+  config.templates = mergedTemplates;
+
+  if (hasTemplateChanges) {
+    const mergedErrors = validateConfig(config);
+    if (mergedErrors.length > 0) {
+      throw new Error(formatValidationErrors(mergedErrors));
+    }
+    ensureConfigDir();
+    writeFileSync(CONFIG_PATH, `${JSON.stringify(config, null, 2)}\n`);
+  }
+
+  return config;
 }
 
 export function getConfigPath(): string {

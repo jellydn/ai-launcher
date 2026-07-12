@@ -10,6 +10,7 @@ import { detectInstalledTools, formatSuggestedInstallHints, mergeTools } from ".
 import { fuzzySelect, promptForInput, toSelectableItems } from "./fuzzy-select";
 import { getColoredLogo } from "./logo";
 import { findToolByName } from "./lookup";
+import { main as summaryMain } from "./summary/index.ts";
 import { isSafeCommand } from "./template";
 import { upgrade } from "./upgrade";
 import { VERSION } from "./version";
@@ -298,6 +299,11 @@ async function main() {
 
   if (args[0] === "upgrade") {
     await upgrade();
+    return;
+  }
+
+  if (args[0] === "summary") {
+    await summaryMain(args.slice(1));
     return;
   }
 

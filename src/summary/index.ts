@@ -11,12 +11,12 @@ import type { Summary, SummaryMode } from "./schema.ts";
 import { parseSummary, summaryModeSchema } from "./schema.ts";
 
 function showHelp(): never {
-  console.log(`ai-summary - Tiny Content Summarizer
+  console.log(`ai summary - Tiny Content Summarizer
 
 USAGE:
-  ai-summary <file|url|text> [options]
-  ai-summary --mode actions <email.txt>
-  cat article.txt | ai-summary --mode tldr
+  ai summary <file|url|text> [options]
+  ai summary --mode actions <email.txt>
+  cat article.txt | ai summary --mode tldr
 
 OPTIONS:
   -m, --mode <mode>       Summary mode: tldr | actions | linkedin | technical (default: tldr)
@@ -77,8 +77,8 @@ async function collectStream(stream: AsyncIterable<string>): Promise<string> {
   return raw;
 }
 
-async function main(): Promise<void> {
-  const { positionals, values } = parseCliArgs(process.argv.slice(2));
+export async function main(argv = process.argv.slice(2)): Promise<void> {
+  const { positionals, values } = parseCliArgs(argv);
 
   if (values.help) {
     showHelp();
@@ -130,15 +130,17 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch((error) => {
-  if (
-    error instanceof SummaryInputError ||
-    error instanceof SummaryUrlError ||
-    error instanceof ProviderError
-  ) {
-    console.error(error.message);
-  } else {
-    console.error(error instanceof Error ? error.message : error);
-  }
-  process.exit(1);
-});
+if (import.meta.main) {
+  main().catch((error) => {
+    if (
+      error instanceof SummaryInputError ||
+      error instanceof SummaryUrlError ||
+      error instanceof ProviderError
+    ) {
+      console.error(error.message);
+    } else {
+      console.error(error instanceof Error ? error.message : error);
+    }
+    process.exit(1);
+  });
+}

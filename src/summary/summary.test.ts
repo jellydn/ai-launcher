@@ -229,5 +229,55 @@ describe("summary module", () => {
         SummaryUrlError
       );
     });
+
+    test("rejects private URLs before fetching", async () => {
+      globalThis.fetch = (() => {
+        throw new Error("fetch should not be called for private URLs");
+      }) as unknown as typeof globalThis.fetch;
+
+      await expect(fetchUrlContent("http://127.0.0.1/secret")).rejects.toBeInstanceOf(
+        SummaryUrlError
+      );
+      await expect(fetchUrlContent("http://localhost/secret")).rejects.toBeInstanceOf(
+        SummaryUrlError
+      );
+      await expect(fetchUrlContent("http://169.254.169.254/")).rejects.toBeInstanceOf(
+        SummaryUrlError
+      );
+    });
+
+    test("rejects URLs with content length over the limit", async () => {
+      globalThis.fetch = (async () =>
+        ({
+          ok: true,
+          status: 200,
+          statusText: "OK",
+          headers: new Headers([
+            ["content-type", "text/plain"],
+            ["content-length", "1000001"],
+          ]),
+          text: async () => "ignored",
+        }) as Response) as unknown as typeof globalThis.fetch;
+
+      await expect(fetchUrlContent("https://example.com/huge")).rejects.toBeInstanceOf(
+        SummaryUrlError
+      );
+    });
+
+    test("rejects final redirect to a private URL", async () => {
+      globalThis.fetch = (async () =>
+        ({
+          ok: true,
+          status: 200,
+          statusText: "OK",
+          url: "http://127.0.0.1/secret",
+          headers: new Headers([["content-type", "text/plain"]]),
+          text: async () => "secret",
+        }) as Response) as unknown as typeof globalThis.fetch;
+
+      await expect(fetchUrlContent("https://example.com/redirect")).rejects.toBeInstanceOf(
+        SummaryUrlError
+      );
+    });
   });
 });

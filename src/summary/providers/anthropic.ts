@@ -81,7 +81,7 @@ async function* streamAnthropicResponse(
         parsed.delta !== null &&
         typeof parsed.delta === "object" &&
         "type" in parsed.delta &&
-        parsed.delta.type === "text" &&
+        parsed.delta.type === "text_delta" &&
         "text" in parsed.delta &&
         typeof parsed.delta.text === "string" &&
         parsed.delta.text.length > 0
