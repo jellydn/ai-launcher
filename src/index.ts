@@ -173,13 +173,9 @@ function launchTool(command: string, extraArgs: string[] = [], stdinContent: str
 
   if (command.includes("$@")) {
     const placeholderIndex = args.findIndex((arg) => arg.includes("$@"));
-    if (placeholderIndex !== -1) {
-      const placeholder = args[placeholderIndex];
-      if (placeholder) {
-        args[placeholderIndex] = placeholder.replace("$@", inputString);
-      } else {
-        args.push(inputString);
-      }
+    const placeholder = placeholderIndex !== -1 ? args[placeholderIndex] : undefined;
+    if (placeholder) {
+      args[placeholderIndex] = placeholder.replace("$@", inputString);
     } else {
       args.push(inputString);
     }
@@ -277,6 +273,10 @@ function launchToolWithPrompt(
 
   const child = runCommandWithPrompt(command, prompt, useStdin);
   handleChildProcessError(child);
+
+  if (child.stdout) {
+    process.stdout.write(child.stdout);
+  }
 
   process.exit(child.status ?? 0);
 }
