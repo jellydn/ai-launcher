@@ -29,6 +29,12 @@
       "command": "codex",
       "description": "OpenAI Codex CLI",
       "aliases": ["cx"]
+    },
+    {
+      "name": "devin",
+      "command": "devin",
+      "description": "Devin CLI",
+      "promptCommand": "devin --"
     }
   ],
   "templates": [
