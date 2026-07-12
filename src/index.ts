@@ -2,18 +2,21 @@
 
 import type { SpawnSyncReturns } from "node:child_process";
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, isAbsolute, normalize, resolve } from "node:path";
+import { existsSync, writeFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { parseArgs, readStdin } from "./args";
 import { executeDiffCommand, parseDiffArgs } from "./cli/diff";
 import { loadConfig } from "./config";
 import { detectInstalledTools, formatSuggestedInstallHints, mergeTools } from "./detect";
-import { fuzzySelect, promptForInput, toSelectableItems } from "./fuzzy-select";
+import { fuzzySelect, toSelectableItems } from "./fuzzy-select";
 import { getColoredLogo } from "./logo";
 import { findToolByName } from "./lookup";
+import { promptForInput } from "./prompt-input";
 import { buildRouterPrompt, parseRouterResponse, resolveRouterSelection } from "./router";
 import { isSafeCommand, parseCommand, templateRequiresConfirmation } from "./template";
 import type { SelectableItem, Template } from "./types";
 import { upgrade } from "./upgrade";
+import { validateArguments, validateOutputFile } from "./validation";
 import { VERSION } from "./version";
 
 const EXIT_CODE_SUCCESS = 0;
@@ -27,79 +30,6 @@ function handleChildProcessError(child: SpawnSyncReturns<string | Buffer>): void
       child.error?.message ?? `Process terminated by signal ${child.signal ?? "unknown"}`
     );
     process.exit(EXIT_CODE_PROCESS_ERROR);
-  }
-}
-
-function isValidOutputPath(filePath: string): boolean {
-  const normalized = normalize(filePath);
-
-  if (isAbsolute(normalized)) {
-    console.error("Error: Output file path must be relative, not absolute");
-    return false;
-  }
-
-  const isPathEscape =
-    normalized.startsWith("..") || normalized.includes("/../") || normalized.includes("\\..\\");
-  if (isPathEscape) {
-    console.error("Error: Output file path cannot escape current directory");
-    return false;
-  }
-
-  const forbiddenPatterns = [
-    /^\./,
-    /\.git\//,
-    /\.config\//,
-    /etc\//,
-    /root\//,
-    /home\//,
-    /usr\//,
-    /var\//,
-    /sys\//,
-    /proc\//,
-  ];
-
-  for (const pattern of forbiddenPatterns) {
-    if (pattern.test(normalized)) {
-      console.error("Error: Output file path points to a protected location");
-      return false;
-    }
-  }
-
-  return true;
-}
-
-function validateOutputFile(filePath: string): string | null {
-  if (!filePath || filePath.trim().length === 0) {
-    return "Output file path cannot be empty";
-  }
-
-  if (!isValidOutputPath(filePath)) {
-    return "Invalid output file path";
-  }
-
-  const resolvedPath = resolve(filePath);
-
-  if (existsSync(resolvedPath)) {
-    console.error(`Warning: File already exists: ${resolvedPath}`);
-    console.error("Use a different filename or remove the existing file first");
-    return "File already exists";
-  }
-
-  return null;
-}
-
-function validateArguments(args: string[]): boolean {
-  const safePattern = /^[a-zA-Z0-9._\-"/\\@#=\s,.:()[\]{}]+$/;
-  return args.every((arg) => safePattern.test(arg) && arg.length <= 200);
-}
-
-function readStdin(): string | null {
-  try {
-    const isInteractive = process.stdin.isTTY;
-    if (isInteractive) return null;
-    return readFileSync(0, "utf-8").trim();
-  } catch {
-    return null;
   }
 }
 
@@ -410,10 +340,11 @@ async function main() {
     }
   }
 
-  const dashIndex = args.indexOf("--");
-  if (dashIndex !== -1) {
-    const beforeDash = args.slice(0, dashIndex);
-    const afterDash = args.slice(dashIndex + 1);
+  const parsedArgs = parseArgs(args);
+
+  if (parsedArgs.dashSeparator) {
+    const beforeDash = parsedArgs.beforeDash;
+    const afterDash = parsedArgs.afterDash;
 
     if (beforeDash.length === 0) {
       const result = await fuzzySelect(items);
@@ -454,8 +385,12 @@ async function main() {
   }
 
   if (args.length > 0) {
-    const toolQuery = args[0];
-    const extraArgs = args.slice(1);
+    const toolQuery = parsedArgs.toolQuery;
+    if (!toolQuery) {
+      console.error("No tool query found");
+      process.exit(1);
+    }
+    const extraArgs = parsedArgs.extraArgs;
 
     const result = findToolByName(toolQuery, lookupItems);
 

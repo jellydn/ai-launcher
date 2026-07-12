@@ -40,45 +40,6 @@ export function buildTemplateCommand(command: string, args: string[]): string {
   return command;
 }
 
-export function parseTemplateCommand(command: string): ParsedCommand {
-  if (command.length === 0) {
-    return { cmd: "", args: [] };
-  }
-
-  const parts: string[] = [];
-  let current = "";
-  let inSingleQuote = false;
-  let inDoubleQuote = false;
-
-  for (let i = 0; i < command.length; i++) {
-    const char = command[i];
-
-    if (char === "'" && !inDoubleQuote) {
-      inSingleQuote = !inSingleQuote;
-      current += char;
-    } else if (char === '"' && !inSingleQuote) {
-      inDoubleQuote = !inDoubleQuote;
-      current += char;
-    } else if (char === " " && !inSingleQuote && !inDoubleQuote) {
-      if (current.length > 0) {
-        parts.push(current);
-        current = "";
-      }
-    } else {
-      current += char;
-    }
-  }
-
-  if (current.length > 0) {
-    parts.push(current);
-  }
-
-  return {
-    cmd: parts[0] ?? "",
-    args: parts.slice(1),
-  };
-}
-
 export function templateRequiresConfirmation(template: Template): boolean {
   if (template.mode === "write") {
     return true;

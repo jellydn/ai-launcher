@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { validateConfig, validateTemplate } from "./config";
+import { validateConfig, validateTemplate } from "./config-validation";
 
 describe("validateTemplate", () => {
   test("accepts valid template with $@ placeholder", () => {
