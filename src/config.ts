@@ -101,9 +101,9 @@ function validateTool(tool: unknown, index: number): ConfigValidationError[] {
     return errors;
   }
 
-  const t = tool;
+  const toolObj = tool;
 
-  const hasValidName = typeof t.name === "string" && t.name.trim() !== "";
+  const hasValidName = typeof toolObj.name === "string" && toolObj.name.trim() !== "";
   if (!hasValidName) {
     errors.push({
       path: `${path}.name`,
@@ -111,14 +111,14 @@ function validateTool(tool: unknown, index: number): ConfigValidationError[] {
     });
   }
 
-  if (typeof t.command !== "string" || t.command.trim() === "") {
+  if (typeof toolObj.command !== "string" || toolObj.command.trim() === "") {
     errors.push({
       path: `${path}.command`,
       message: "Tool command is required and must be a non-empty string",
     });
   } else {
     const safeCommandPattern = /^[a-zA-Z0-9._\s-]+$/;
-    const isSafe = safeCommandPattern.test(t.command.trim());
+    const isSafe = safeCommandPattern.test(toolObj.command.trim());
     if (!isSafe) {
       errors.push({
         path: `${path}.command`,
@@ -127,7 +127,8 @@ function validateTool(tool: unknown, index: number): ConfigValidationError[] {
     }
   }
 
-  const hasInvalidDescription = t.description !== undefined && typeof t.description !== "string";
+  const hasInvalidDescription =
+    toolObj.description !== undefined && typeof toolObj.description !== "string";
   if (hasInvalidDescription) {
     errors.push({
       path: `${path}.description`,
@@ -135,7 +136,7 @@ function validateTool(tool: unknown, index: number): ConfigValidationError[] {
     });
   }
 
-  errors.push(...validateAliases(t.aliases, `${path}.aliases`));
+  errors.push(...validateAliases(toolObj.aliases, `${path}.aliases`));
 
   return errors;
 }
@@ -148,27 +149,27 @@ export function validateTemplate(template: unknown, path: string): ConfigValidat
     return errors;
   }
 
-  const t = template;
+  const templateObj = template;
 
-  if (typeof t.name !== "string" || t.name.trim() === "") {
+  if (typeof templateObj.name !== "string" || templateObj.name.trim() === "") {
     errors.push({
       path: `${path}.name`,
       message: "Template name is required and must be a non-empty string",
     });
   }
 
-  if (typeof t.command !== "string" || t.command.trim() === "") {
+  if (typeof templateObj.command !== "string" || templateObj.command.trim() === "") {
     errors.push({
       path: `${path}.command`,
       message: "Template command is required and must be a non-empty string",
     });
-  } else if (!isSafeCommand(t.command)) {
+  } else if (!isSafeCommand(templateObj.command)) {
     errors.push({
       path: `${path}.command`,
       message: "Template command contains unsafe characters or patterns",
     });
   } else {
-    const placeholderCount = (t.command.match(/\$@/g) || []).length;
+    const placeholderCount = (templateObj.command.match(/\$@/g) || []).length;
     if (placeholderCount > 1) {
       errors.push({
         path: `${path}.command`,
@@ -177,7 +178,7 @@ export function validateTemplate(template: unknown, path: string): ConfigValidat
       });
     }
 
-    if (placeholderCount === 1 && t.command.trim().startsWith("$@")) {
+    if (placeholderCount === 1 && templateObj.command.trim().startsWith("$@")) {
       errors.push({
         path: `${path}.command`,
         message:
@@ -186,30 +187,37 @@ export function validateTemplate(template: unknown, path: string): ConfigValidat
     }
   }
 
-  if (typeof t.description !== "string" || t.description.trim() === "") {
+  if (typeof templateObj.description !== "string" || templateObj.description.trim() === "") {
     errors.push({
       path: `${path}.description`,
       message: "Template description is required and must be a non-empty string",
     });
   }
 
-  errors.push(...validateAliases(t.aliases, `${path}.aliases`));
+  errors.push(...validateAliases(templateObj.aliases, `${path}.aliases`));
 
-  if (t.mode !== undefined && t.mode !== "read-only" && t.mode !== "write") {
+  if (
+    templateObj.mode !== undefined &&
+    templateObj.mode !== "read-only" &&
+    templateObj.mode !== "write"
+  ) {
     errors.push({
       path: `${path}.mode`,
       message: "Template mode must be 'read-only' or 'write'",
     });
   }
 
-  if (t.mode === "write" && t.requiresConfirmation === false) {
+  if (templateObj.mode === "write" && templateObj.requiresConfirmation === false) {
     errors.push({
       path: `${path}.requiresConfirmation`,
       message: "Write templates must require confirmation",
     });
   }
 
-  if (t.requiresConfirmation !== undefined && typeof t.requiresConfirmation !== "boolean") {
+  if (
+    templateObj.requiresConfirmation !== undefined &&
+    typeof templateObj.requiresConfirmation !== "boolean"
+  ) {
     errors.push({
       path: `${path}.requiresConfirmation`,
       message: "Template requiresConfirmation must be a boolean",
@@ -227,28 +235,28 @@ function validateRouter(router: unknown, path: string): ConfigValidationError[] 
     return errors;
   }
 
-  const r = router;
+  const routerObj = router;
 
-  if (typeof r.command !== "string" || r.command.trim() === "") {
+  if (typeof routerObj.command !== "string" || routerObj.command.trim() === "") {
     errors.push({
       path: `${path}.command`,
       message: "Router command is required and must be a non-empty string",
     });
-  } else if (!isSafeCommand(r.command)) {
+  } else if (!isSafeCommand(routerObj.command)) {
     errors.push({
       path: `${path}.command`,
       message: "Router command contains unsafe characters or patterns",
     });
   }
 
-  if (r.description !== undefined && typeof r.description !== "string") {
+  if (routerObj.description !== undefined && typeof routerObj.description !== "string") {
     errors.push({
       path: `${path}.description`,
       message: "Router description must be a string",
     });
   }
 
-  if (r.promptUseStdin !== undefined && typeof r.promptUseStdin !== "boolean") {
+  if (routerObj.promptUseStdin !== undefined && typeof routerObj.promptUseStdin !== "boolean") {
     errors.push({
       path: `${path}.promptUseStdin`,
       message: "Router promptUseStdin must be a boolean",
@@ -265,29 +273,29 @@ export function validateConfig(config: unknown): ConfigValidationError[] {
     return [{ path: "config", message: "Config must be an object" }];
   }
 
-  const c = config;
+  const configObj = config;
 
-  if (!Array.isArray(c.tools)) {
+  if (!Array.isArray(configObj.tools)) {
     errors.push({ path: "tools", message: "Config must have a 'tools' array" });
   } else {
-    for (let i = 0; i < c.tools.length; i++) {
-      errors.push(...validateTool(c.tools[i], i));
+    for (let i = 0; i < configObj.tools.length; i++) {
+      errors.push(...validateTool(configObj.tools[i], i));
     }
   }
 
-  if (!Array.isArray(c.templates)) {
+  if (!Array.isArray(configObj.templates)) {
     errors.push({
       path: "templates",
       message: "Config must have a 'templates' array",
     });
   } else {
-    for (let i = 0; i < c.templates.length; i++) {
-      errors.push(...validateTemplate(c.templates[i], `templates[${i}]`));
+    for (let i = 0; i < configObj.templates.length; i++) {
+      errors.push(...validateTemplate(configObj.templates[i], `templates[${i}]`));
     }
   }
 
-  if (c.router !== undefined) {
-    errors.push(...validateRouter(c.router, "router"));
+  if (configObj.router !== undefined) {
+    errors.push(...validateRouter(configObj.router, "router"));
   }
 
   return errors;
