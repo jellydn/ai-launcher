@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { detectCategory, getModeInstruction } from "./detect.ts";
@@ -151,7 +151,7 @@ describe("summary module", () => {
 
     afterEach(() => {
       try {
-        import("node:fs").then(({ rmSync }) => rmSync(tempDir, { recursive: true, force: true }));
+        rmSync(tempDir, { recursive: true, force: true });
       } catch {
         // ignore cleanup errors
       }
