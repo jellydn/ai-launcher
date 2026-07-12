@@ -110,7 +110,7 @@ jobs:
           merge-multiple: true
 
       - name: Make binaries executable
-        run: chmod +x dist/ai-* dist/ai-meeting-*
+        run: chmod +x dist/ai-*
 
       - name: Fetch latest tags
         run: git fetch --tags origin
@@ -118,7 +118,7 @@ jobs:
       - name: Generate checksums
         run: |
           cd dist
-          sha256sum ai-* ai-meeting-* > checksums.txt
+          sha256sum ai-* > checksums.txt
           cat checksums.txt
 
       - name: Get version from tag

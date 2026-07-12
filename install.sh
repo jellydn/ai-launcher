@@ -67,7 +67,7 @@ for BINARY_NAME in $BINARIES; do
 
   # Verify checksum if available
   if [ -n "$CHECKSUMS" ]; then
-    EXPECTED=$(echo "$CHECKSUMS" | grep "$ARTIFACT" | awk '{print $1}')
+    EXPECTED=$(echo "$CHECKSUMS" | grep "$ARTIFACT" | head -n 1 | awk '{print $1}')
 
     if [ -n "$EXPECTED" ]; then
       if command -v sha256sum >/dev/null 2>&1; then
