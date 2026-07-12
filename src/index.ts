@@ -9,7 +9,7 @@ import { loadConfig } from "./config";
 import { detectInstalledTools, formatSuggestedInstallHints, mergeTools } from "./detect";
 import { fuzzySelect, promptForInput, toSelectableItems } from "./fuzzy-select";
 import { getColoredLogo } from "./logo";
-import { findToolByName } from "./lookup";
+import { findToolByName, type LookupResult } from "./lookup";
 import { main as meetingMain } from "./meeting/index.ts";
 import { main as summaryMain } from "./summary/index.ts";
 import { isSafeCommand, parseTemplateCommand } from "./template";
@@ -341,6 +341,7 @@ async function main() {
 
   const dashIndex = args.indexOf("--");
   const toolQuery = args[0] !== "--" ? args[0] : undefined;
+  let cachedToolLookup: LookupResult | undefined;
 
   if (toolQuery) {
     const result = findToolByName(toolQuery, lookupItems);
@@ -349,6 +350,9 @@ async function main() {
       const summaryArgs = getSummaryArgsFromTemplate(result.item.command, userArgs);
       await summaryMain(summaryArgs);
       return;
+    }
+    if (result.success) {
+      cachedToolLookup = result;
     }
   }
 
@@ -408,7 +412,10 @@ async function main() {
     const query = args[0];
     const extraArgs = args.slice(1);
 
-    const result = findToolByName(query, lookupItems);
+    const result =
+      cachedToolLookup && toolQuery === query
+        ? cachedToolLookup
+        : findToolByName(query, lookupItems);
 
     if (result.success && result.item) {
       launchTool(result.item.command, extraArgs, stdinContent);

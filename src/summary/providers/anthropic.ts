@@ -35,6 +35,7 @@ function getAnthropicModel(config: AnthropicConfig): string {
 }
 
 function toAnthropicMessages(messages: Message[]): { role: "user"; content: string }[] {
+  // Caller filters to user roles; keep this guard for direct/test misuse.
   return messages.map((message) => {
     if (message.role !== "user") {
       throw new ProviderError("Anthropic messages must be user role");
