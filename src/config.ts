@@ -25,6 +25,12 @@ const DEFAULT_TEMPLATES: Template[] = [
     aliases: ["zen", "logical-commit"],
   },
   {
+    name: "meeting",
+    command: "ai meeting $@",
+    description: "Extract meeting summaries, action items, and risks",
+    aliases: ["meet", "meetings"],
+  },
+  {
     name: "architecture-explanation",
     command: "ccs gemini 'Explain this codebase architecture'",
     description: "Explain architecture with Gemini",
@@ -71,6 +77,34 @@ const DEFAULT_CONFIG: Config = {
   tools: [],
   templates: DEFAULT_TEMPLATES,
 };
+
+function mergeTemplates(existing: Template[], defaults: Template[]): Template[] {
+  const existingByName = new Map(existing.map((template) => [template.name, template]));
+  let changed = false;
+
+  for (const defaultTemplate of defaults) {
+    const existingTemplate = existingByName.get(defaultTemplate.name);
+    if (!existingTemplate) {
+      existingByName.set(defaultTemplate.name, defaultTemplate);
+      changed = true;
+    }
+  }
+
+  const meetingTemplate = existingByName.get("meeting");
+  if (meetingTemplate?.command.startsWith("ai-meeting")) {
+    existingByName.set("meeting", {
+      ...meetingTemplate,
+      command: meetingTemplate.command.replace(/^\s*ai-meeting(?!\S)/, "ai meeting"),
+    });
+    changed = true;
+  }
+
+  if (!changed) {
+    return existing;
+  }
+
+  return Array.from(existingByName.values());
+}
 
 function validateAliases(aliases: unknown, path: string): ConfigValidationError[] {
   if (!Array.isArray(aliases)) {
@@ -262,7 +296,21 @@ export function loadConfig(): Config {
     throw new Error(formatValidationErrors(errors));
   }
 
-  return parsed as Config;
+  const config = parsed as Config;
+  const mergedTemplates = mergeTemplates(config.templates, DEFAULT_TEMPLATES);
+  const hasTemplateChanges = mergedTemplates !== config.templates;
+  config.templates = mergedTemplates;
+
+  if (hasTemplateChanges) {
+    const mergedErrors = validateConfig(config);
+    if (mergedErrors.length > 0) {
+      throw new Error(formatValidationErrors(mergedErrors));
+    }
+    ensureConfigDir();
+    writeFileSync(CONFIG_PATH, `${JSON.stringify(config, null, 2)}\n`);
+  }
+
+  return config;
 }
 
 export function getConfigPath(): string {
