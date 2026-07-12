@@ -4,6 +4,7 @@ import { AnthropicProvider } from "./providers/anthropic.ts";
 import { MockProvider } from "./providers/mock.ts";
 import { OllamaProvider } from "./providers/ollama.ts";
 import { OpenAIProvider } from "./providers/openai.ts";
+import { OpenRouterProvider } from "./providers/openrouter.ts";
 
 describe("provider module", () => {
   describe("createProvider", () => {
@@ -31,6 +32,12 @@ describe("provider module", () => {
       expect(provider.name).toBe("ollama");
     });
 
+    test("creates openrouter provider", () => {
+      const provider = createProvider({ provider: "openrouter", apiKey: "test-key" });
+      expect(provider).toBeInstanceOf(OpenRouterProvider);
+      expect(provider.name).toBe("openrouter");
+    });
+
     test("throws when provider is unknown", () => {
       expect(() => createProvider({ provider: "unknown" })).toThrow(ProviderError);
     });
@@ -40,11 +47,13 @@ describe("provider module", () => {
       const originalOpenAI = process.env.OPENAI_API_KEY;
       const originalAnthropic = process.env.ANTHROPIC_API_KEY;
       const originalOllama = process.env.OLLAMA_HOST;
+      const originalOpenRouter = process.env.OPENROUTER_API_KEY;
 
       delete process.env.AI_SUMMARY_PROVIDER;
       delete process.env.OPENAI_API_KEY;
       delete process.env.ANTHROPIC_API_KEY;
       delete process.env.OLLAMA_HOST;
+      delete process.env.OPENROUTER_API_KEY;
 
       try {
         expect(() => createProvider()).toThrow(ProviderError);
@@ -53,6 +62,7 @@ describe("provider module", () => {
         process.env.OPENAI_API_KEY = originalOpenAI;
         process.env.ANTHROPIC_API_KEY = originalAnthropic;
         process.env.OLLAMA_HOST = originalOllama;
+        process.env.OPENROUTER_API_KEY = originalOpenRouter;
       }
     });
   });

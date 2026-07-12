@@ -22,7 +22,7 @@ USAGE:
 
 OPTIONS:
   -m, --mode <mode>       Summary mode: tldr | actions | linkedin | technical (default: tldr)
-  -p, --provider <name>   LLM provider: openai | anthropic | ollama | mock
+  -p, --provider <name>   LLM provider: openai | anthropic | ollama | openrouter | mock
       --api-key <key>     API key for the selected provider
       --base-url <url>    Base URL for the provider API
       --model <model>     Model name for the provider
@@ -30,10 +30,14 @@ OPTIONS:
   -h, --help              Show this help message
 
 ENVIRONMENT:
-  AI_SUMMARY_PROVIDER     Default provider (openai | anthropic | ollama | mock)
+  AI_SUMMARY_PROVIDER     Default provider (openai | anthropic | ollama | openrouter | mock)
   AI_SUMMARY_API_KEY      Default API key
   AI_SUMMARY_MODEL        Default model
-  OPENAI_API_KEY, ANTHROPIC_API_KEY, OLLAMA_HOST, OLLAMA_MODEL  Provider-specific fallbacks`);
+  OPENAI_API_KEY, ANTHROPIC_API_KEY, OLLAMA_HOST, OLLAMA_MODEL, OPENROUTER_API_KEY  Provider-specific fallbacks
+
+OPENROUTER:
+  Set OPENROUTER_API_KEY and use --provider openrouter. The default model is openrouter/free,
+  which routes to free models. Add :free to any model slug for the free variant.`);
   process.exit(0);
 }
 

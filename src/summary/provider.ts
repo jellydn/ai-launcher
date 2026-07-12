@@ -2,6 +2,7 @@ import { AnthropicProvider } from "./providers/anthropic.ts";
 import { MockProvider } from "./providers/mock.ts";
 import { OllamaProvider } from "./providers/ollama.ts";
 import { OpenAIProvider } from "./providers/openai.ts";
+import { OpenRouterProvider } from "./providers/openrouter.ts";
 
 export interface Message {
   role: "system" | "user";
@@ -49,6 +50,10 @@ function inferProvider(config: ProviderConfig): string {
     return "ollama";
   }
 
+  if (process.env.OPENROUTER_API_KEY) {
+    return "openrouter";
+  }
+
   throw new ProviderError(
     "No provider configured. Set AI_SUMMARY_PROVIDER, or set an API key for the provider you want to use."
   );
@@ -64,6 +69,8 @@ export function createProvider(config: ProviderConfig = {}): Provider {
       return new AnthropicProvider(config);
     case "ollama":
       return new OllamaProvider(config);
+    case "openrouter":
+      return new OpenRouterProvider(config);
     case "mock":
       return new MockProvider();
     default:

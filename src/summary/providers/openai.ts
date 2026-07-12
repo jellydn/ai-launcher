@@ -38,7 +38,7 @@ function getOpenAIModel(config: OpenAIConfig): string {
   return config.model ?? process.env.AI_SUMMARY_MODEL ?? "gpt-4o-mini";
 }
 
-async function* streamOpenAIResponse(
+export async function* streamOpenAIResponse(
   reader: ReadableStreamDefaultReader<Uint8Array>
 ): AsyncGenerator<string> {
   const decoder = new TextDecoder();
