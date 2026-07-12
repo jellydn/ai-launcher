@@ -36,6 +36,9 @@ class Ai < Formula
       To get started, run:
         ai --help
 
+      The ai-meeting command is also available in this tap:
+        brew install jellydn/tap/ai-meeting
+
       For configuration, see: https://github.com/jellydn/ai-launcher
     EOS
   end
