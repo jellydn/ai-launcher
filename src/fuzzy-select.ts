@@ -23,6 +23,8 @@ export function toSelectableItems(tools: Tool[], templates: Template[]): Selecta
       description: t.description,
       isTemplate: true,
       aliases: t.aliases ?? [],
+      mode: t.mode,
+      requiresConfirmation: t.requiresConfirmation,
     })),
   ];
 }

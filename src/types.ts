@@ -46,4 +46,6 @@ export interface SelectableItem {
   aliases: string[];
   promptCommand?: string;
   promptUseStdin?: boolean;
+  mode?: TemplateMode;
+  requiresConfirmation?: boolean;
 }
