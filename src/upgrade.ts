@@ -21,6 +21,14 @@ interface GitHubRelease {
 const isWindows = process.platform === "win32";
 const binaryExt = isWindows ? ".exe" : "";
 
+// Network requests during upgrade should fail fast instead of hanging forever
+// on a flaky connection.
+const FETCH_TIMEOUT_MS = 30_000;
+
+async function fetchWithTimeout(url: string, timeoutMs = FETCH_TIMEOUT_MS): Promise<Response> {
+  return fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
+}
+
 async function findBinaryPath(): Promise<string | null> {
   const binaryName = `ai${binaryExt}`;
 
@@ -84,7 +92,7 @@ export async function upgrade() {
   console.log(`Checking for updates...`);
 
   try {
-    const response = await fetch(GITHUB_RELEASES_URL);
+    const response = await fetchWithTimeout(GITHUB_RELEASES_URL);
 
     if (!response.ok) {
       console.error(`Failed to fetch release information: ${response.statusText}`);
@@ -115,7 +123,7 @@ export async function upgrade() {
 
     console.log(`Downloading from: ${downloadUrl}`);
 
-    const binaryResponse = await fetch(downloadUrl);
+    const binaryResponse = await fetchWithTimeout(downloadUrl);
     if (!binaryResponse.ok) {
       console.error(`Failed to download binary: ${binaryResponse.statusText}`);
       process.exit(1);
@@ -128,7 +136,7 @@ export async function upgrade() {
 
     if (checksumAsset) {
       console.log("Verifying checksum...");
-      const checksumResponse = await fetch(checksumAsset.browser_download_url);
+      const checksumResponse = await fetchWithTimeout(checksumAsset.browser_download_url);
       if (checksumResponse.ok) {
         const checksumText = await checksumResponse.text();
         const lines = checksumText.split("\n");

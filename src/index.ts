@@ -3,7 +3,7 @@
 import type { SpawnSyncReturns } from "node:child_process";
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, isAbsolute, normalize, resolve } from "node:path";
+import { dirname, resolve } from "node:path";
 import { executeDiffCommand, parseDiffArgs } from "./cli/diff";
 import { loadConfig } from "./config";
 import { detectInstalledTools, formatSuggestedInstallHints, mergeTools } from "./detect";
@@ -12,6 +12,7 @@ import { getColoredLogo } from "./logo";
 import { findToolByName } from "./lookup";
 import { isSafeCommand } from "./template";
 import { upgrade } from "./upgrade";
+import { isValidOutputPath, validateArguments } from "./validators";
 import { VERSION } from "./version";
 
 const EXIT_CODE_SUCCESS = 0;
@@ -26,44 +27,6 @@ function handleChildProcessError(child: SpawnSyncReturns<string | Buffer>): void
     );
     process.exit(EXIT_CODE_PROCESS_ERROR);
   }
-}
-
-function isValidOutputPath(filePath: string): boolean {
-  const normalized = normalize(filePath);
-
-  if (isAbsolute(normalized)) {
-    console.error("Error: Output file path must be relative, not absolute");
-    return false;
-  }
-
-  const isPathEscape =
-    normalized.startsWith("..") || normalized.includes("/../") || normalized.includes("\\..\\");
-  if (isPathEscape) {
-    console.error("Error: Output file path cannot escape current directory");
-    return false;
-  }
-
-  const forbiddenPatterns = [
-    /^\./,
-    /\.git\//,
-    /\.config\//,
-    /etc\//,
-    /root\//,
-    /home\//,
-    /usr\//,
-    /var\//,
-    /sys\//,
-    /proc\//,
-  ];
-
-  for (const pattern of forbiddenPatterns) {
-    if (pattern.test(normalized)) {
-      console.error("Error: Output file path points to a protected location");
-      return false;
-    }
-  }
-
-  return true;
 }
 
 function validateOutputFile(filePath: string): string | null {
@@ -86,16 +49,22 @@ function validateOutputFile(filePath: string): string | null {
   return null;
 }
 
-function validateArguments(args: string[]): boolean {
-  const safePattern = /^[a-zA-Z0-9._\-"/\\@#=\s,.:()[\]{}]+$/;
-  return args.every((arg) => safePattern.test(arg) && arg.length <= 200);
-}
+// Cap stdin so a huge pipe (e.g. `cat huge.bin | ai template`) cannot OOM the
+// launcher before it ever reaches the child process.
+const MAX_STDIN_SIZE = 10 * 1024 * 1024;
 
 function readStdin(): string | null {
   try {
     const isInteractive = process.stdin.isTTY;
     if (isInteractive) return null;
-    return readFileSync(0, "utf-8").trim();
+    const content = readFileSync(0, "utf-8");
+    if (Buffer.byteLength(content, "utf-8") > MAX_STDIN_SIZE) {
+      console.error(
+        `Error: stdin input exceeds ${MAX_STDIN_SIZE / 1024 / 1024}MB limit and was rejected.`
+      );
+      process.exit(1);
+    }
+    return content.trim();
   } catch {
     return null;
   }

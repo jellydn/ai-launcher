@@ -183,7 +183,9 @@ function commandExists(command: string): boolean {
     return false;
   }
 
-  const result = spawnSync("which", [command], {
+  // "which" does not exist on Windows; use "where" there instead.
+  const lookupCommand = process.platform === "win32" ? "where" : "which";
+  const result = spawnSync(lookupCommand, [command], {
     encoding: "utf-8",
     stdio: ["pipe", "pipe", "pipe"],
   });
@@ -272,7 +274,21 @@ export function detectCliProxyProfiles(): Tool[] {
   }));
 }
 
+// Detection spawns several external processes (which/where, ccs, gh). The
+// result is stable for the lifetime of a single invocation, so memoize it to
+// avoid re-probing when the launcher calls detection more than once.
+let detectionCache: Tool[] | null = null;
+
+/** Clears the memoized detection result. Primarily useful in tests. */
+export function resetDetectionCache(): void {
+  detectionCache = null;
+}
+
 export function detectInstalledTools(): Tool[] {
+  if (detectionCache !== null) {
+    return detectionCache;
+  }
+
   const detected: Tool[] = [];
 
   for (const entry of KNOWN_TOOLS) {
@@ -304,6 +320,7 @@ export function detectInstalledTools(): Tool[] {
     detected.push(ghCopilot);
   }
 
+  detectionCache = detected;
   return detected;
 }
 

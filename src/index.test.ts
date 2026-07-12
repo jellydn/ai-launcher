@@ -1,14 +1,6 @@
 import { describe, expect, test } from "bun:test";
-
-function validateToolCommand(command: string): boolean {
-  const safePattern = /^[a-zA-Z0-9._\s\-"':,!?/\\|$@]+$/;
-  return safePattern.test(command.trim()) && command.length > 0 && command.length <= 500;
-}
-
-function validateArguments(args: string[]): boolean {
-  const safePattern = /^[a-zA-Z0-9._\-"/\\@#=\s,.:()[\]{}]+$/;
-  return args.every((arg) => safePattern.test(arg) && arg.length <= 200);
-}
+import { isSafeCommand as validateToolCommand } from "./template";
+import { isValidOutputPath, validateArguments } from "./validators";
 
 describe("validateToolCommand", () => {
   test("accepts simple command", () => {
@@ -190,37 +182,6 @@ describe("Argument Parsing Logic", () => {
 });
 
 describe("Output Path Validation", () => {
-  function isValidOutputPath(path: string): boolean {
-    const normalized = path.replace(/\\/g, "/");
-
-    if (normalized.startsWith("/")) {
-      return false;
-    }
-
-    if (normalized.startsWith("..") || normalized.includes("/../")) {
-      return false;
-    }
-
-    const forbiddenPatterns = [
-      /^\./,
-      /\.git\//,
-      /\.config\//,
-      /etc\//,
-      /root\//,
-      /home\//,
-      /usr\//,
-      /var\//,
-    ];
-
-    for (const pattern of forbiddenPatterns) {
-      if (pattern.test(normalized)) {
-        return false;
-      }
-    }
-
-    return true;
-  }
-
   function validateOutputFile(filePath: string): string | null {
     if (!filePath || filePath.trim().length === 0) {
       return "Output file path cannot be empty";
@@ -241,6 +202,12 @@ describe("Output Path Validation", () => {
   test("accepts relative path with subdirectory", () => {
     expect(isValidOutputPath("results/analysis.md")).toBe(true);
     expect(isValidOutputPath("docs/output.txt")).toBe(true);
+  });
+
+  test("accepts nested dirs that merely contain a protected name as a substring", () => {
+    expect(isValidOutputPath("project/etc/config.md")).toBe(true);
+    expect(isValidOutputPath("notes/home-review.md")).toBe(true);
+    expect(isValidOutputPath("docs/usr-guide.md")).toBe(true);
   });
 
   test("rejects absolute paths", () => {
