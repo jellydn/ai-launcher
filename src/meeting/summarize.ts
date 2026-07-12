@@ -1,7 +1,8 @@
 import OpenAI from "openai";
 import { zodResponseFormat } from "openai/helpers/zod";
 import { buildMeetingPrompt, INSTRUCTIONS } from "./prompt.ts";
-import { type MeetingSummary, MeetingSummarySchema } from "./schema.ts";
+import type { MeetingSummary } from "./schema.ts";
+import { MeetingSummarySchema } from "./schema.ts";
 
 export interface SummarizeOptions {
   apiKey?: string;
