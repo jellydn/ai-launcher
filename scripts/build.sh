@@ -7,3 +7,4 @@ cat >src/version.ts <<EOF
 export const VERSION = "$VERSION";
 EOF
 bun build src/index.ts --compile --outfile dist/ai
+bun build src/summary/index.ts --compile --outfile dist/ai-summary

@@ -6,7 +6,8 @@
   "type": "module",
   "private": true,
   "bin": {
-    "ai": "./dist/ai"
+    "ai": "./dist/ai",
+    "ai-summary": "./dist/ai-summary"
   },
   "scripts": {
     "dev": "bun run src/index.ts",
@@ -32,6 +33,7 @@
   },
   "dependencies": {
     "fuse.js": "^7.3.0",
-    "semver": "^7.7.4"
+    "semver": "^7.7.4",
+    "zod": "^3.24.1"
   }
 }
