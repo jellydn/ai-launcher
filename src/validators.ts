@@ -11,42 +11,54 @@ export function validateArguments(args: string[]): boolean {
   return args.every((arg) => ARGUMENT_SAFE_PATTERN.test(arg) && arg.length <= MAX_ARGUMENT_LENGTH);
 }
 
-// System-directory patterns are anchored to the start of the (normalized)
-// relative path so that a legitimate nested directory (e.g.
-// "project/etc/config.md") is not rejected merely for containing a protected
-// name as a substring. Hidden files/dirs are blocked at any depth so that
-// writes into ".git"/".config" (including nested, e.g. "sub/.git/hooks/...")
-// remain forbidden.
-const FORBIDDEN_OUTPUT_PATH_PATTERNS = [
-  /^\./, // hidden file/dir at the root (.git, .config, ...)
-  /\/\.[^/]/, // hidden file/dir nested anywhere (e.g. "sub/.git/hooks")
-  /^etc(\/|$)/,
-  /^root(\/|$)/,
-  /^home(\/|$)/,
-  /^usr(\/|$)/,
-  /^var(\/|$)/,
-  /^sys(\/|$)/,
-  /^proc(\/|$)/,
-];
+export type OutputPathRejection = "absolute" | "escape" | "hidden" | "protected";
+export type OutputPathValidation = { ok: true } | { ok: false; reason: OutputPathRejection };
 
-export function isValidOutputPath(filePath: string): boolean {
-  const normalized = filePath.replace(/\\/g, "/");
+// First path segment names that map to sensitive system directories. Only the
+// leading segment matters: a relative "./etc/foo" is not the system "/etc".
+const PROTECTED_ROOT_SEGMENTS = new Set(["etc", "root", "home", "usr", "var", "sys", "proc"]);
 
+function isAbsolutePath(filePath: string, normalized: string): boolean {
   // Reject both POSIX and Windows absolute forms regardless of the host OS, so
   // the check is correct on Windows (the platform this hardening targets) and
   // unit tests on macOS/Linux still exercise Windows paths.
-  const isAbsolute =
+  return (
     posix.isAbsolute(normalized) ||
     win32.isAbsolute(filePath) ||
     win32.isAbsolute(normalized) ||
-    /^[A-Za-z]:/.test(normalized);
-  if (isAbsolute) {
-    return false;
+    /^[A-Za-z]:/.test(normalized)
+  );
+}
+
+// Policy is expressed as an explicit path-segment model rather than a growing
+// matrix of anchored regexes: normalize separators, reject absolute paths, then
+// walk the segments rejecting traversal, hidden entries, and protected roots.
+export function checkOutputPath(filePath: string): OutputPathValidation {
+  const normalized = filePath.replace(/\\/g, "/");
+
+  if (isAbsolutePath(filePath, normalized)) {
+    return { ok: false, reason: "absolute" };
   }
 
-  if (normalized.startsWith("..") || normalized.includes("/../")) {
-    return false;
+  const segments = normalized.split("/").filter((segment) => segment.length > 0);
+
+  for (const segment of segments) {
+    if (segment === "..") {
+      return { ok: false, reason: "escape" };
+    }
+    if (segment.startsWith(".")) {
+      return { ok: false, reason: "hidden" };
+    }
   }
 
-  return !FORBIDDEN_OUTPUT_PATH_PATTERNS.some((pattern) => pattern.test(normalized));
+  const firstSegment = segments[0];
+  if (firstSegment && PROTECTED_ROOT_SEGMENTS.has(firstSegment)) {
+    return { ok: false, reason: "protected" };
+  }
+
+  return { ok: true };
+}
+
+export function isValidOutputPath(filePath: string): boolean {
+  return checkOutputPath(filePath).ok;
 }

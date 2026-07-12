@@ -12,7 +12,7 @@ import { getColoredLogo } from "./logo";
 import { findToolByName } from "./lookup";
 import { isSafeCommand } from "./template";
 import { upgrade } from "./upgrade";
-import { isValidOutputPath, validateArguments } from "./validators";
+import { type OutputPathRejection, checkOutputPath, validateArguments } from "./validators";
 import { VERSION } from "./version";
 
 const EXIT_CODE_SUCCESS = 0;
@@ -29,13 +29,21 @@ function handleChildProcessError(child: SpawnSyncReturns<string | Buffer>): void
   }
 }
 
+const OUTPUT_PATH_REASON_MESSAGES: Record<OutputPathRejection, string> = {
+  absolute: "Output file path must be relative, not absolute",
+  escape: "Output file path cannot escape the current directory",
+  hidden: "Output file path cannot point to a hidden file or directory",
+  protected: "Output file path points to a protected location",
+};
+
 function validateOutputFile(filePath: string): string | null {
   if (!filePath || filePath.trim().length === 0) {
     return "Output file path cannot be empty";
   }
 
-  if (!isValidOutputPath(filePath)) {
-    return "Invalid output file path";
+  const pathCheck = checkOutputPath(filePath);
+  if (!pathCheck.ok) {
+    return OUTPUT_PATH_REASON_MESSAGES[pathCheck.reason];
   }
 
   const resolvedPath = resolve(filePath);

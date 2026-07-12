@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { isSafeCommand as validateToolCommand } from "./template";
-import { isValidOutputPath, validateArguments } from "./validators";
+import { checkOutputPath, isValidOutputPath, validateArguments } from "./validators";
 
 describe("validateToolCommand", () => {
   test("accepts simple command", () => {
@@ -187,8 +187,9 @@ describe("Output Path Validation", () => {
       return "Output file path cannot be empty";
     }
 
-    if (!isValidOutputPath(filePath)) {
-      return "Invalid output file path";
+    const check = checkOutputPath(filePath);
+    if (!check.ok) {
+      return check.reason;
     }
 
     return null;
@@ -259,8 +260,20 @@ describe("Output Path Validation", () => {
     expect(validateOutputFile("   ")).toBe("Output file path cannot be empty");
   });
 
-  test("validateOutputFile returns error for invalid path", () => {
-    expect(validateOutputFile("/etc/passwd")).toBe("Invalid output file path");
-    expect(validateOutputFile("../file.md")).toBe("Invalid output file path");
+  test("validateOutputFile surfaces the specific rejection reason", () => {
+    expect(validateOutputFile("/etc/passwd")).toBe("absolute");
+    expect(validateOutputFile("C:/Windows/foo.md")).toBe("absolute");
+    expect(validateOutputFile("../file.md")).toBe("escape");
+    expect(validateOutputFile("sub/.git/config")).toBe("hidden");
+    expect(validateOutputFile("etc/passwd")).toBe("protected");
+  });
+
+  test("checkOutputPath reports a typed reason for each rejection class", () => {
+    expect(checkOutputPath("analysis.md")).toEqual({ ok: true });
+    expect(checkOutputPath("/etc/passwd")).toEqual({ ok: false, reason: "absolute" });
+    expect(checkOutputPath("C:\\Windows\\foo.md")).toEqual({ ok: false, reason: "absolute" });
+    expect(checkOutputPath("../escape.md")).toEqual({ ok: false, reason: "escape" });
+    expect(checkOutputPath("a/b/.ssh/id_rsa")).toEqual({ ok: false, reason: "hidden" });
+    expect(checkOutputPath("var/log/syslog")).toEqual({ ok: false, reason: "protected" });
   });
 });
