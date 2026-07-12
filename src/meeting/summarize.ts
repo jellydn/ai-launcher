@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 import { zodResponseFormat } from "openai/helpers/zod";
-import { buildMeetingPrompt } from "./prompt.ts";
+import { buildMeetingPrompt, INSTRUCTIONS } from "./prompt.ts";
 import { type MeetingSummary, MeetingSummarySchema } from "./schema.ts";
 
 export interface SummarizeOptions {
@@ -35,7 +35,7 @@ export async function summarizeMeeting(
   const stream = client.chat.completions.stream({
     model: options.model ?? DEFAULT_MODEL,
     messages: [
-      { role: "system", content: "You are a structured meeting assistant." },
+      { role: "system", content: INSTRUCTIONS },
       { role: "user", content: buildMeetingPrompt(transcript) },
     ],
     temperature: options.temperature ?? DEFAULT_TEMPERATURE,
