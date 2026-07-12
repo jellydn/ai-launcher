@@ -138,6 +138,7 @@ EXAMPLES:
                                      Save analysis to file
     ai --diff-commit HEAD~1 --diff-prompt "Focus on security"
                                      Add custom prompt
+    ai summary article.txt           Summarize content with OpenCode
     ai upgrade                       Upgrade to latest version
 
 CONFIG:
