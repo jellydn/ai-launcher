@@ -188,24 +188,21 @@ describe("summary module", () => {
     });
 
     function mockFetch(response: {
-      ok: boolean;
       status: number;
       statusText: string;
       text: string;
       contentType?: string;
     }) {
       globalThis.fetch = (async () =>
-        ({
-          ok: response.ok,
+        new Response(response.text, {
           status: response.status,
           statusText: response.statusText,
           headers: new Headers([["content-type", response.contentType ?? "text/plain"]]),
-          text: async () => response.text,
-        }) as Response) as unknown as typeof globalThis.fetch;
+        })) as unknown as typeof globalThis.fetch;
     }
 
     test("fetches plain text URL", async () => {
-      mockFetch({ ok: true, status: 200, statusText: "OK", text: "Plain text article" });
+      mockFetch({ status: 200, statusText: "OK", text: "Plain text article" });
       const result = await fetchUrlContent("https://example.com/article");
       expect(result.content).toBe("Plain text article");
       expect(result.source).toBe("https://example.com/article");
@@ -213,7 +210,6 @@ describe("summary module", () => {
 
     test("extracts text from HTML URL", async () => {
       mockFetch({
-        ok: true,
         status: 200,
         statusText: "OK",
         contentType: "text/html",
@@ -224,7 +220,7 @@ describe("summary module", () => {
     });
 
     test("throws on failed fetch", async () => {
-      mockFetch({ ok: false, status: 404, statusText: "Not Found", text: "Not found" });
+      mockFetch({ status: 404, statusText: "Not Found", text: "Not found" });
       await expect(fetchUrlContent("https://example.com/missing")).rejects.toBeInstanceOf(
         SummaryUrlError
       );
@@ -266,16 +262,12 @@ describe("summary module", () => {
 
     test("rejects URLs with content length over the limit", async () => {
       globalThis.fetch = (async () =>
-        ({
-          ok: true,
-          status: 200,
-          statusText: "OK",
+        new Response("ignored", {
           headers: new Headers([
             ["content-type", "text/plain"],
             ["content-length", "1000001"],
           ]),
-          text: async () => "ignored",
-        }) as Response) as unknown as typeof globalThis.fetch;
+        })) as unknown as typeof globalThis.fetch;
 
       await expect(fetchUrlContent("https://example.com/huge")).rejects.toBeInstanceOf(
         SummaryUrlError
@@ -305,20 +297,35 @@ describe("summary module", () => {
       );
     });
 
-    test("rejects final redirect to a private URL", async () => {
+    test("rejects redirect to a private URL", async () => {
       globalThis.fetch = (async () =>
-        ({
-          ok: true,
-          status: 200,
-          statusText: "OK",
-          url: "http://127.0.0.1/secret",
-          headers: new Headers([["content-type", "text/plain"]]),
-          text: async () => "secret",
-        }) as Response) as unknown as typeof globalThis.fetch;
+        new Response(null, {
+          status: 302,
+          headers: new Headers([["location", "http://127.0.0.1/secret"]]),
+        })) as unknown as typeof globalThis.fetch;
 
       await expect(fetchUrlContent("https://example.com/redirect")).rejects.toBeInstanceOf(
         SummaryUrlError
       );
+    });
+
+    test("follows public redirects and fetches content", async () => {
+      globalThis.fetch = (async (input: string | Request | URL) => {
+        const url = input.toString();
+        if (url === "https://example.com/redirect") {
+          return new Response(null, {
+            status: 302,
+            headers: new Headers([["location", "https://example.com/article"]]),
+          });
+        }
+        return new Response("Final content", {
+          headers: new Headers([["content-type", "text/plain"]]),
+        });
+      }) as unknown as typeof globalThis.fetch;
+
+      const result = await fetchUrlContent("https://example.com/redirect");
+      expect(result.content).toBe("Final content");
+      expect(result.source).toBe("https://example.com/redirect");
     });
   });
 });

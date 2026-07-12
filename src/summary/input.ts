@@ -154,7 +154,11 @@ async function readResponseWithLimit(response: Response, limit: number): Promise
   }
 
   if (!response.body) {
-    return response.text();
+    const buffer = await response.arrayBuffer();
+    if (buffer.byteLength > limit) {
+      throw new SummaryUrlError(`URL content exceeds ${limit} bytes`);
+    }
+    return new TextDecoder().decode(buffer);
   }
 
   const reader = response.body.getReader();
@@ -192,49 +196,66 @@ async function readResponseWithLimit(response: Response, limit: number): Promise
   return raw;
 }
 
+const MAX_REDIRECTS = 5;
+
 export async function fetchUrlContent(url: string): Promise<ResolvedInput> {
   validateUrl(url);
 
-  let response: Response;
-  try {
-    response = await fetch(url, {
-      redirect: "follow",
-      headers: {
-        "User-Agent": "ai-summary/1.0 (https://github.com/jellydn/ai-launcher)",
-        Accept: "text/html, text/plain, */*",
-      },
-    });
-  } catch (error) {
-    throw new SummaryUrlError(
-      `Failed to fetch URL: ${error instanceof Error ? error.message : error}`
-    );
+  let currentUrl = url;
+  for (let redirectCount = 0; redirectCount <= MAX_REDIRECTS; redirectCount++) {
+    let response: Response;
+    try {
+      response = await fetch(currentUrl, {
+        redirect: "manual",
+        headers: {
+          "User-Agent": "ai-summary/1.0 (https://github.com/jellydn/ai-launcher)",
+          Accept: "text/html, text/plain, */*",
+        },
+      });
+    } catch (error) {
+      throw new SummaryUrlError(
+        `Failed to fetch URL: ${error instanceof Error ? error.message : error}`
+      );
+    }
+
+    if (response.status >= 300 && response.status < 400) {
+      const location = response.headers.get("location");
+      if (!location) {
+        throw new SummaryUrlError("Redirect response without Location header");
+      }
+      currentUrl = new URL(location, currentUrl).href;
+      validateUrl(currentUrl);
+      continue;
+    }
+
+    if (!response.ok) {
+      throw new SummaryUrlError(`URL returned ${response.status}: ${response.statusText}`);
+    }
+
+    const finalUrl = response.url || currentUrl;
+    validateUrl(finalUrl);
+
+    const contentType = response.headers.get("content-type") ?? "";
+    const raw = await readResponseWithLimit(response, MAX_DOWNLOAD_SIZE);
+
+    if (raw.length === 0) {
+      throw new SummaryUrlError("Fetched URL returned empty content");
+    }
+
+    const isHtml =
+      contentType.toLowerCase().includes("html") ||
+      raw.trim().toLowerCase().startsWith("<!doctype html") ||
+      raw.toLowerCase().includes("<html");
+    const content = isHtml ? extractTextFromHtml(raw) : trimContent(raw);
+
+    if (content.trim().length === 0) {
+      throw new SummaryUrlError("Fetched URL returned empty content after extraction");
+    }
+
+    return { content, source: url };
   }
 
-  if (!response.ok) {
-    throw new SummaryUrlError(`URL returned ${response.status}: ${response.statusText}`);
-  }
-
-  const finalUrl = response.url || url;
-  validateUrl(finalUrl);
-
-  const contentType = response.headers.get("content-type") ?? "";
-  const raw = await readResponseWithLimit(response, MAX_DOWNLOAD_SIZE);
-
-  if (raw.length === 0) {
-    throw new SummaryUrlError("Fetched URL returned empty content");
-  }
-
-  const isHtml =
-    contentType.toLowerCase().includes("html") ||
-    raw.trim().toLowerCase().startsWith("<!doctype html") ||
-    raw.toLowerCase().includes("<html");
-  const content = isHtml ? extractTextFromHtml(raw) : trimContent(raw);
-
-  if (content.trim().length === 0) {
-    throw new SummaryUrlError("Fetched URL returned empty content after extraction");
-  }
-
-  return { content, source: url };
+  throw new SummaryUrlError("Too many redirects");
 }
 
 function readFileWithLimit(filePath: string, limit: number): string {
