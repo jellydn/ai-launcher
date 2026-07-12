@@ -408,6 +408,7 @@ Different AI CLIs accept prompts in different ways. The `promptCommand` and `pro
 | `opencode` | `echo 'prompt' &#124; opencode run`                | First arg is treated as project path, needs stdin |
 | `amp`      | `echo 'prompt' &#124; amp -x`                      | Execute mode works best with stdin                |
 | `fx`       | `fx ask 'prompt'`                                  | Runs one noninteractive request                   |
+| `devin`    | `devin -p 'prompt'`                                | Direct Devin CLI invocation                       |
 
 **Example configuration:**
 
