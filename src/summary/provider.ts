@@ -2,6 +2,7 @@ import { AnthropicProvider } from "./providers/anthropic.ts";
 import { MockProvider } from "./providers/mock.ts";
 import { OllamaProvider } from "./providers/ollama.ts";
 import { OpenAIProvider } from "./providers/openai.ts";
+import { OpencodeProvider } from "./providers/opencode.ts";
 import { OpenRouterProvider } from "./providers/openrouter.ts";
 
 export interface Message {
@@ -38,6 +39,10 @@ function inferProvider(config: ProviderConfig): string {
     return config.provider;
   }
 
+  if (process.env.AI_SUMMARY_PROVIDER) {
+    return process.env.AI_SUMMARY_PROVIDER;
+  }
+
   if (config.apiKey || process.env.AI_SUMMARY_API_KEY || process.env.OPENAI_API_KEY) {
     return "openai";
   }
@@ -71,6 +76,8 @@ export function createProvider(config: ProviderConfig = {}): Provider {
       return new OllamaProvider(config);
     case "openrouter":
       return new OpenRouterProvider(config);
+    case "opencode":
+      return new OpencodeProvider(config);
     case "mock":
       return new MockProvider();
     default:

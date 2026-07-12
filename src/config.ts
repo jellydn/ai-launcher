@@ -25,6 +25,12 @@ const DEFAULT_TEMPLATES: Template[] = [
     aliases: ["zen", "logical-commit"],
   },
   {
+    name: "summary",
+    command: "ai-summary --provider opencode --mode tldr $@",
+    description: "Summarize content with OpenCode (free model)",
+    aliases: ["sum", "summarize"],
+  },
+  {
     name: "architecture-explanation",
     command: "ccs gemini 'Explain this codebase architecture'",
     description: "Explain architecture with Gemini",

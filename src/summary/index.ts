@@ -22,7 +22,7 @@ USAGE:
 
 OPTIONS:
   -m, --mode <mode>       Summary mode: tldr | actions | linkedin | technical (default: tldr)
-  -p, --provider <name>   LLM provider: openai | anthropic | ollama | openrouter | mock
+  -p, --provider <name>   LLM provider: openai | anthropic | ollama | openrouter | opencode | mock
       --api-key <key>     API key for the selected provider
       --base-url <url>    Base URL for the provider API
       --model <model>     Model name for the provider
@@ -30,14 +30,19 @@ OPTIONS:
   -h, --help              Show this help message
 
 ENVIRONMENT:
-  AI_SUMMARY_PROVIDER     Default provider (openai | anthropic | ollama | openrouter | mock)
+  AI_SUMMARY_PROVIDER     Default provider (openai | anthropic | ollama | openrouter | opencode | mock)
   AI_SUMMARY_API_KEY      Default API key
   AI_SUMMARY_MODEL        Default model
   OPENAI_API_KEY, ANTHROPIC_API_KEY, OLLAMA_HOST, OLLAMA_MODEL, OPENROUTER_API_KEY  Provider-specific fallbacks
 
 OPENROUTER:
   Set OPENROUTER_API_KEY and use --provider openrouter. The default model is openrouter/free,
-  which routes to free models. Add :free to any model slug for the free variant.`);
+  which routes to free models. Add :free to any model slug for the free variant.
+
+OPENCODE:
+  Use --provider opencode to run the OpenCode CLI. The default model is opencode/big-pickle
+  and the default agent is plan, matching the ai tool's free option. No API key needed.
+  Install the OpenCode CLI and run "opencode auth login" if required.`);
   process.exit(0);
 }
 

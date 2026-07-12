@@ -4,6 +4,7 @@ import { AnthropicProvider } from "./providers/anthropic.ts";
 import { MockProvider } from "./providers/mock.ts";
 import { OllamaProvider } from "./providers/ollama.ts";
 import { OpenAIProvider } from "./providers/openai.ts";
+import { OpencodeProvider } from "./providers/opencode.ts";
 import { OpenRouterProvider } from "./providers/openrouter.ts";
 
 describe("provider module", () => {
@@ -36,6 +37,12 @@ describe("provider module", () => {
       const provider = createProvider({ provider: "openrouter", apiKey: "test-key" });
       expect(provider).toBeInstanceOf(OpenRouterProvider);
       expect(provider.name).toBe("openrouter");
+    });
+
+    test("creates opencode provider", () => {
+      const provider = createProvider({ provider: "opencode" });
+      expect(provider).toBeInstanceOf(OpencodeProvider);
+      expect(provider.name).toBe("opencode");
     });
 
     test("throws when provider is unknown", () => {
