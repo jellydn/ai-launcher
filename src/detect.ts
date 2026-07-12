@@ -284,15 +284,23 @@ export function resetDetectionCache(): void {
   detectionCache = null;
 }
 
+// Command names that collide with a built-in Windows executable and would
+// therefore be falsely "detected" by `where` on Windows (e.g. cmd -> cmd.exe).
+const WINDOWS_SHADOWED_COMMANDS = new Set(["cmd"]);
+
 export function detectInstalledTools(): Tool[] {
   if (detectionCache !== null) {
     return detectionCache;
   }
 
   const detected: Tool[] = [];
+  const isWindows = process.platform === "win32";
 
   for (const entry of KNOWN_TOOLS) {
     const tool: KnownToolDefinition = entry;
+    if (isWindows && WINDOWS_SHADOWED_COMMANDS.has(tool.command)) {
+      continue;
+    }
     if (commandExists(tool.command)) {
       detected.push({
         name: tool.name,

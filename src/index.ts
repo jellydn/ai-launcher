@@ -2,7 +2,7 @@
 
 import type { SpawnSyncReturns } from "node:child_process";
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { executeDiffCommand, parseDiffArgs } from "./cli/diff";
 import { loadConfig } from "./config";
@@ -54,20 +54,41 @@ function validateOutputFile(filePath: string): string | null {
 const MAX_STDIN_SIZE = 10 * 1024 * 1024;
 
 function readStdin(): string | null {
-  try {
-    const isInteractive = process.stdin.isTTY;
-    if (isInteractive) return null;
-    const content = readFileSync(0, "utf-8");
-    if (Buffer.byteLength(content, "utf-8") > MAX_STDIN_SIZE) {
+  const isInteractive = process.stdin.isTTY;
+  if (isInteractive) return null;
+
+  // Read fd 0 incrementally so an oversized pipe is aborted *before* the whole
+  // payload is buffered into memory, rather than after.
+  const CHUNK_SIZE = 64 * 1024;
+  const buffer = Buffer.alloc(CHUNK_SIZE);
+  const chunks: Buffer[] = [];
+  let total = 0;
+
+  while (true) {
+    let bytesRead: number;
+    try {
+      bytesRead = readSync(0, buffer, 0, CHUNK_SIZE, null);
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      if (code === "EAGAIN") continue; // stdin not ready yet, retry
+      if (code === "EOF") break; // Windows signals end-of-input this way
+      return null;
+    }
+
+    if (bytesRead === 0) break;
+
+    total += bytesRead;
+    if (total > MAX_STDIN_SIZE) {
       console.error(
         `Error: stdin input exceeds ${MAX_STDIN_SIZE / 1024 / 1024}MB limit and was rejected.`
       );
       process.exit(1);
     }
-    return content.trim();
-  } catch {
-    return null;
+
+    chunks.push(Buffer.from(buffer.subarray(0, bytesRead)));
   }
+
+  return Buffer.concat(chunks).toString("utf-8").trim();
 }
 
 function showVersion() {

@@ -227,6 +227,12 @@ describe("Output Path Validation", () => {
     expect(isValidOutputPath("..%2F..%2Fetc%2Fpasswd")).toBe(false);
   });
 
+  test("rejects nested hidden directories such as .git or .config", () => {
+    expect(isValidOutputPath("sub/.git/hooks/pre-commit")).toBe(false);
+    expect(isValidOutputPath("project/.config/settings.json")).toBe(false);
+    expect(isValidOutputPath("a/b/.ssh/id_rsa")).toBe(false);
+  });
+
   test("rejects paths to protected directories", () => {
     expect(isValidOutputPath(".git/config")).toBe(false);
     expect(isValidOutputPath(".config/settings.json")).toBe(false);
