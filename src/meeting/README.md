@@ -58,7 +58,7 @@ OPENROUTER_API_KEY=... bun run src/meeting/index.ts meeting.md --openrouter --mo
 bun run src/meeting/index.ts meeting.md --base-url https://openrouter.ai/api/v1 --model google/gemini-2.0-flash-exp:free
 ```
 
-After running `bun run build`, the compiled `ai-meeting` binary is available at `dist/ai-meeting`.
+The `ai` binary includes `ai meeting`; during local development run `bun src/meeting/index.ts`.
 
 ## Example output
 
@@ -93,4 +93,4 @@ After running `bun run build`, the compiled `ai-meeting` binary is available at 
 - **Day 6:** Learn how tool/function-calling works (this mini-CLI uses structured `response_format` rather than `tool_choice`).
 - **Day 7:** Combine everything into a small, usable application.
 
-This project ties the API, prompting, structured outputs, streaming, and temperature choices into one tool that can be run with `bun run src/meeting/index.ts <meeting.md>`, `ai meeting <meeting.md>`, or `ai-meeting <meeting.md>` after building.
+This project ties the API, prompting, structured outputs, streaming, and temperature choices into one tool that can be run with `bun run src/meeting/index.ts <meeting.md>` or `ai meeting <meeting.md>`.

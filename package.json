@@ -6,8 +6,7 @@
   "type": "module",
   "private": true,
   "bin": {
-    "ai": "./dist/ai",
-    "ai-meeting": "./dist/ai-meeting"
+    "ai": "./dist/ai"
   },
   "scripts": {
     "dev": "bun run src/index.ts",

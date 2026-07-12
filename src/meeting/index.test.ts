@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, spyOn, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test";
 import { parseArgs, renderSummary, resolveProviderConfig } from "./index";
 import type { MeetingSummary } from "./schema";
 
@@ -118,10 +118,29 @@ describe("parseArgs", () => {
 });
 
 describe("resolveProviderConfig", () => {
-  const originalEnv = { ...process.env };
+  const ENV_KEYS = ["OPENAI_API_KEY", "OPENROUTER_API_KEY", "OPENAI_BASE_URL"] as const;
+  const originalValues: Record<string, string | undefined> = {};
+
+  beforeEach(() => {
+    for (const key of ENV_KEYS) {
+      originalValues[key] = process.env[key];
+      delete process.env[key];
+    }
+  });
+
+  afterEach(() => {
+    for (const key of ENV_KEYS) {
+      const value = originalValues[key];
+      if (value === undefined) {
+        delete process.env[key];
+      } else {
+        process.env[key] = value;
+      }
+    }
+  });
 
   test("uses OPENAI_API_KEY for the default provider", () => {
-    process.env = { OPENAI_API_KEY: "sk-openai" };
+    process.env.OPENAI_API_KEY = "sk-openai";
 
     const config = resolveProviderConfig({} as ReturnType<typeof parseArgs>);
 
@@ -131,7 +150,7 @@ describe("resolveProviderConfig", () => {
   });
 
   test("uses OPENROUTER_API_KEY when --openrouter is set", () => {
-    process.env = { OPENROUTER_API_KEY: "sk-or" };
+    process.env.OPENROUTER_API_KEY = "sk-or";
 
     const config = resolveProviderConfig({ openrouter: true } as ReturnType<typeof parseArgs>);
 
@@ -141,7 +160,7 @@ describe("resolveProviderConfig", () => {
   });
 
   test("uses OPENAI_API_KEY for an OpenAI-compatible base URL", () => {
-    process.env = { OPENAI_API_KEY: "sk-openai" };
+    process.env.OPENAI_API_KEY = "sk-openai";
 
     const config = resolveProviderConfig({
       baseURL: "https://openrouter.ai/api/v1",
@@ -153,7 +172,7 @@ describe("resolveProviderConfig", () => {
   });
 
   test("falls back to OPENROUTER_API_KEY for an OpenRouter base URL", () => {
-    process.env = { OPENROUTER_API_KEY: "sk-or" };
+    process.env.OPENROUTER_API_KEY = "sk-or";
 
     const config = resolveProviderConfig({
       baseURL: "https://openrouter.ai/api/v1",
@@ -163,33 +182,23 @@ describe("resolveProviderConfig", () => {
   });
 
   test("throws when OPENAI_API_KEY is missing for the default provider", () => {
-    process.env = {};
-
     expect(() => resolveProviderConfig({} as ReturnType<typeof parseArgs>)).toThrow(
       "OPENAI_API_KEY is not set."
     );
   });
 
   test("throws when OPENROUTER_API_KEY is missing for --openrouter", () => {
-    process.env = {};
-
     expect(() =>
       resolveProviderConfig({ openrouter: true } as ReturnType<typeof parseArgs>)
     ).toThrow("OPENROUTER_API_KEY is not set.");
   });
 
   test("throws with both key names for an OpenRouter base URL", () => {
-    process.env = {};
-
     expect(() =>
       resolveProviderConfig({
         baseURL: "https://openrouter.ai/api/v1",
       } as ReturnType<typeof parseArgs>)
     ).toThrow("OPENAI_API_KEY or OPENROUTER_API_KEY is not set.");
-  });
-
-  afterEach(() => {
-    process.env = { ...originalEnv };
   });
 });
 

@@ -70,7 +70,7 @@ bun install
 bun run build
 ```
 
-This produces a standalone executable at `dist/ai` (and `dist/ai-meeting` for local development). `ai` now includes the `meeting` subcommand.
+This produces a standalone executable at `dist/ai`. `ai` now includes the `meeting` subcommand.
 
 ### Manual Install
 
@@ -82,9 +82,6 @@ sudo ln -sf "$(pwd)/dist/ai" /usr/local/bin/ai
 mkdir -p ~/.local/bin
 ln -sf "$(pwd)/dist/ai" ~/.local/bin/ai
 # Ensure ~/.local/bin is in your PATH
-
-# Optional standalone ai-meeting binary (built locally for development)
-# ln -sf "$(pwd)/dist/ai-meeting" ~/.local/bin/ai-meeting
 ```
 
 Verify installation:
@@ -258,7 +255,7 @@ cat meeting.md | ai meeting --json
 OPENROUTER_API_KEY=... ai meeting meeting.md --openrouter
 ```
 
-By default it prints a human-readable summary. Pass `--json` for machine-readable JSON. You can also use the standalone `ai-meeting` binary if installed.
+By default it prints a human-readable summary. Pass `--json` for machine-readable JSON.
 
 ## Configuration
 
