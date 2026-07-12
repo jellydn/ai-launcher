@@ -35,7 +35,7 @@ export function detectCategory(content: string): SummaryCategory {
     return "email";
   }
 
-  return "article";
+  return "unknown";
 }
 
 export function getModeInstruction(mode: SummaryMode): string {

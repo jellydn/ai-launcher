@@ -51,12 +51,14 @@ describe("provider module", () => {
 
     test("throws when no provider or key is configured", () => {
       const originalProvider = process.env.AI_SUMMARY_PROVIDER;
+      const originalApiKey = process.env.AI_SUMMARY_API_KEY;
       const originalOpenAI = process.env.OPENAI_API_KEY;
       const originalAnthropic = process.env.ANTHROPIC_API_KEY;
       const originalOllama = process.env.OLLAMA_HOST;
       const originalOpenRouter = process.env.OPENROUTER_API_KEY;
 
       delete process.env.AI_SUMMARY_PROVIDER;
+      delete process.env.AI_SUMMARY_API_KEY;
       delete process.env.OPENAI_API_KEY;
       delete process.env.ANTHROPIC_API_KEY;
       delete process.env.OLLAMA_HOST;
@@ -66,6 +68,7 @@ describe("provider module", () => {
         expect(() => createProvider()).toThrow(ProviderError);
       } finally {
         process.env.AI_SUMMARY_PROVIDER = originalProvider;
+        process.env.AI_SUMMARY_API_KEY = originalApiKey;
         process.env.OPENAI_API_KEY = originalOpenAI;
         process.env.ANTHROPIC_API_KEY = originalAnthropic;
         process.env.OLLAMA_HOST = originalOllama;

@@ -81,10 +81,14 @@ export async function fetchUrlContent(url: string): Promise<ResolvedInput> {
   }
 
   const isHtml =
-    contentType.includes("html") ||
+    contentType.toLowerCase().includes("html") ||
     raw.trim().toLowerCase().startsWith("<!doctype html") ||
-    raw.includes("<html");
+    raw.toLowerCase().includes("<html");
   const content = isHtml ? extractTextFromHtml(raw) : trimContent(raw);
+
+  if (content.trim().length === 0) {
+    throw new SummaryUrlError("Fetched URL returned empty content after extraction");
+  }
 
   return { content, source: url };
 }

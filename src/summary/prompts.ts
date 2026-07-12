@@ -1,5 +1,5 @@
 import { getModeInstruction } from "./detect.ts";
-import type { SummaryMode } from "./schema.ts";
+import type { SummaryCategory, SummaryMode } from "./schema.ts";
 
 export const SUMMARY_JSON_SCHEMA = `{
   "title": "Optional detected title",
@@ -18,15 +18,16 @@ export const SUMMARY_JSON_SCHEMA = `{
 
 export interface PromptInput {
   content: string;
-  category: string;
+  category: SummaryCategory;
   mode: SummaryMode;
   source: string;
 }
 
 export function buildSummaryPrompt(input: PromptInput): string {
   const modeInstruction = getModeInstruction(input.mode);
+  const category = input.category === "unknown" ? "content" : input.category;
 
-  return `You are a summarization assistant. Read the following ${input.category} from ${input.source} and produce a JSON object that conforms to this schema:
+  return `You are a summarization assistant. Read the following ${category} from ${input.source} and produce a JSON object that conforms to this schema:
 
 ${SUMMARY_JSON_SCHEMA}
 

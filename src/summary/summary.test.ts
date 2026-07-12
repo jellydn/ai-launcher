@@ -22,9 +22,9 @@ describe("summary module", () => {
       expect(detectCategory(content)).toBe("newsletter");
     });
 
-    test("defaults to article for plain content", () => {
+    test("defaults to unknown for plain content", () => {
       const content = `The quick brown fox jumps over the lazy dog. This is a plain article.`;
-      expect(detectCategory(content)).toBe("article");
+      expect(detectCategory(content)).toBe("unknown");
     });
   });
 
@@ -99,6 +99,11 @@ describe("summary module", () => {
 
     test("extracts JSON from surrounding text", () => {
       const result = extractJson('Here is the JSON: {"summary": "hello"} Done.');
+      expect(result).toEqual({ summary: "hello" });
+    });
+
+    test("extracts JSON when prose contains braces", () => {
+      const result = extractJson('Here is the result {as requested}: {"summary": "hello"}. Done!');
       expect(result).toEqual({ summary: "hello" });
     });
 
