@@ -39,12 +39,12 @@ Options:
   --openrouter            Use OpenRouter (sets base URL and free-model default)
   --base-url <url>        OpenAI-compatible API base URL
   --model <model>         Model to use
-  --temperature <n>       Sampling temperature (0.0-1.0)
+  --temperature <n>       Sampling temperature (0.0-2.0)
 `);
   process.exit(0);
 }
 
-function parseArgs(args: string[]): Options {
+export function parseArgs(args: string[]): Options {
   let path: string | undefined;
   let json = false;
   let progress = false;
@@ -112,7 +112,7 @@ function readInput(path: string | undefined): string {
   return readFileSync(0, "utf-8");
 }
 
-function renderSummary(result: MeetingSummary): string {
+export function renderSummary(result: MeetingSummary): string {
   const lines: string[] = [];
   lines.push(`Summary\n${result.summary}\n`);
   lines.push("Action items");
