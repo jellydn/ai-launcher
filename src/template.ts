@@ -1,3 +1,5 @@
+import type { Template } from "./types";
+
 export interface ParsedCommand {
   cmd: string;
   args: string[];
@@ -75,6 +77,18 @@ export function parseTemplateCommand(command: string): ParsedCommand {
     cmd: parts[0] ?? "",
     args: parts.slice(1),
   };
+}
+
+export function templateRequiresConfirmation(template: Template): boolean {
+  if (template.mode === "write") {
+    return true;
+  }
+
+  if (typeof template.requiresConfirmation === "boolean") {
+    return template.requiresConfirmation;
+  }
+
+  return template.mode !== "read-only";
 }
 
 export function parseCommand(command: string): ParsedCommand {
