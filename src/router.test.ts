@@ -1,10 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import {
-  buildRouterPrompt,
-  parseRouterResponse,
-  resolveRouterSelection,
-  templateRequiresConfirmation,
-} from "./router";
+import { buildRouterPrompt, parseRouterResponse, resolveRouterSelection } from "./router";
+import { templateRequiresConfirmation } from "./template";
 
 const TEMPLATES = [
   {

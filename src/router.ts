@@ -1,3 +1,4 @@
+import { templateRequiresConfirmation } from "./template";
 import type { Template } from "./types";
 
 export interface RouterSelection {
@@ -14,14 +15,14 @@ function formatTemplateSummary(template: Template): string {
   const aliases =
     template.aliases && template.aliases.length > 0 ? template.aliases.join(", ") : "none";
   const mode = template.mode ?? "unspecified";
-  const requiresConfirmation = templateRequiresConfirmation(template) ? "yes" : "no";
+  const requiresConfirmationLabel = templateRequiresConfirmation(template) ? "yes" : "no";
 
   return [
     `- ${template.name}`,
     `  description: ${template.description}`,
     `  aliases: ${aliases}`,
     `  mode: ${mode}`,
-    `  requiresConfirmation: ${requiresConfirmation}`,
+    `  requiresConfirmation: ${requiresConfirmationLabel}`,
   ].join("\n");
 }
 
@@ -120,18 +121,6 @@ export function parseRouterResponse(output: string): RouterSelection | null {
     template: result.template.trim(),
     arguments: argumentsValue ?? [],
   };
-}
-
-export function templateRequiresConfirmation(template: Template): boolean {
-  if (template.mode === "write") {
-    return true;
-  }
-
-  if (typeof template.requiresConfirmation === "boolean") {
-    return template.requiresConfirmation;
-  }
-
-  return template.mode !== "read-only";
 }
 
 export function resolveRouterSelection(
