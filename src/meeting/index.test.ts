@@ -1,4 +1,5 @@
 import { describe, expect, spyOn, test } from "bun:test";
+import type { MeetingOptions } from "./index";
 import { parseArgs, renderSummary } from "./index";
 import type { MeetingSummary } from "./schema";
 
@@ -70,6 +71,22 @@ describe("parseArgs", () => {
 
   test("throws when --temperature is not a number", () => {
     expect(() => parseArgs(["--temperature", "hot"])).toThrow("--temperature must be a number");
+  });
+
+  test("throws when a value option is followed by another flag", () => {
+    expect(() => parseArgs(["--model", "--json"])).toThrow("--model requires a value");
+    expect(() => parseArgs(["--base-url", "--openrouter"])).toThrow("--base-url requires a value");
+    expect(() => parseArgs(["--temperature", "--progress"])).toThrow(
+      "--temperature requires a value"
+    );
+  });
+
+  test("returns a MeetingOptions-compatible object", () => {
+    const options: MeetingOptions = parseArgs(["--json", "--model", "gpt-4o", "meeting.md"]);
+
+    expect(options.path).toBe("meeting.md");
+    expect(options.json).toBe(true);
+    expect(options.model).toBe("gpt-4o");
   });
 
   test("shows help and exits on --help", () => {

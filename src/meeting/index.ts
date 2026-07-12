@@ -7,7 +7,7 @@ import { summarizeMeeting } from "./summarize.ts";
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 const DEFAULT_OPENROUTER_MODEL = "openrouter/free";
 
-interface Options {
+export interface MeetingOptions {
   path: string | undefined;
   json: boolean;
   progress: boolean;
@@ -44,7 +44,7 @@ Options:
   process.exit(0);
 }
 
-export function parseArgs(args: string[]): Options {
+export function parseArgs(args: string[]): MeetingOptions {
   let path: string | undefined;
   let json = false;
   let progress = false;
@@ -69,21 +69,21 @@ export function parseArgs(args: string[]): Options {
       openrouter = true;
     } else if (arg === "--base-url") {
       const next = args[i + 1];
-      if (!next) {
+      if (!next || next.startsWith("-")) {
         throw new Error("--base-url requires a value");
       }
       baseURL = next;
       i++;
     } else if (arg === "--model") {
       const next = args[i + 1];
-      if (!next) {
+      if (!next || next.startsWith("-")) {
         throw new Error("--model requires a value");
       }
       model = next;
       i++;
     } else if (arg === "--temperature") {
       const next = args[i + 1];
-      if (!next) {
+      if (!next || next.startsWith("-")) {
         throw new Error("--temperature requires a value");
       }
       const value = Number.parseFloat(next);
@@ -150,20 +150,26 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
 
   let baseURL = options.baseURL ?? process.env.OPENAI_BASE_URL;
 
-  const shouldUseOpenRouter =
-    options.openrouter ||
-    (baseURL?.includes("openrouter.ai") ?? false) ||
-    (!process.env.OPENAI_API_KEY && !!process.env.OPENROUTER_API_KEY);
+  const isOpenRouterBaseURL = baseURL?.includes("openrouter.ai") ?? false;
+  const shouldUseOpenRouter = options.openrouter || isOpenRouterBaseURL;
 
-  if (shouldUseOpenRouter) {
-    baseURL ??= OPENROUTER_BASE_URL;
+  if (shouldUseOpenRouter && !baseURL) {
+    baseURL = OPENROUTER_BASE_URL;
   }
 
-  const apiKey = shouldUseOpenRouter
-    ? (process.env.OPENROUTER_API_KEY ?? process.env.OPENAI_API_KEY)
-    : (process.env.OPENAI_API_KEY ?? process.env.OPENROUTER_API_KEY);
+  let apiKey: string | undefined;
+  if (options.openrouter) {
+    apiKey = process.env.OPENROUTER_API_KEY;
+  } else if (isOpenRouterBaseURL) {
+    apiKey = process.env.OPENAI_API_KEY ?? process.env.OPENROUTER_API_KEY;
+  } else {
+    apiKey = process.env.OPENAI_API_KEY;
+  }
+
   if (!apiKey) {
-    console.error("OPENAI_API_KEY or OPENROUTER_API_KEY is not set.");
+    console.error(
+      shouldUseOpenRouter ? "OPENROUTER_API_KEY is not set." : "OPENAI_API_KEY is not set."
+    );
     process.exit(1);
   }
 

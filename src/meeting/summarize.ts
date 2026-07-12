@@ -26,7 +26,7 @@ export async function summarizeMeeting(
     defaultHeaders: isOpenRouter
       ? {
           "HTTP-Referer": "https://github.com/jellydn/ai-launcher",
-          "X-OpenRouter-Title": "tiny-meeting-assistant",
+          "X-OpenRouter-Title": "ai-meeting",
         }
       : undefined,
   });
