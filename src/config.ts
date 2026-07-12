@@ -91,7 +91,7 @@ function mergeTemplates(existing: Template[], defaults: Template[]): Template[] 
   }
 
   const summaryTemplate = existingByName.get("summary");
-  if (summaryTemplate?.command.startsWith("ai-summary")) {
+  if (summaryTemplate && /^\s*ai-summary(?!\S)/.test(summaryTemplate.command)) {
     existingByName.set("summary", {
       ...summaryTemplate,
       command: summaryTemplate.command.replace(/^\s*ai-summary(?!\S)/, "ai summary"),

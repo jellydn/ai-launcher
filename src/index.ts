@@ -12,6 +12,7 @@ import { getColoredLogo } from "./logo";
 import { findToolByName } from "./lookup";
 import { main as summaryMain } from "./summary/index.ts";
 import { isSafeCommand } from "./template";
+import type { SelectableItem } from "./types";
 import { upgrade } from "./upgrade";
 import { VERSION } from "./version";
 
@@ -286,6 +287,10 @@ function launchToolWithPrompt(
   process.exit(child.status ?? 0);
 }
 
+function isSummaryTemplate(item: SelectableItem): boolean {
+  return item.isTemplate && item.command.trim().startsWith("ai summary");
+}
+
 async function main() {
   const args = process.argv.slice(2);
 
@@ -308,14 +313,24 @@ async function main() {
     return;
   }
 
-  const stdinContent = readStdin();
-
   const config = loadConfig();
   const detectedTools = detectInstalledTools();
   const allTools = mergeTools(config.tools, detectedTools);
 
   const items = toSelectableItems(allTools, config.templates);
   const lookupItems = items;
+
+  const dashIndex = args.indexOf("--");
+  const toolQuery = args[0] !== "--" ? args[0] : undefined;
+
+  if (toolQuery) {
+    const result = findToolByName(toolQuery, lookupItems);
+    if (result.success && result.item && isSummaryTemplate(result.item)) {
+      const summaryArgs = dashIndex !== -1 ? args.slice(dashIndex + 1) : args.slice(1);
+      await summaryMain(summaryArgs);
+      return;
+    }
+  }
 
   if (items.length === 0) {
     console.error("❌ No AI tools found!\n");
@@ -327,6 +342,8 @@ async function main() {
     process.exit(1);
   }
 
+  const stdinContent = readStdin();
+
   const diffParsed = parseDiffArgs(args);
   if (diffParsed.hasDiffCommand) {
     const { options, diffFlagIndex } = diffParsed;
@@ -337,7 +354,6 @@ async function main() {
     }
   }
 
-  const dashIndex = args.indexOf("--");
   if (dashIndex !== -1) {
     const beforeDash = args.slice(0, dashIndex);
     const afterDash = args.slice(dashIndex + 1);
@@ -353,13 +369,13 @@ async function main() {
       return;
     }
 
-    const toolQuery = beforeDash[0];
-    if (!toolQuery) {
+    const query = beforeDash[0];
+    if (!query) {
       console.error("No tool specified before '--' separator");
       process.exit(1);
     }
 
-    const lookupResult = findToolByName(toolQuery, lookupItems);
+    const lookupResult = findToolByName(query, lookupItems);
     if (lookupResult.success && lookupResult.item) {
       launchTool(lookupResult.item.command, afterDash, stdinContent);
       return;
@@ -369,10 +385,10 @@ async function main() {
   }
 
   if (args.length > 0) {
-    const toolQuery = args[0];
+    const query = args[0];
     const extraArgs = args.slice(1);
 
-    const result = findToolByName(toolQuery, lookupItems);
+    const result = findToolByName(query, lookupItems);
 
     if (result.success && result.item) {
       launchTool(result.item.command, extraArgs, stdinContent);

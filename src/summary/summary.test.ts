@@ -264,6 +264,29 @@ describe("summary module", () => {
       );
     });
 
+    test("fetches URL via streaming response body", async () => {
+      globalThis.fetch = (async () =>
+        new Response(new TextEncoder().encode("Plain text from stream"), {
+          headers: new Headers([["content-type", "text/plain"]]),
+        })) as unknown as typeof globalThis.fetch;
+
+      const result = await fetchUrlContent("https://example.com/article");
+      expect(result.content).toBe("Plain text from stream");
+      expect(result.source).toBe("https://example.com/article");
+    });
+
+    test("rejects streaming URL when body exceeds the size limit", async () => {
+      const largeBody = new Uint8Array(1_000_001).fill(0x78);
+      globalThis.fetch = (async () =>
+        new Response(largeBody, {
+          headers: new Headers([["content-type", "text/plain"]]),
+        })) as unknown as typeof globalThis.fetch;
+
+      await expect(fetchUrlContent("https://example.com/huge")).rejects.toBeInstanceOf(
+        SummaryUrlError
+      );
+    });
+
     test("rejects final redirect to a private URL", async () => {
       globalThis.fetch = (async () =>
         ({

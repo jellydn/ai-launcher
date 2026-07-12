@@ -144,6 +144,7 @@ async function readResponseWithLimit(response: Response, limit: number): Promise
   let bytesRead = 0;
   let done = false;
   let value: Uint8Array | undefined;
+  let limitExceeded = false;
 
   try {
     while (true) {
@@ -153,7 +154,8 @@ async function readResponseWithLimit(response: Response, limit: number): Promise
         raw += decoder.decode(value, { stream: true });
         bytesRead += value.length;
       }
-      if (bytesRead >= limit) {
+      if (bytesRead > limit) {
+        limitExceeded = true;
         break;
       }
     }
@@ -162,6 +164,10 @@ async function readResponseWithLimit(response: Response, limit: number): Promise
       await reader.cancel();
     }
     raw += decoder.decode();
+  }
+
+  if (limitExceeded) {
+    throw new SummaryUrlError(`URL content exceeds ${limit} bytes`);
   }
 
   return raw;

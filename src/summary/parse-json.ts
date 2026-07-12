@@ -65,7 +65,7 @@ export function extractJson(raw: string): unknown {
     }
   }
 
-  const fencedMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/);
+  const fencedMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
   if (fencedMatch?.[1]) {
     const inner = fencedMatch[1].trim();
     try {
