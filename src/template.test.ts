@@ -291,13 +291,6 @@ describe("Template Execution", () => {
     expect(isSafeCommand("claude 'Explain this'")).toBe(true);
   });
 
-  test("parseTemplateCommand splits command correctly", async () => {
-    const { parseTemplateCommand } = await import("./template");
-    const result = parseTemplateCommand("amp -x 'Review: hello'");
-    expect(result.cmd).toBe("amp");
-    expect(result.args).toContain("-x");
-  });
-
   test("parseCommand handles quoted arguments without preserving quotes", async () => {
     const { parseCommand } = await import("./template");
     const result = parseCommand('opencode run --model "custom model" --agent plan');
@@ -356,10 +349,10 @@ describe("Template Edge Cases", () => {
   });
 
   test("template with colon in name", async () => {
-    const { parseTemplateCommand } = await import("./template");
-    const result = parseTemplateCommand("ccs glm 'Create draft pr'");
+    const { parseCommand } = await import("./template");
+    const result = parseCommand("ccs glm 'Create draft pr'");
     expect(result.cmd).toBe("ccs");
-    expect(result.args).toEqual(["glm", "'Create draft pr'"]);
+    expect(result.args).toEqual(["glm", "Create draft pr"]);
   });
 
   test("template command with double quotes inside single quotes", async () => {

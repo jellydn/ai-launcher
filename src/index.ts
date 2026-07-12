@@ -4,14 +4,16 @@ import type { SpawnSyncReturns } from "node:child_process";
 import { spawnSync } from "node:child_process";
 import { existsSync, readSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
+import { parseArgs } from "./args";
 import { executeDiffCommand, parseDiffArgs } from "./cli/diff";
 import { loadConfig } from "./config";
 import { detectInstalledTools, formatSuggestedInstallHints, mergeTools } from "./detect";
-import { fuzzySelect, promptForInput, toSelectableItems } from "./fuzzy-select";
+import { fuzzySelect, toSelectableItems } from "./fuzzy-select";
 import { buildLaunchArgv } from "./launch-argv";
 import { getColoredLogo } from "./logo";
 import { findToolByName, type LookupResult } from "./lookup";
 import { main as meetingMain } from "./meeting/index.ts";
+import { promptForInput } from "./prompt-input";
 import { formatPromptInspection, formatPromptList } from "./prompts/registry.ts";
 import { buildRouterPrompt, parseRouterResponse, resolveRouterSelection } from "./router";
 import { main as summaryMain } from "./summary/index.ts";
@@ -122,6 +124,7 @@ function readStdin(): string | null {
 
   return Buffer.concat(chunks).toString("utf-8").trim();
 }
+
 
 function showVersion() {
   console.log(`ai-launcher v${VERSION}`);
@@ -557,9 +560,11 @@ async function main() {
     }
   }
 
-  if (dashIndex !== -1) {
-    const beforeDash = args.slice(0, dashIndex);
-    const afterDash = args.slice(dashIndex + 1);
+  const parsedArgs = parseArgs(args);
+
+  if (parsedArgs.dashSeparator) {
+    const beforeDash = parsedArgs.beforeDash;
+    const afterDash = parsedArgs.afterDash;
 
     if (beforeDash.length === 0) {
       const result = await fuzzySelect(items);
@@ -600,8 +605,12 @@ async function main() {
   }
 
   if (args.length > 0) {
-    const query = args[0];
-    const extraArgs = args.slice(1);
+    const query = parsedArgs.toolQuery;
+    if (!query) {
+      console.error("No tool query found");
+      process.exit(1);
+    }
+    const extraArgs = parsedArgs.extraArgs;
 
     const result =
       cachedToolLookup && toolQuery === query

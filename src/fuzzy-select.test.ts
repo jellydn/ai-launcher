@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { promptForInput, toSelectableItems } from "./fuzzy-select";
+import { toSelectableItems } from "./fuzzy-select";
 import type { Template } from "./types";
 
 describe("toSelectableItems", () => {
@@ -79,12 +79,5 @@ describe("toSelectableItems", () => {
 
     expect(items[0]?.aliases).toEqual([]);
     expect(items[1]?.aliases).toEqual(["alias1", "alias2"]);
-  });
-});
-
-describe("promptForInput", () => {
-  test("is exported and callable", () => {
-    expect(typeof promptForInput).toBe("function");
-    expect(promptForInput.length).toBe(1);
   });
 });
