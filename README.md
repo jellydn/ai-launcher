@@ -25,6 +25,7 @@
 - **📋 Templates**: Create command shortcuts with `$@` argument/stdin placeholders
 - **👤 CCS Profiles**: Automatically detects CCS profiles via `ccs api list`
 - **📊 Git Diff Analysis**: Analyze staged or commit diffs with AI assistants
+- **📝 ai meeting**: Extract summaries, action items, and risks from meeting notes
 - **🔒 Security**: Built-in command validation and injection prevention
 - **🌍 Cross-Platform**: Works on macOS, Linux, and Windows
 - **⚙️ Configuration**: User-defined tools override auto-detection
@@ -56,7 +57,7 @@ brew install jellydn/tap/ai
 
 ### Windows
 
-Download the latest `ai-windows-x64.exe` from [Releases](https://github.com/jellydn/ai-launcher/releases) and add to your PATH.
+Download the latest `ai-windows-x64.exe` from [Releases](https://github.com/jellydn/ai-launcher/releases) and add to your PATH. The `ai meeting` subcommand is built into the `ai` binary.
 
 ### Build from Source
 
@@ -69,7 +70,7 @@ bun install
 bun run build
 ```
 
-This produces a standalone executable at `dist/ai`.
+This produces a standalone executable at `dist/ai`. `ai` now includes the `meeting` subcommand.
 
 ### Manual Install
 
@@ -260,6 +261,26 @@ git add . && ai c --diff-staged --diff-output quick-review.md
 ```
 
 The feature automatically constructs a prompt with the diff and sends it to your chosen AI assistant for analysis. Use `--diff-prompt` to add custom instructions and `--diff-output` to save the analysis to a markdown file.
+
+## 📝 ai meeting
+
+`ai meeting` extracts summaries, action items, and risks from meeting notes or transcripts using structured outputs.
+
+```bash
+# From a file
+ai meeting meeting.md
+
+# From stdin
+cat meeting.md | ai meeting
+
+# JSON only
+cat meeting.md | ai meeting --json
+
+# Use OpenRouter for cost-free dev/test
+OPENROUTER_API_KEY=... ai meeting meeting.md --openrouter
+```
+
+By default it prints a human-readable summary. Pass `--json` for machine-readable JSON.
 
 ## Configuration
 

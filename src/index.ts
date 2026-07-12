@@ -10,6 +10,7 @@ import { detectInstalledTools, formatSuggestedInstallHints, mergeTools } from ".
 import { fuzzySelect, promptForInput, toSelectableItems } from "./fuzzy-select";
 import { getColoredLogo } from "./logo";
 import { findToolByName } from "./lookup";
+import { main as meetingMain } from "./meeting/index.ts";
 import { main as summaryMain } from "./summary/index.ts";
 import { isSafeCommand, parseTemplateCommand } from "./template";
 import type { SelectableItem } from "./types";
@@ -320,6 +321,11 @@ async function main() {
 
   if (args[0] === "summary") {
     await summaryMain(args.slice(1));
+    return;
+  }
+
+  if (args[0] === "meeting") {
+    await meetingMain(args.slice(1));
     return;
   }
 

@@ -2,7 +2,6 @@
 set -e
 
 REPO="jellydn/ai-launcher"
-BINARY_NAME="ai"
 INSTALL_DIR="${AI_INSTALL_DIR:-$HOME/.local/bin}"
 
 # Detect OS
@@ -32,7 +31,9 @@ if [ "$IS_WINDOWS" = true ]; then
   BINARY_NAME="ai.exe"
 else
   ARTIFACT="ai-${OS}-${ARCH}"
+  BINARY_NAME="ai"
 fi
+
 echo "Detected: $OS-$ARCH"
 
 # Get latest release URL
@@ -58,7 +59,7 @@ curl -fsSL "$DOWNLOAD_URL" -o "${INSTALL_DIR}/${BINARY_NAME}"
 if [ -n "$CHECKSUM_URL" ]; then
   echo "Verifying checksum..."
   CHECKSUMS=$(curl -fsSL "$CHECKSUM_URL")
-  EXPECTED=$(echo "$CHECKSUMS" | grep "$ARTIFACT" | awk '{print $1}')
+  EXPECTED=$(echo "$CHECKSUMS" | grep "$ARTIFACT" | head -n 1 | awk '{print $1}')
 
   if [ -n "$EXPECTED" ]; then
     if command -v sha256sum >/dev/null 2>&1; then
@@ -85,7 +86,6 @@ if [ "$IS_WINDOWS" = false ]; then
   chmod +x "${INSTALL_DIR}/${BINARY_NAME}"
 fi
 
-echo ""
 echo "✓ Installed $BINARY_NAME to ${INSTALL_DIR}/${BINARY_NAME}"
 
 # Check if in PATH (POSIX-compliant)

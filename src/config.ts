@@ -99,13 +99,24 @@ function mergeTemplates(existing: Template[], defaults: Template[]): Template[] 
     changed = true;
   }
 
+  const meetingTemplate = existingByName.get("meeting");
+  if (meetingTemplate && /^\s*ai-meeting(?!\S)/.test(meetingTemplate.command)) {
+    const migrated = meetingTemplate.command.replace(/^\s*ai-meeting(?!\S)/, "ai meeting");
+    if (migrated !== meetingTemplate.command) {
+      existingByName.set("meeting", {
+        ...meetingTemplate,
+        command: migrated,
+      });
+      changed = true;
+    }
+  }
+
   if (!changed) {
     return existing;
   }
 
   return Array.from(existingByName.values());
 }
-
 function validateAliases(aliases: unknown, path: string): ConfigValidationError[] {
   if (!Array.isArray(aliases)) {
     if (aliases !== undefined) {
