@@ -9,9 +9,11 @@ import { loadConfig } from "./config";
 import { detectInstalledTools, formatSuggestedInstallHints, mergeTools } from "./detect";
 import { fuzzySelect, promptForInput, toSelectableItems } from "./fuzzy-select";
 import { getColoredLogo } from "./logo";
-import { findToolByName } from "./lookup";
+import { findToolByName, type LookupResult } from "./lookup";
 import { main as meetingMain } from "./meeting/index.ts";
-import { isSafeCommand } from "./template";
+import { main as summaryMain } from "./summary/index.ts";
+import { isSafeCommand, parseTemplateCommand } from "./template";
+import type { SelectableItem } from "./types";
 import { upgrade } from "./upgrade";
 import { VERSION } from "./version";
 
@@ -138,6 +140,7 @@ EXAMPLES:
                                      Save analysis to file
     ai --diff-commit HEAD~1 --diff-prompt "Focus on security"
                                      Add custom prompt
+    ai summary article.txt           Summarize content with OpenCode
     ai upgrade                       Upgrade to latest version
 
 CONFIG:
@@ -285,6 +288,23 @@ function launchToolWithPrompt(
   process.exit(child.status ?? 0);
 }
 
+function isSummaryTemplate(item: SelectableItem): boolean {
+  if (!item.isTemplate) {
+    return false;
+  }
+  return /^ai summary(?:\s|$)/.test(item.command.trim());
+}
+
+function getSummaryArgsFromTemplate(command: string, userArgs: string[]): string[] {
+  const parsed = parseTemplateCommand(command);
+  const summaryIndex = parsed.args.indexOf("summary");
+  const placeholderIndex = parsed.args.indexOf("$@");
+  const endIndex = placeholderIndex === -1 ? parsed.args.length : placeholderIndex;
+  const flagArgs = parsed.args.slice(summaryIndex + 1, endIndex);
+  const strippedFlags = flagArgs.map((token) => token.replace(/^["']|["']$/g, ""));
+  return [...strippedFlags, ...userArgs];
+}
+
 async function main() {
   const args = process.argv.slice(2);
 
@@ -302,12 +322,15 @@ async function main() {
     return;
   }
 
+  if (args[0] === "summary") {
+    await summaryMain(args.slice(1));
+    return;
+  }
+
   if (args[0] === "meeting") {
     await meetingMain(args.slice(1));
     return;
   }
-
-  const stdinContent = readStdin();
 
   const config = loadConfig();
   const detectedTools = detectInstalledTools();
@@ -315,6 +338,23 @@ async function main() {
 
   const items = toSelectableItems(allTools, config.templates);
   const lookupItems = items;
+
+  const dashIndex = args.indexOf("--");
+  const toolQuery = args[0] !== "--" ? args[0] : undefined;
+  let cachedToolLookup: LookupResult | undefined;
+
+  if (toolQuery) {
+    const result = findToolByName(toolQuery, lookupItems);
+    if (result.success && result.item && isSummaryTemplate(result.item)) {
+      const userArgs = dashIndex !== -1 ? args.slice(dashIndex + 1) : args.slice(1);
+      const summaryArgs = getSummaryArgsFromTemplate(result.item.command, userArgs);
+      await summaryMain(summaryArgs);
+      return;
+    }
+    if (result.success) {
+      cachedToolLookup = result;
+    }
+  }
 
   if (items.length === 0) {
     console.error("❌ No AI tools found!\n");
@@ -326,6 +366,8 @@ async function main() {
     process.exit(1);
   }
 
+  const stdinContent = readStdin();
+
   const diffParsed = parseDiffArgs(args);
   if (diffParsed.hasDiffCommand) {
     const { options, diffFlagIndex } = diffParsed;
@@ -336,7 +378,6 @@ async function main() {
     }
   }
 
-  const dashIndex = args.indexOf("--");
   if (dashIndex !== -1) {
     const beforeDash = args.slice(0, dashIndex);
     const afterDash = args.slice(dashIndex + 1);
@@ -352,13 +393,13 @@ async function main() {
       return;
     }
 
-    const toolQuery = beforeDash[0];
-    if (!toolQuery) {
+    const query = beforeDash[0];
+    if (!query) {
       console.error("No tool specified before '--' separator");
       process.exit(1);
     }
 
-    const lookupResult = findToolByName(toolQuery, lookupItems);
+    const lookupResult = findToolByName(query, lookupItems);
     if (lookupResult.success && lookupResult.item) {
       launchTool(lookupResult.item.command, afterDash, stdinContent);
       return;
@@ -368,10 +409,13 @@ async function main() {
   }
 
   if (args.length > 0) {
-    const toolQuery = args[0];
+    const query = args[0];
     const extraArgs = args.slice(1);
 
-    const result = findToolByName(toolQuery, lookupItems);
+    const result =
+      cachedToolLookup && toolQuery === query
+        ? cachedToolLookup
+        : findToolByName(query, lookupItems);
 
     if (result.success && result.item) {
       launchTool(result.item.command, extraArgs, stdinContent);

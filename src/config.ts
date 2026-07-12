@@ -25,6 +25,12 @@ const DEFAULT_TEMPLATES: Template[] = [
     aliases: ["zen", "logical-commit"],
   },
   {
+    name: "summary",
+    command: "ai summary --provider opencode --mode tldr $@",
+    description: "Summarize content with OpenCode (free model)",
+    aliases: ["sum", "summarize"],
+  },
+  {
     name: "architecture-explanation",
     command: "ccs gemini 'Explain this codebase architecture'",
     description: "Explain architecture with Gemini",
@@ -84,8 +90,17 @@ function mergeTemplates(existing: Template[], defaults: Template[]): Template[] 
     }
   }
 
+  const summaryTemplate = existingByName.get("summary");
+  if (summaryTemplate && /^\s*ai-summary(?!\S)/.test(summaryTemplate.command.trim())) {
+    existingByName.set("summary", {
+      ...summaryTemplate,
+      command: summaryTemplate.command.replace(/^\s*ai-summary(?!\S)/, "ai summary"),
+    });
+    changed = true;
+  }
+
   const meetingTemplate = existingByName.get("meeting");
-  if (meetingTemplate?.command.startsWith("ai-meeting")) {
+  if (meetingTemplate && /^\s*ai-meeting(?!\S)/.test(meetingTemplate.command)) {
     const migrated = meetingTemplate.command.replace(/^\s*ai-meeting(?!\S)/, "ai meeting");
     if (migrated !== meetingTemplate.command) {
       existingByName.set("meeting", {
@@ -102,7 +117,6 @@ function mergeTemplates(existing: Template[], defaults: Template[]): Template[] 
 
   return Array.from(existingByName.values());
 }
-
 function validateAliases(aliases: unknown, path: string): ConfigValidationError[] {
   if (!Array.isArray(aliases)) {
     if (aliases !== undefined) {
