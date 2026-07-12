@@ -181,6 +181,31 @@ ai                           # Or select from interactive menu
 
 These templates have fixed commands and execute instantly on selection.
 
+### Content Summarization
+
+Summarize articles, emails, newsletters, and URLs directly from the launcher:
+
+```bash
+# Summarize a file or URL
+ai summarize article.txt
+ai summarize https://example.com/article
+
+# Use a specific mode
+ai summary --mode actions email.txt
+ai summary --mode linkedin newsletter.txt
+ai summary --mode technical https://example.com/tutorial
+
+# Pipe content
+ai summarize < article.txt
+
+# Output raw JSON
+ai summary --json https://example.com/article
+```
+
+Available modes: `tldr` (default), `actions` (deadlines/tasks), `linkedin` (post draft), `technical` (preserve details and links).
+
+The default `summary` template uses the free OpenCode provider. You can change the provider with `--provider` or `AI_SUMMARY_PROVIDER`, e.g. `openai`, `anthropic`, `ollama`, or `openrouter`.
+
 ### Git Diff Analysis
 
 Analyze your git changes with AI assistants for code review, risk assessment, and improvement suggestions:
