@@ -289,7 +289,10 @@ function launchToolWithPrompt(
 }
 
 function isSummaryTemplate(item: SelectableItem): boolean {
-  return item.isTemplate && item.command.trim().startsWith("ai summary");
+  if (!item.isTemplate) {
+    return false;
+  }
+  return /^ai summary(?:\s|$)/.test(item.command.trim());
 }
 
 function getSummaryArgsFromTemplate(command: string, userArgs: string[]): string[] {
