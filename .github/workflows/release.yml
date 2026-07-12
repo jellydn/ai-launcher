@@ -15,44 +15,19 @@ jobs:
         include:
           - os: ubuntu-latest
             target: bun-linux-x64
-            source: src/index.ts
             artifact: ai-linux-x64
           - os: ubuntu-latest
             target: bun-linux-arm64
-            source: src/index.ts
             artifact: ai-linux-arm64
           - os: macos-latest
             target: bun-darwin-x64
-            source: src/index.ts
             artifact: ai-darwin-x64
           - os: macos-latest
             target: bun-darwin-arm64
-            source: src/index.ts
             artifact: ai-darwin-arm64
           - os: ubuntu-latest
             target: bun-windows-x64
-            source: src/index.ts
             artifact: ai-windows-x64.exe
-          - os: ubuntu-latest
-            target: bun-linux-x64
-            source: src/meeting/index.ts
-            artifact: ai-meeting-linux-x64
-          - os: ubuntu-latest
-            target: bun-linux-arm64
-            source: src/meeting/index.ts
-            artifact: ai-meeting-linux-arm64
-          - os: macos-latest
-            target: bun-darwin-x64
-            source: src/meeting/index.ts
-            artifact: ai-meeting-darwin-x64
-          - os: macos-latest
-            target: bun-darwin-arm64
-            source: src/meeting/index.ts
-            artifact: ai-meeting-darwin-arm64
-          - os: ubuntu-latest
-            target: bun-windows-x64
-            source: src/meeting/index.ts
-            artifact: ai-meeting-windows-x64.exe
 
     runs-on: ${{ matrix.os }}
     steps:
@@ -85,7 +60,7 @@ jobs:
       - run: bun install --frozen-lockfile
 
       - name: Build for ${{ matrix.target }}
-        run: bun build ${{ matrix.source }} --compile --target=${{ matrix.target }} --outfile dist/${{ matrix.artifact }}
+        run: bun build src/index.ts --compile --target=${{ matrix.target }} --outfile dist/${{ matrix.artifact }}
 
       - uses: actions/upload-artifact@v7
         with:
@@ -178,11 +153,6 @@ jobs:
             dist/ai-darwin-x64
             dist/ai-darwin-arm64
             dist/ai-windows-x64.exe
-            dist/ai-meeting-linux-x64
-            dist/ai-meeting-linux-arm64
-            dist/ai-meeting-darwin-x64
-            dist/ai-meeting-darwin-arm64
-            dist/ai-meeting-windows-x64.exe
             dist/checksums.txt
           generate_release_notes: false
 
@@ -207,12 +177,11 @@ jobs:
         run: |
           mkdir -p Formula
           cp source/HomebrewFormula/ai.rb Formula/ai.rb
-          cp source/HomebrewFormula/ai-meeting.rb Formula/ai-meeting.rb
 
       - name: Commit and push to tap
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add Formula/ai.rb Formula/ai-meeting.rb
-          git commit -m "Update ai and ai-meeting to latest release" || echo "No changes to commit"
+          git add Formula/ai.rb
+          git commit -m "Update ai to latest release" || echo "No changes to commit"
           git push

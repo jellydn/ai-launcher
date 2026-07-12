@@ -70,7 +70,7 @@ bun install
 bun run build
 ```
 
-This produces standalone executables at `dist/ai` and `dist/ai-meeting`. `ai` now includes the `meeting` subcommand; `ai-meeting` is also built for users who prefer a standalone binary.
+This produces a standalone executable at `dist/ai` (and `dist/ai-meeting` for local development). `ai` now includes the `meeting` subcommand.
 
 ### Manual Install
 
@@ -83,8 +83,8 @@ mkdir -p ~/.local/bin
 ln -sf "$(pwd)/dist/ai" ~/.local/bin/ai
 # Ensure ~/.local/bin is in your PATH
 
-# Optional standalone ai-meeting binary
-ln -sf "$(pwd)/dist/ai-meeting" ~/.local/bin/ai-meeting
+# Optional standalone ai-meeting binary (built locally for development)
+# ln -sf "$(pwd)/dist/ai-meeting" ~/.local/bin/ai-meeting
 ```
 
 Verify installation:
