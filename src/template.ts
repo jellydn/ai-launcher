@@ -1,3 +1,5 @@
+import type { Template } from "./types";
+
 export interface ParsedCommand {
   cmd: string;
   args: string[];
@@ -38,33 +40,69 @@ export function buildTemplateCommand(command: string, args: string[]): string {
   return command;
 }
 
-export function parseTemplateCommand(command: string): ParsedCommand {
+export function templateRequiresConfirmation(template: Template): boolean {
+  if (template.mode === "write") {
+    return true;
+  }
+
+  if (typeof template.requiresConfirmation === "boolean") {
+    return template.requiresConfirmation;
+  }
+
+  return template.mode !== "read-only";
+}
+
+export function parseCommand(command: string): ParsedCommand {
   if (command.length === 0) {
     return { cmd: "", args: [] };
   }
 
   const parts: string[] = [];
   let current = "";
-  let inSingleQuote = false;
-  let inDoubleQuote = false;
+  let quote: "'" | '"' | "`" | null = null;
+  let escapeNext = false;
 
   for (let i = 0; i < command.length; i++) {
-    const char = command[i];
+    const char = command[i] ?? "";
 
-    if (char === "'" && !inDoubleQuote) {
-      inSingleQuote = !inSingleQuote;
+    if (escapeNext) {
       current += char;
-    } else if (char === '"' && !inSingleQuote) {
-      inDoubleQuote = !inDoubleQuote;
-      current += char;
-    } else if (char === " " && !inSingleQuote && !inDoubleQuote) {
+      escapeNext = false;
+      continue;
+    }
+
+    if (char === "\\" && quote !== "'") {
+      escapeNext = true;
+      continue;
+    }
+
+    if (quote !== null) {
+      if (char === quote) {
+        quote = null;
+      } else {
+        current += char;
+      }
+      continue;
+    }
+
+    if (/\s/.test(char)) {
       if (current.length > 0) {
         parts.push(current);
         current = "";
       }
-    } else {
-      current += char;
+      continue;
     }
+
+    if (char === "'" || char === '"' || char === "`") {
+      quote = char;
+      continue;
+    }
+
+    current += char;
+  }
+
+  if (escapeNext) {
+    current += "\\";
   }
 
   if (current.length > 0) {

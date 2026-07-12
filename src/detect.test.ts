@@ -5,11 +5,13 @@ import {
   detectInstalledTools,
   formatSuggestedInstallHints,
   getSuggestedInstallTools,
+  parseCcsApiList,
+} from "./detect";
+import {
   KNOWN_TOOLS,
   type KnownToolDefinition,
-  parseCcsApiList,
   SUGGESTED_INSTALL_TOOL_NAMES,
-} from "./detect";
+} from "./tool-catalog";
 
 const CCS_API_LIST_OUTPUT = `CCS API Profiles
 

@@ -23,6 +23,8 @@ export function toSelectableItems(tools: Tool[], templates: Template[]): Selecta
       description: t.description,
       isTemplate: true,
       aliases: t.aliases ?? [],
+      mode: t.mode,
+      requiresConfirmation: t.requiresConfirmation,
     })),
   ];
 }
@@ -285,59 +287,5 @@ export async function fuzzySelect(items: SelectableItem[]): Promise<SelectionRes
     };
 
     stdin.on("data", handleKey);
-  });
-}
-
-export async function promptForInput(promptText: string): Promise<string> {
-  const stdin = process.stdin;
-  const stdout = process.stdout;
-
-  if (!stdin.isTTY || !stdout.isTTY) {
-    return "";
-  }
-
-  stdin.setRawMode(true);
-  stdin.resume();
-  stdin.setEncoding("utf8");
-
-  stdout.write(SHOW_CURSOR);
-  stdout.write(promptText);
-
-  return new Promise((resolve) => {
-    let input = "";
-
-    const cleanup = () => {
-      stdin.removeListener("data", onData);
-      if (stdin.setRawMode) {
-        stdin.setRawMode(false);
-      }
-      stdin.pause();
-    };
-
-    const onData = (key: string) => {
-      if (key === KEY_CTRL_C || key === KEY_ESC_ONLY) {
-        cleanup();
-        stdout.write("\n");
-        resolve("");
-        return;
-      }
-
-      if (key === KEY_ENTER) {
-        cleanup();
-        stdout.write("\n");
-        resolve(input);
-        return;
-      }
-
-      if (key === KEY_BACKSPACE) {
-        input = input.slice(0, -1);
-        stdout.write("\b \b");
-      } else if (key.length === 1 && key >= " " && key <= "~") {
-        input += key;
-        stdout.write(key);
-      }
-    };
-
-    stdin.on("data", onData);
   });
 }

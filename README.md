@@ -23,6 +23,7 @@
 - **⚡ Direct Invocation**: Skip the menu with `ai <toolname>` or fuzzy matching
 - **🏷️ Aliases**: Define short aliases for frequently used tools (e.g., `ai c` for claude)
 - **📋 Templates**: Create command shortcuts with `$@` argument/stdin placeholders
+- **🧠 Natural-Language Routing**: Let a model choose the right template from config for free-form task descriptions
 - **👤 CCS Profiles**: Automatically detects CCS profiles via `ccs api list`
 - **📊 Git Diff Analysis**: Analyze staged or commit diffs with AI assistants
 - **🔒 Security**: Built-in command validation and injection prevention
@@ -179,6 +180,38 @@ ai                           # Or select from interactive menu
 ```
 
 These templates have fixed commands and execute instantly on selection.
+
+### Natural-Language Routing
+
+If you add a `router` section to `~/.config/ai-launcher/config.json`, the launcher can turn a free-form task description into a template selection.
+
+```json
+{
+  "router": {
+    "command": "opencode run --model opencode/big-pickle --agent plan",
+    "promptUseStdin": true
+  }
+}
+```
+
+Example:
+
+```bash
+ai "check src/auth.ts for security problems"
+```
+
+The router returns structured JSON like:
+
+```json
+{
+  "template": "review-security",
+  "arguments": ["src/auth.ts"]
+}
+```
+
+AI Launcher resolves that to the configured `review-security` template and enforces the template's safety metadata before execution.
+
+Missing metadata is treated conservatively: templates without explicit safety flags require confirmation.
 
 ### Git Diff Analysis
 

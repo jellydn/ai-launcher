@@ -2,16 +2,21 @@
 
 import type { SpawnSyncReturns } from "node:child_process";
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, isAbsolute, normalize, resolve } from "node:path";
+import { existsSync, writeFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { parseArgs, readStdin } from "./args";
 import { executeDiffCommand, parseDiffArgs } from "./cli/diff";
 import { loadConfig } from "./config";
 import { detectInstalledTools, formatSuggestedInstallHints, mergeTools } from "./detect";
-import { fuzzySelect, promptForInput, toSelectableItems } from "./fuzzy-select";
+import { fuzzySelect, toSelectableItems } from "./fuzzy-select";
 import { getColoredLogo } from "./logo";
 import { findToolByName } from "./lookup";
-import { isSafeCommand } from "./template";
+import { promptForInput } from "./prompt-input";
+import { buildRouterPrompt, parseRouterResponse, resolveRouterSelection } from "./router";
+import { isSafeCommand, parseCommand, templateRequiresConfirmation } from "./template";
+import type { SelectableItem, Template } from "./types";
 import { upgrade } from "./upgrade";
+import { validateArguments, validateOutputFile } from "./validation";
 import { VERSION } from "./version";
 
 const EXIT_CODE_SUCCESS = 0;
@@ -25,79 +30,6 @@ function handleChildProcessError(child: SpawnSyncReturns<string | Buffer>): void
       child.error?.message ?? `Process terminated by signal ${child.signal ?? "unknown"}`
     );
     process.exit(EXIT_CODE_PROCESS_ERROR);
-  }
-}
-
-function isValidOutputPath(filePath: string): boolean {
-  const normalized = normalize(filePath);
-
-  if (isAbsolute(normalized)) {
-    console.error("Error: Output file path must be relative, not absolute");
-    return false;
-  }
-
-  const isPathEscape =
-    normalized.startsWith("..") || normalized.includes("/../") || normalized.includes("\\..\\");
-  if (isPathEscape) {
-    console.error("Error: Output file path cannot escape current directory");
-    return false;
-  }
-
-  const forbiddenPatterns = [
-    /^\./,
-    /\.git\//,
-    /\.config\//,
-    /etc\//,
-    /root\//,
-    /home\//,
-    /usr\//,
-    /var\//,
-    /sys\//,
-    /proc\//,
-  ];
-
-  for (const pattern of forbiddenPatterns) {
-    if (pattern.test(normalized)) {
-      console.error("Error: Output file path points to a protected location");
-      return false;
-    }
-  }
-
-  return true;
-}
-
-function validateOutputFile(filePath: string): string | null {
-  if (!filePath || filePath.trim().length === 0) {
-    return "Output file path cannot be empty";
-  }
-
-  if (!isValidOutputPath(filePath)) {
-    return "Invalid output file path";
-  }
-
-  const resolvedPath = resolve(filePath);
-
-  if (existsSync(resolvedPath)) {
-    console.error(`Warning: File already exists: ${resolvedPath}`);
-    console.error("Use a different filename or remove the existing file first");
-    return "File already exists";
-  }
-
-  return null;
-}
-
-function validateArguments(args: string[]): boolean {
-  const safePattern = /^[a-zA-Z0-9._\-"/\\@#=\s,.:()[\]{}]+$/;
-  return args.every((arg) => safePattern.test(arg) && arg.length <= 200);
-}
-
-function readStdin(): string | null {
-  try {
-    const isInteractive = process.stdin.isTTY;
-    if (isInteractive) return null;
-    return readFileSync(0, "utf-8").trim();
-  } catch {
-    return null;
   }
 }
 
@@ -166,29 +98,68 @@ function launchTool(command: string, extraArgs: string[] = [], stdinContent: str
   }
 
   const inputString = hasArgs ? extraArgs.join(" ") : (stdinContent ?? "");
-  const usesPlaceholder = command.includes("$@");
+  const parsedCommand = parseCommand(command);
+  const args = [...parsedCommand.args];
 
-  const finalCommand = usesPlaceholder
-    ? command.replace("$@", inputString)
-    : hasArgs || hasStdin
-      ? `${command} ${inputString}`
-      : command;
+  if (command.includes("$@")) {
+    const placeholderIndex = args.findIndex((arg) => arg.includes("$@"));
+    const placeholder = placeholderIndex !== -1 ? args[placeholderIndex] : undefined;
+    if (placeholder) {
+      args[placeholderIndex] = placeholder.replace("$@", inputString);
+    } else {
+      args.push(inputString);
+    }
+  } else if (hasArgs) {
+    args.push(...extraArgs);
+  } else if (hasStdin) {
+    args.push(stdinContent ?? "");
+  }
 
-  const parts = finalCommand.split(/\s+/).filter((p) => p !== "");
-  const [cmd, ...args] = parts;
-  if (!cmd) {
+  if (!parsedCommand.cmd) {
     console.error("Empty command");
     process.exit(1);
   }
 
-  const child = spawnSync(cmd, args, {
+  const child = spawnSync(parsedCommand.cmd, args, {
     stdio: "inherit",
-    shell: true,
+    shell: false,
   });
 
   handleChildProcessError(child);
 
   process.exit(child.status ?? EXIT_CODE_SUCCESS);
+}
+
+function runCommandWithPrompt(
+  command: string,
+  prompt: string,
+  useStdin = false
+): SpawnSyncReturns<string | Buffer> {
+  if (!isSafeCommand(command)) {
+    console.error("Invalid command format");
+    process.exit(1);
+  }
+
+  const parsedCommand = parseCommand(command);
+  if (!parsedCommand.cmd) {
+    console.error("Empty command");
+    process.exit(1);
+  }
+
+  if (useStdin) {
+    return spawnSync(parsedCommand.cmd, parsedCommand.args, {
+      input: prompt,
+      stdio: ["pipe", "pipe", "inherit"],
+      shell: false,
+      encoding: "utf-8",
+    }) as SpawnSyncReturns<string | Buffer>;
+  }
+
+  return spawnSync(parsedCommand.cmd, [...parsedCommand.args, prompt], {
+    stdio: ["inherit", "pipe", "inherit"],
+    shell: false,
+    encoding: "utf-8",
+  }) as SpawnSyncReturns<string | Buffer>;
 }
 
 function launchToolWithPrompt(
@@ -197,18 +168,6 @@ function launchToolWithPrompt(
   useStdin = false,
   outputFile?: string
 ): never {
-  if (!isSafeCommand(command)) {
-    console.error("Invalid command format");
-    process.exit(1);
-  }
-
-  const parts = command.split(/\s+/).filter((p) => p !== "");
-  const [cmd, ...args] = parts;
-  if (!cmd) {
-    console.error("Empty command");
-    process.exit(1);
-  }
-
   if (outputFile) {
     const validationError = validateOutputFile(outputFile);
     if (validationError) {
@@ -224,25 +183,7 @@ function launchToolWithPrompt(
       process.exit(EXIT_CODE_VALIDATION_ERROR);
     }
 
-    let child: SpawnSyncReturns<string>;
-
-    if (useStdin) {
-      child = spawnSync(cmd, args, {
-        input: prompt,
-        stdio: ["pipe", "pipe", "inherit"],
-        shell: true,
-        encoding: "utf-8",
-      });
-    } else {
-      const escapedPrompt = prompt.replace(/'/g, "'\\''");
-      const finalCommand = `${command} '${escapedPrompt}'`;
-
-      child = spawnSync("sh", ["-c", finalCommand], {
-        stdio: ["inherit", "pipe", "inherit"],
-        encoding: "utf-8",
-      });
-    }
-
+    const child = runCommandWithPrompt(command, prompt, useStdin);
     handleChildProcessError(child);
 
     const output = child.stdout || "";
@@ -260,28 +201,97 @@ function launchToolWithPrompt(
     process.exit(child.status ?? EXIT_CODE_SUCCESS);
   }
 
-  if (useStdin) {
-    const child = spawnSync(cmd, args, {
-      input: prompt,
-      stdio: ["pipe", "inherit", "inherit"],
-      shell: true,
-    }) as SpawnSyncReturns<string | Buffer>;
-
-    handleChildProcessError(child);
-
-    process.exit(child.status ?? 0);
-  }
-
-  const escapedPrompt = prompt.replace(/'/g, "'\\''");
-  const finalCommand = `${command} '${escapedPrompt}'`;
-
-  const child = spawnSync("sh", ["-c", finalCommand], {
-    stdio: "inherit",
-  }) as SpawnSyncReturns<string | Buffer>;
-
+  const child = runCommandWithPrompt(command, prompt, useStdin);
   handleChildProcessError(child);
 
+  if (child.stdout) {
+    process.stdout.write(child.stdout);
+  }
+
   process.exit(child.status ?? 0);
+}
+
+async function confirmPrompt(message: string): Promise<boolean> {
+  const answer = await promptForInput(message);
+  return /^(y|yes)$/i.test(answer.trim());
+}
+
+async function routeNaturalLanguageTask(
+  request: string,
+  stdinContent: string | null,
+  config: Awaited<ReturnType<typeof loadConfig>>
+): Promise<void> {
+  if (!config.router) {
+    console.error(`No tool or template found matching '${request}'`);
+    process.exit(1);
+  }
+
+  const routingPrompt = buildRouterPrompt(request, config.templates, stdinContent ?? undefined);
+  const routerResult = runCommandWithPrompt(
+    config.router.command,
+    routingPrompt,
+    config.router.promptUseStdin ?? false
+  );
+  handleChildProcessError(routerResult);
+
+  if ((routerResult.status ?? 0) !== 0) {
+    console.error(`Router command failed with exit code ${routerResult.status ?? "unknown"}`);
+    process.exit(routerResult.status ?? 1);
+  }
+
+  const rawOutput = String(routerResult.stdout ?? "").trim();
+  const selection = parseRouterResponse(rawOutput);
+  if (!selection) {
+    console.error("Router did not return valid JSON selection");
+    process.exit(1);
+  }
+
+  const resolved = resolveRouterSelection(selection, config.templates);
+  if (!resolved) {
+    console.error(`Router selected unknown template '${selection.template}'`);
+    process.exit(1);
+  }
+
+  if (resolved.requiresConfirmation) {
+    console.log(`\nSelected template: ${resolved.template.name}`);
+    console.log(
+      `Preview: ${resolved.template.command.replace("$@", selection.arguments.join(" "))}`
+    );
+    const isConfirmed = await confirmPrompt("This template may modify files. Continue? [y/N] ");
+    if (!isConfirmed) {
+      process.exit(0);
+    }
+  }
+
+  launchTool(resolved.template.command, selection.arguments, stdinContent);
+}
+
+async function confirmTemplateExecution(item: SelectableItem, args: string[]): Promise<boolean> {
+  if (!item.isTemplate) {
+    return true;
+  }
+
+  const templateLike: Template = {
+    name: item.name,
+    command: item.command,
+    description: item.description,
+    aliases: item.aliases,
+    mode: item.mode,
+    requiresConfirmation: item.requiresConfirmation,
+  };
+
+  if (templateRequiresConfirmation(templateLike)) {
+    console.log(`\nSelected template: ${item.name}`);
+    const previewCmd = item.command.includes("$@")
+      ? item.command.replace("$@", args.join(" "))
+      : args.length > 0
+        ? `${item.command} ${args.join(" ")}`
+        : item.command;
+    console.log(`Preview: ${previewCmd}`);
+    return await confirmPrompt("This template may modify files. Continue? [y/N] ");
+  }
+
+  return true;
 }
 
 async function main() {
@@ -330,10 +340,11 @@ async function main() {
     }
   }
 
-  const dashIndex = args.indexOf("--");
-  if (dashIndex !== -1) {
-    const beforeDash = args.slice(0, dashIndex);
-    const afterDash = args.slice(dashIndex + 1);
+  const parsedArgs = parseArgs(args);
+
+  if (parsedArgs.dashSeparator) {
+    const beforeDash = parsedArgs.beforeDash;
+    const afterDash = parsedArgs.afterDash;
 
     if (beforeDash.length === 0) {
       const result = await fuzzySelect(items);
@@ -341,6 +352,12 @@ async function main() {
         process.exit(0);
       }
       if (result.item) {
+        if (result.item.isTemplate) {
+          const isConfirmed = await confirmTemplateExecution(result.item, afterDash);
+          if (!isConfirmed) {
+            process.exit(0);
+          }
+        }
         launchTool(result.item.command, afterDash, stdinContent);
       }
       return;
@@ -354,6 +371,12 @@ async function main() {
 
     const lookupResult = findToolByName(toolQuery, lookupItems);
     if (lookupResult.success && lookupResult.item) {
+      if (lookupResult.item.isTemplate) {
+        const isConfirmed = await confirmTemplateExecution(lookupResult.item, afterDash);
+        if (!isConfirmed) {
+          process.exit(0);
+        }
+      }
       launchTool(lookupResult.item.command, afterDash, stdinContent);
       return;
     }
@@ -362,13 +385,28 @@ async function main() {
   }
 
   if (args.length > 0) {
-    const toolQuery = args[0];
-    const extraArgs = args.slice(1);
+    const toolQuery = parsedArgs.toolQuery;
+    if (!toolQuery) {
+      console.error("No tool query found");
+      process.exit(1);
+    }
+    const extraArgs = parsedArgs.extraArgs;
 
     const result = findToolByName(toolQuery, lookupItems);
 
     if (result.success && result.item) {
+      if (result.item.isTemplate) {
+        const isConfirmed = await confirmTemplateExecution(result.item, extraArgs);
+        if (!isConfirmed) {
+          process.exit(0);
+        }
+      }
       launchTool(result.item.command, extraArgs, stdinContent);
+      return;
+    }
+
+    if (config.router) {
+      await routeNaturalLanguageTask(args.join(" "), stdinContent, config);
       return;
     }
 
@@ -383,13 +421,23 @@ async function main() {
   }
 
   if (result.item) {
-    if (result.item.isTemplate && result.item.command.includes("$@")) {
-      console.log(`\nSelected: ${result.item.name}`);
-      const input = await promptForInput(`Enter arguments for "${result.item.name}": `);
-      if (input.length === 0) {
+    if (result.item.isTemplate) {
+      let argsToUse: string[] = [];
+      if (result.item.command.includes("$@")) {
+        console.log(`\nSelected: ${result.item.name}`);
+        const input = await promptForInput(`Enter arguments for "${result.item.name}": `);
+        if (input.length === 0) {
+          process.exit(0);
+        }
+        argsToUse = [input];
+      }
+      const isConfirmed = await confirmTemplateExecution(result.item, argsToUse);
+      if (!isConfirmed) {
         process.exit(0);
       }
-      const finalCommand = result.item.command.replace("$@", input);
+      const finalCommand = result.item.command.includes("$@")
+        ? result.item.command.replace("$@", argsToUse[0] ?? "")
+        : result.item.command;
       console.log(`\nRunning: ${finalCommand}\n`);
       launchTool(finalCommand, [], stdinContent);
     } else {

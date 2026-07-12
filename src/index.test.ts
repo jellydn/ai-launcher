@@ -1,14 +1,7 @@
 import { describe, expect, test } from "bun:test";
-
-function validateToolCommand(command: string): boolean {
-  const safePattern = /^[a-zA-Z0-9._\s\-"':,!?/\\|$@]+$/;
-  return safePattern.test(command.trim()) && command.length > 0 && command.length <= 500;
-}
-
-function validateArguments(args: string[]): boolean {
-  const safePattern = /^[a-zA-Z0-9._\-"/\\@#=\s,.:()[\]{}]+$/;
-  return args.every((arg) => safePattern.test(arg) && arg.length <= 200);
-}
+import { parseArgs } from "./args";
+import { isSafeCommand as validateToolCommand } from "./template";
+import { isValidOutputPath, validateArguments, validateOutputFile } from "./validation";
 
 describe("validateToolCommand", () => {
   test("accepts simple command", () => {
@@ -118,32 +111,6 @@ describe("validateArguments", () => {
 });
 
 describe("Argument Parsing Logic", () => {
-  function parseArgs(argv: string[]): {
-    toolQuery: string | null;
-    extraArgs: string[];
-    dashSeparator: boolean;
-    beforeDash: string[];
-    afterDash: string[];
-  } {
-    const dashIndex = argv.indexOf("--");
-    if (dashIndex !== -1) {
-      return {
-        toolQuery: argv[0] ?? null,
-        extraArgs: [],
-        dashSeparator: true,
-        beforeDash: argv.slice(0, dashIndex),
-        afterDash: argv.slice(dashIndex + 1),
-      };
-    }
-    return {
-      toolQuery: argv[0] ?? null,
-      extraArgs: argv.slice(1),
-      dashSeparator: false,
-      beforeDash: [],
-      afterDash: [],
-    };
-  }
-
   test("parses tool name only", () => {
     const result = parseArgs(["claude"]);
     expect(result.toolQuery).toBe("claude");
@@ -188,51 +155,7 @@ describe("Argument Parsing Logic", () => {
     expect(result.afterDash).toEqual(["arg1", "arg2", "arg3"]);
   });
 });
-
 describe("Output Path Validation", () => {
-  function isValidOutputPath(path: string): boolean {
-    const normalized = path.replace(/\\/g, "/");
-
-    if (normalized.startsWith("/")) {
-      return false;
-    }
-
-    if (normalized.startsWith("..") || normalized.includes("/../")) {
-      return false;
-    }
-
-    const forbiddenPatterns = [
-      /^\./,
-      /\.git\//,
-      /\.config\//,
-      /etc\//,
-      /root\//,
-      /home\//,
-      /usr\//,
-      /var\//,
-    ];
-
-    for (const pattern of forbiddenPatterns) {
-      if (pattern.test(normalized)) {
-        return false;
-      }
-    }
-
-    return true;
-  }
-
-  function validateOutputFile(filePath: string): string | null {
-    if (!filePath || filePath.trim().length === 0) {
-      return "Output file path cannot be empty";
-    }
-
-    if (!isValidOutputPath(filePath)) {
-      return "Invalid output file path";
-    }
-
-    return null;
-  }
-
   test("accepts simple relative path", () => {
     expect(isValidOutputPath("analysis.md")).toBe(true);
     expect(isValidOutputPath("output.txt")).toBe(true);
@@ -251,7 +174,10 @@ describe("Output Path Validation", () => {
 
   test("rejects paths starting with dot", () => {
     expect(isValidOutputPath(".hidden.md")).toBe(false);
-    expect(isValidOutputPath("./secret.txt")).toBe(false);
+  });
+
+  test("accepts paths starting with ./ (normalized to safe relative path)", () => {
+    expect(isValidOutputPath("./secret.txt")).toBe(true);
   });
 
   test("rejects paths with parent directory traversal", () => {
