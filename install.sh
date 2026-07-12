@@ -2,7 +2,6 @@
 set -e
 
 REPO="jellydn/ai-launcher"
-BINARY_NAME="ai"
 INSTALL_DIR="${AI_INSTALL_DIR:-$HOME/.local/bin}"
 
 # Detect OS
@@ -27,66 +26,76 @@ case "$ARCH" in
   *)       echo "Unsupported architecture: $ARCH"; exit 1 ;;
 esac
 
-if [ "$IS_WINDOWS" = true ]; then
-  ARTIFACT="ai-${OS}-${ARCH}.exe"
-  BINARY_NAME="ai.exe"
-else
-  ARTIFACT="ai-${OS}-${ARCH}"
-fi
+# Default to installing both the launcher and the meeting assistant.
+# Override with AI_INSTALL_BINARIES, e.g. AI_INSTALL_BINARIES="ai" for just the launcher.
+BINARIES="${AI_INSTALL_BINARIES:-ai ai-meeting}"
+
 echo "Detected: $OS-$ARCH"
 
 # Get latest release URL
 LATEST_URL="https://api.github.com/repos/${REPO}/releases/latest"
 RELEASE_DATA=$(curl -fsSL "$LATEST_URL")
-DOWNLOAD_URL=$(echo "$RELEASE_DATA" | grep "browser_download_url.*${ARTIFACT}\"" | cut -d '"' -f 4 | head -n 1)
 CHECKSUM_URL=$(echo "$RELEASE_DATA" | grep "browser_download_url.*checksums.txt\"" | cut -d '"' -f 4 | head -n 1)
-
-if [ -z "$DOWNLOAD_URL" ]; then
-  echo "Error: Could not find download URL for $ARTIFACT"
-  exit 1
-fi
-
-echo "Downloading from: $DOWNLOAD_URL"
 
 # Create install directory
 mkdir -p "$INSTALL_DIR"
 
-# Download binary
-curl -fsSL "$DOWNLOAD_URL" -o "${INSTALL_DIR}/${BINARY_NAME}"
-
-# Verify checksum if available
+# Download checksums once if available
 if [ -n "$CHECKSUM_URL" ]; then
-  echo "Verifying checksum..."
   CHECKSUMS=$(curl -fsSL "$CHECKSUM_URL")
-  EXPECTED=$(echo "$CHECKSUMS" | grep "$ARTIFACT" | awk '{print $1}')
+fi
 
-  if [ -n "$EXPECTED" ]; then
-    if command -v sha256sum >/dev/null 2>&1; then
-      ACTUAL=$(sha256sum "${INSTALL_DIR}/${BINARY_NAME}" | awk '{print $1}')
-    elif command -v shasum >/dev/null 2>&1; then
-      ACTUAL=$(shasum -a 256 "${INSTALL_DIR}/${BINARY_NAME}" | awk '{print $1}')
-    else
-      echo "Warning: No sha256sum or shasum found, skipping verification"
-      ACTUAL="$EXPECTED"
-    fi
-
-    if [ "$EXPECTED" != "$ACTUAL" ]; then
-      echo "Error: Checksum verification failed!"
-      echo "Expected: $EXPECTED"
-      echo "Actual:   $ACTUAL"
-      rm -f "${INSTALL_DIR}/${BINARY_NAME}"
-      exit 1
-    fi
-    echo "Checksum verified ✓"
+for BINARY_NAME in $BINARIES; do
+  if [ "$IS_WINDOWS" = true ]; then
+    ARTIFACT="${BINARY_NAME}-${OS}-${ARCH}.exe"
+    BINARY_FILE="${BINARY_NAME}.exe"
+  else
+    ARTIFACT="${BINARY_NAME}-${OS}-${ARCH}"
+    BINARY_FILE="${BINARY_NAME}"
   fi
-fi
 
-if [ "$IS_WINDOWS" = false ]; then
-  chmod +x "${INSTALL_DIR}/${BINARY_NAME}"
-fi
+  DOWNLOAD_URL=$(echo "$RELEASE_DATA" | grep "browser_download_url.*${ARTIFACT}\"" | cut -d '"' -f 4 | head -n 1)
 
-echo ""
-echo "✓ Installed $BINARY_NAME to ${INSTALL_DIR}/${BINARY_NAME}"
+  if [ -z "$DOWNLOAD_URL" ]; then
+    echo "Error: Could not find download URL for $ARTIFACT"
+    exit 1
+  fi
+
+  echo "Downloading $ARTIFACT from: $DOWNLOAD_URL"
+
+  curl -fsSL "$DOWNLOAD_URL" -o "${INSTALL_DIR}/${BINARY_FILE}"
+
+  # Verify checksum if available
+  if [ -n "$CHECKSUMS" ]; then
+    EXPECTED=$(echo "$CHECKSUMS" | grep "$ARTIFACT" | awk '{print $1}')
+
+    if [ -n "$EXPECTED" ]; then
+      if command -v sha256sum >/dev/null 2>&1; then
+        ACTUAL=$(sha256sum "${INSTALL_DIR}/${BINARY_FILE}" | awk '{print $1}')
+      elif command -v shasum >/dev/null 2>&1; then
+        ACTUAL=$(shasum -a 256 "${INSTALL_DIR}/${BINARY_FILE}" | awk '{print $1}')
+      else
+        echo "Warning: No sha256sum or shasum found, skipping verification"
+        ACTUAL="$EXPECTED"
+      fi
+
+      if [ "$EXPECTED" != "$ACTUAL" ]; then
+        echo "Error: Checksum verification failed for $ARTIFACT!"
+        echo "Expected: $EXPECTED"
+        echo "Actual:   $ACTUAL"
+        rm -f "${INSTALL_DIR}/${BINARY_FILE}"
+        exit 1
+      fi
+      echo "Checksum verified for $ARTIFACT ✓"
+    fi
+  fi
+
+  if [ "$IS_WINDOWS" = false ]; then
+    chmod +x "${INSTALL_DIR}/${BINARY_FILE}"
+  fi
+
+  echo "✓ Installed $BINARY_FILE to ${INSTALL_DIR}/${BINARY_FILE}"
+done
 
 # Check if in PATH (POSIX-compliant)
 case ":$PATH:" in

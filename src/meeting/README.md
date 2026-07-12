@@ -90,7 +90,7 @@ After running `bun run build`, the compiled `ai-meeting` binary is available at 
 - **Day 3:** Understand how temperature and sampling affect output quality.
 - **Day 4:** Produce machine-readable JSON using schemas.
 - **Day 5:** Stream tokens for a better user experience.
-- **Day 6:** Let the model decide when to call tools/functions.
+- **Day 6:** Learn how tool/function-calling works (this mini-CLI uses structured `response_format` rather than `tool_choice`).
 - **Day 7:** Combine everything into a small, usable application.
 
-This project ties all of these together into one tool that can be run with `bun run src/meeting/index.ts <meeting.md>` or `ai-meeting <meeting.md>` after building.
+This project ties the API, prompting, structured outputs, streaming, and temperature choices into one tool that can be run with `bun run src/meeting/index.ts <meeting.md>` or `ai-meeting <meeting.md>` after building.

@@ -1,7 +1,8 @@
+// biome-ignore assist/source/organizeImports: keep type-only imports grouped before internal value imports per CONVENTIONS.md
 import OpenAI from "openai";
 import { zodResponseFormat } from "openai/helpers/zod";
-import { buildMeetingPrompt, INSTRUCTIONS } from "./prompt.ts";
 import type { MeetingSummary } from "./schema.ts";
+import { buildMeetingPrompt, INSTRUCTIONS } from "./prompt.ts";
 import { MeetingSummarySchema } from "./schema.ts";
 
 export interface SummarizeOptions {

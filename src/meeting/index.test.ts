@@ -1,6 +1,5 @@
-import { describe, expect, spyOn, test } from "bun:test";
-import type { MeetingOptions } from "./index";
-import { parseArgs, renderSummary } from "./index";
+import { afterEach, describe, expect, spyOn, test } from "bun:test";
+import { parseArgs, renderSummary, resolveProviderConfig } from "./index";
 import type { MeetingSummary } from "./schema";
 
 describe("parseArgs", () => {
@@ -69,8 +68,30 @@ describe("parseArgs", () => {
     expect(() => parseArgs(["--temperature"])).toThrow("--temperature requires a value");
   });
 
-  test("throws when --temperature is not a number", () => {
-    expect(() => parseArgs(["--temperature", "hot"])).toThrow("--temperature must be a number");
+  test("throws when --temperature is not a finite number", () => {
+    expect(() => parseArgs(["--temperature", "hot"])).toThrow(
+      "--temperature must be a finite number"
+    );
+    expect(() => parseArgs(["--temperature", "Infinity"])).toThrow(
+      "--temperature must be a finite number"
+    );
+    expect(() => parseArgs(["--temperature", "0.5junk"])).toThrow(
+      "--temperature must be a finite number"
+    );
+  });
+
+  test("throws when --temperature is out of range", () => {
+    expect(() => parseArgs(["--temperature", "-1"])).toThrow(
+      "--temperature must be between 0 and 2"
+    );
+    expect(() => parseArgs(["--temperature", "3"])).toThrow(
+      "--temperature must be between 0 and 2"
+    );
+  });
+
+  test("accepts temperature at the boundaries", () => {
+    expect(parseArgs(["--temperature", "0"]).temperature).toBe(0);
+    expect(parseArgs(["--temperature", "2"]).temperature).toBe(2);
   });
 
   test("throws when a value option is followed by another flag", () => {
@@ -79,14 +100,6 @@ describe("parseArgs", () => {
     expect(() => parseArgs(["--temperature", "--progress"])).toThrow(
       "--temperature requires a value"
     );
-  });
-
-  test("returns a MeetingOptions-compatible object", () => {
-    const options: MeetingOptions = parseArgs(["--json", "--model", "gpt-4o", "meeting.md"]);
-
-    expect(options.path).toBe("meeting.md");
-    expect(options.json).toBe(true);
-    expect(options.model).toBe("gpt-4o");
   });
 
   test("shows help and exits on --help", () => {
@@ -101,6 +114,82 @@ describe("parseArgs", () => {
       exitSpy.mockRestore();
       logSpy.mockRestore();
     }
+  });
+});
+
+describe("resolveProviderConfig", () => {
+  const originalEnv = { ...process.env };
+
+  test("uses OPENAI_API_KEY for the default provider", () => {
+    process.env = { OPENAI_API_KEY: "sk-openai" };
+
+    const config = resolveProviderConfig({} as ReturnType<typeof parseArgs>);
+
+    expect(config.apiKey).toBe("sk-openai");
+    expect(config.baseURL).toBeUndefined();
+    expect(config.model).toBeUndefined();
+  });
+
+  test("uses OPENROUTER_API_KEY when --openrouter is set", () => {
+    process.env = { OPENROUTER_API_KEY: "sk-or" };
+
+    const config = resolveProviderConfig({ openrouter: true } as ReturnType<typeof parseArgs>);
+
+    expect(config.apiKey).toBe("sk-or");
+    expect(config.baseURL).toBe("https://openrouter.ai/api/v1");
+    expect(config.model).toBe("openrouter/free");
+  });
+
+  test("uses OPENAI_API_KEY for an OpenAI-compatible base URL", () => {
+    process.env = { OPENAI_API_KEY: "sk-openai" };
+
+    const config = resolveProviderConfig({
+      baseURL: "https://openrouter.ai/api/v1",
+    } as ReturnType<typeof parseArgs>);
+
+    expect(config.apiKey).toBe("sk-openai");
+    expect(config.baseURL).toBe("https://openrouter.ai/api/v1");
+    expect(config.model).toBe("openrouter/free");
+  });
+
+  test("falls back to OPENROUTER_API_KEY for an OpenRouter base URL", () => {
+    process.env = { OPENROUTER_API_KEY: "sk-or" };
+
+    const config = resolveProviderConfig({
+      baseURL: "https://openrouter.ai/api/v1",
+    } as ReturnType<typeof parseArgs>);
+
+    expect(config.apiKey).toBe("sk-or");
+  });
+
+  test("throws when OPENAI_API_KEY is missing for the default provider", () => {
+    process.env = {};
+
+    expect(() => resolveProviderConfig({} as ReturnType<typeof parseArgs>)).toThrow(
+      "OPENAI_API_KEY is not set."
+    );
+  });
+
+  test("throws when OPENROUTER_API_KEY is missing for --openrouter", () => {
+    process.env = {};
+
+    expect(() =>
+      resolveProviderConfig({ openrouter: true } as ReturnType<typeof parseArgs>)
+    ).toThrow("OPENROUTER_API_KEY is not set.");
+  });
+
+  test("throws with both key names for an OpenRouter base URL", () => {
+    process.env = {};
+
+    expect(() =>
+      resolveProviderConfig({
+        baseURL: "https://openrouter.ai/api/v1",
+      } as ReturnType<typeof parseArgs>)
+    ).toThrow("OPENAI_API_KEY or OPENROUTER_API_KEY is not set.");
+  });
+
+  afterEach(() => {
+    process.env = { ...originalEnv };
   });
 });
 

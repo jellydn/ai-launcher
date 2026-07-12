@@ -6,12 +6,21 @@ import { summarizeMeeting } from "./summarize.ts";
 
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 const DEFAULT_OPENROUTER_MODEL = "openrouter/free";
+const MIN_TEMPERATURE = 0.0;
+const MAX_TEMPERATURE = 2.0;
 
 export interface MeetingOptions {
   path: string | undefined;
   json: boolean;
   progress: boolean;
   openrouter: boolean;
+  baseURL: string | undefined;
+  model: string | undefined;
+  temperature: number | undefined;
+}
+
+interface MeetingConfig {
+  apiKey: string;
   baseURL: string | undefined;
   model: string | undefined;
   temperature: number | undefined;
@@ -44,6 +53,30 @@ Options:
   process.exit(0);
 }
 
+function requireOptionValue(
+  args: string[],
+  index: number,
+  flag: string,
+  allowLeadingDash = false
+): { value: string; nextIndex: number } {
+  const next = args[index + 1];
+  if (!next || next.startsWith("--") || (!allowLeadingDash && next.startsWith("-"))) {
+    throw new Error(`${flag} requires a value`);
+  }
+  return { value: next, nextIndex: index + 1 };
+}
+
+function parseTemperatureValue(value: string): number {
+  const parsed = Number(value);
+  if (Number.isNaN(parsed) || !Number.isFinite(parsed)) {
+    throw new Error("--temperature must be a finite number");
+  }
+  if (parsed < MIN_TEMPERATURE || parsed > MAX_TEMPERATURE) {
+    throw new Error(`--temperature must be between ${MIN_TEMPERATURE} and ${MAX_TEMPERATURE}`);
+  }
+  return parsed;
+}
+
 export function parseArgs(args: string[]): MeetingOptions {
   let path: string | undefined;
   let json = false;
@@ -68,30 +101,17 @@ export function parseArgs(args: string[]): MeetingOptions {
     } else if (arg === "--openrouter") {
       openrouter = true;
     } else if (arg === "--base-url") {
-      const next = args[i + 1];
-      if (!next || next.startsWith("-")) {
-        throw new Error("--base-url requires a value");
-      }
-      baseURL = next;
-      i++;
+      const result = requireOptionValue(args, i, "--base-url");
+      baseURL = result.value;
+      i = result.nextIndex;
     } else if (arg === "--model") {
-      const next = args[i + 1];
-      if (!next || next.startsWith("-")) {
-        throw new Error("--model requires a value");
-      }
-      model = next;
-      i++;
+      const result = requireOptionValue(args, i, "--model");
+      model = result.value;
+      i = result.nextIndex;
     } else if (arg === "--temperature") {
-      const next = args[i + 1];
-      if (!next || next.startsWith("-")) {
-        throw new Error("--temperature requires a value");
-      }
-      const value = Number.parseFloat(next);
-      if (Number.isNaN(value)) {
-        throw new Error("--temperature must be a number");
-      }
-      temperature = value;
-      i++;
+      const result = requireOptionValue(args, i, "--temperature", true);
+      temperature = parseTemperatureValue(result.value);
+      i = result.nextIndex;
     } else if (arg.startsWith("-")) {
       throw new Error(`Unknown option: ${arg}`);
     } else {
@@ -110,6 +130,40 @@ function readInput(path: string | undefined): string {
     showHelp();
   }
   return readFileSync(0, "utf-8");
+}
+
+export function resolveProviderConfig(options: MeetingOptions): MeetingConfig {
+  let baseURL = options.baseURL ?? process.env.OPENAI_BASE_URL;
+
+  const isOpenRouterBaseURL = baseURL?.includes("openrouter.ai") ?? false;
+  const shouldUseOpenRouter = options.openrouter || isOpenRouterBaseURL;
+
+  if (shouldUseOpenRouter && !baseURL) {
+    baseURL = OPENROUTER_BASE_URL;
+  }
+
+  let apiKey: string | undefined;
+  if (options.openrouter) {
+    apiKey = process.env.OPENROUTER_API_KEY;
+  } else if (isOpenRouterBaseURL) {
+    apiKey = process.env.OPENAI_API_KEY ?? process.env.OPENROUTER_API_KEY;
+  } else {
+    apiKey = process.env.OPENAI_API_KEY;
+  }
+
+  if (!apiKey) {
+    if (options.openrouter) {
+      throw new Error("OPENROUTER_API_KEY is not set.");
+    }
+    if (isOpenRouterBaseURL) {
+      throw new Error("OPENAI_API_KEY or OPENROUTER_API_KEY is not set.");
+    }
+    throw new Error("OPENAI_API_KEY is not set.");
+  }
+
+  const model = options.model ?? (shouldUseOpenRouter ? DEFAULT_OPENROUTER_MODEL : undefined);
+
+  return { apiKey, baseURL, model, temperature: options.temperature };
 }
 
 export function renderSummary(result: MeetingSummary): string {
@@ -148,39 +202,11 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
     process.exit(1);
   }
 
-  let baseURL = options.baseURL ?? process.env.OPENAI_BASE_URL;
-
-  const isOpenRouterBaseURL = baseURL?.includes("openrouter.ai") ?? false;
-  const shouldUseOpenRouter = options.openrouter || isOpenRouterBaseURL;
-
-  if (shouldUseOpenRouter && !baseURL) {
-    baseURL = OPENROUTER_BASE_URL;
-  }
-
-  let apiKey: string | undefined;
-  if (options.openrouter) {
-    apiKey = process.env.OPENROUTER_API_KEY;
-  } else if (isOpenRouterBaseURL) {
-    apiKey = process.env.OPENAI_API_KEY ?? process.env.OPENROUTER_API_KEY;
-  } else {
-    apiKey = process.env.OPENAI_API_KEY;
-  }
-
-  if (!apiKey) {
-    console.error(
-      shouldUseOpenRouter ? "OPENROUTER_API_KEY is not set." : "OPENAI_API_KEY is not set."
-    );
-    process.exit(1);
-  }
-
-  const model = options.model ?? (shouldUseOpenRouter ? DEFAULT_OPENROUTER_MODEL : undefined);
+  const config = resolveProviderConfig(options);
 
   let streamed = false;
   const result = await summarizeMeeting(input, {
-    apiKey,
-    baseURL,
-    model,
-    temperature: options.temperature,
+    ...config,
     onChunk: (chunk) => {
       if (!options.progress) {
         return;
@@ -200,7 +226,6 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
   }
 
   console.log(renderSummary(result));
-  console.log(`\nJSON\n${JSON.stringify(result, null, 2)}`);
 }
 
 if (import.meta.main) {

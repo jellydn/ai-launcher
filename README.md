@@ -25,6 +25,7 @@
 - **📋 Templates**: Create command shortcuts with `$@` argument/stdin placeholders
 - **👤 CCS Profiles**: Automatically detects CCS profiles via `ccs api list`
 - **📊 Git Diff Analysis**: Analyze staged or commit diffs with AI assistants
+- **📝 ai-meeting**: Extract summaries, action items, and risks from meeting notes
 - **🔒 Security**: Built-in command validation and injection prevention
 - **🌍 Cross-Platform**: Works on macOS, Linux, and Windows
 - **⚙️ Configuration**: User-defined tools override auto-detection
@@ -56,7 +57,7 @@ brew install jellydn/tap/ai
 
 ### Windows
 
-Download the latest `ai-windows-x64.exe` from [Releases](https://github.com/jellydn/ai-launcher/releases) and add to your PATH.
+Download the latest `ai-windows-x64.exe` and `ai-meeting-windows-x64.exe` from [Releases](https://github.com/jellydn/ai-launcher/releases) and add to your PATH.
 
 ### Build from Source
 
@@ -69,17 +70,19 @@ bun install
 bun run build
 ```
 
-This produces a standalone executable at `dist/ai`.
+This produces standalone executables at `dist/ai` and `dist/ai-meeting`.
 
 ### Manual Install
 
 ```bash
 # Option 1: Symlink to /usr/local/bin (requires sudo)
 sudo ln -sf "$(pwd)/dist/ai" /usr/local/bin/ai
+sudo ln -sf "$(pwd)/dist/ai-meeting" /usr/local/bin/ai-meeting
 
 # Option 2: Symlink to ~/.local/bin (no sudo required)
 mkdir -p ~/.local/bin
 ln -sf "$(pwd)/dist/ai" ~/.local/bin/ai
+ln -sf "$(pwd)/dist/ai-meeting" ~/.local/bin/ai-meeting
 # Ensure ~/.local/bin is in your PATH
 ```
 
@@ -235,6 +238,26 @@ git add . && ai c --diff-staged --diff-output quick-review.md
 ```
 
 The feature automatically constructs a prompt with the diff and sends it to your chosen AI assistant for analysis. Use `--diff-prompt` to add custom instructions and `--diff-output` to save the analysis to a markdown file.
+
+## 📝 ai-meeting
+
+The `ai-meeting` command extracts summaries, action items, and risks from meeting notes or transcripts using structured outputs.
+
+```bash
+# From a file
+ai-meeting meeting.md
+
+# From stdin
+cat meeting.md | ai-meeting
+
+# JSON only
+cat meeting.md | ai-meeting --json
+
+# Use OpenRouter for cost-free dev/test
+OPENROUTER_API_KEY=... ai-meeting meeting.md --openrouter
+```
+
+By default it prints a human-readable summary. Pass `--json` for machine-readable JSON. It is built alongside `ai` when you run `bun run build` and is installed by `install.sh` and the Homebrew formula.
 
 ## Configuration
 
