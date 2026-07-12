@@ -92,11 +92,14 @@ function mergeTemplates(existing: Template[], defaults: Template[]): Template[] 
 
   const meetingTemplate = existingByName.get("meeting");
   if (meetingTemplate?.command.startsWith("ai-meeting")) {
-    existingByName.set("meeting", {
-      ...meetingTemplate,
-      command: meetingTemplate.command.replace(/^\s*ai-meeting(?!\S)/, "ai meeting"),
-    });
-    changed = true;
+    const migrated = meetingTemplate.command.replace(/^\s*ai-meeting(?!\S)/, "ai meeting");
+    if (migrated !== meetingTemplate.command) {
+      existingByName.set("meeting", {
+        ...meetingTemplate,
+        command: migrated,
+      });
+      changed = true;
+    }
   }
 
   if (!changed) {
