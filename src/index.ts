@@ -12,7 +12,7 @@ import { getColoredLogo } from "./logo";
 import { findToolByName } from "./lookup";
 import { isSafeCommand } from "./template";
 import { upgrade } from "./upgrade";
-import { type OutputPathRejection, checkOutputPath, validateArguments } from "./validators";
+import { checkOutputPath, type OutputPathRejection, validateArguments } from "./validators";
 import { VERSION } from "./version";
 
 const EXIT_CODE_SUCCESS = 0;
