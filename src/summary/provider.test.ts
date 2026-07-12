@@ -67,12 +67,36 @@ describe("provider module", () => {
       try {
         expect(() => createProvider()).toThrow(ProviderError);
       } finally {
-        process.env.AI_SUMMARY_PROVIDER = originalProvider;
-        process.env.AI_SUMMARY_API_KEY = originalApiKey;
-        process.env.OPENAI_API_KEY = originalOpenAI;
-        process.env.ANTHROPIC_API_KEY = originalAnthropic;
-        process.env.OLLAMA_HOST = originalOllama;
-        process.env.OPENROUTER_API_KEY = originalOpenRouter;
+        if (originalProvider === undefined) {
+          delete process.env.AI_SUMMARY_PROVIDER;
+        } else {
+          process.env.AI_SUMMARY_PROVIDER = originalProvider;
+        }
+        if (originalApiKey === undefined) {
+          delete process.env.AI_SUMMARY_API_KEY;
+        } else {
+          process.env.AI_SUMMARY_API_KEY = originalApiKey;
+        }
+        if (originalOpenAI === undefined) {
+          delete process.env.OPENAI_API_KEY;
+        } else {
+          process.env.OPENAI_API_KEY = originalOpenAI;
+        }
+        if (originalAnthropic === undefined) {
+          delete process.env.ANTHROPIC_API_KEY;
+        } else {
+          process.env.ANTHROPIC_API_KEY = originalAnthropic;
+        }
+        if (originalOllama === undefined) {
+          delete process.env.OLLAMA_HOST;
+        } else {
+          process.env.OLLAMA_HOST = originalOllama;
+        }
+        if (originalOpenRouter === undefined) {
+          delete process.env.OPENROUTER_API_KEY;
+        } else {
+          process.env.OPENROUTER_API_KEY = originalOpenRouter;
+        }
       }
     });
   });
