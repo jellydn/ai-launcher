@@ -148,20 +148,26 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
     process.exit(1);
   }
 
-  const apiKey = options.openrouter
-    ? (process.env.OPENROUTER_API_KEY ?? process.env.OPENAI_API_KEY)
-    : (process.env.OPENAI_API_KEY ?? process.env.OPENROUTER_API_KEY);
-  if (!apiKey) {
-    console.error("OPENAI_API_KEY (or OPENROUTER_API_KEY when using --openrouter) is not set.");
-    process.exit(1);
-  }
-
   let baseURL = options.baseURL ?? process.env.OPENAI_BASE_URL;
-  if (options.openrouter) {
+
+  const shouldUseOpenRouter =
+    options.openrouter ||
+    (baseURL?.includes("openrouter.ai") ?? false) ||
+    (!process.env.OPENAI_API_KEY && !!process.env.OPENROUTER_API_KEY);
+
+  if (shouldUseOpenRouter) {
     baseURL ??= OPENROUTER_BASE_URL;
   }
 
-  const model = options.model ?? (options.openrouter ? DEFAULT_OPENROUTER_MODEL : undefined);
+  const apiKey = shouldUseOpenRouter
+    ? (process.env.OPENROUTER_API_KEY ?? process.env.OPENAI_API_KEY)
+    : (process.env.OPENAI_API_KEY ?? process.env.OPENROUTER_API_KEY);
+  if (!apiKey) {
+    console.error("OPENAI_API_KEY or OPENROUTER_API_KEY is not set.");
+    process.exit(1);
+  }
+
+  const model = options.model ?? (shouldUseOpenRouter ? DEFAULT_OPENROUTER_MODEL : undefined);
 
   let streamed = false;
   const result = await summarizeMeeting(input, {
