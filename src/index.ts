@@ -265,6 +265,20 @@ function launchToolWithPrompt(
   useStdin = false,
   outputFile?: string
 ): never {
+  if (!isSafeCommand(command)) {
+    console.error("Invalid command format");
+    process.exit(1);
+  }
+
+  // Quote-aware parse so flags like -p stay intact; shell:false keeps args literal.
+  const parsed = parseTemplateCommand(command);
+  const cmd = parsed.cmd;
+  const args = parsed.args;
+  if (!cmd) {
+    console.error("Empty command");
+    process.exit(1);
+  }
+
   if (outputFile) {
     const validationError = validateOutputFile(outputFile);
     if (validationError) {
@@ -330,6 +344,10 @@ function launchToolWithPrompt(
   }) as SpawnSyncReturns<string | Buffer>;
 
   handleChildProcessError(child);
+
+  if (child.stdout) {
+    process.stdout.write(child.stdout);
+  }
 
   process.exit(child.status ?? 0);
 }
