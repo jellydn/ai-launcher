@@ -1,0 +1,25 @@
+{
+  "name": "tiny-meeting-assistant",
+  "version": "0.1.0",
+  "description": "Extract summaries, action items, and risks from meeting notes using OpenAI structured outputs",
+  "type": "module",
+  "private": true,
+  "module": "src/cli.ts",
+  "scripts": {
+    "dev": "bun run src/cli.ts",
+    "start": "bun run src/cli.ts",
+    "build": "bun build src/cli.ts --outdir dist --target node",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome lint .",
+    "format": "biome format .",
+    "check": "biome check ."
+  },
+  "dependencies": {
+    "openai": "6.45.0",
+    "zod": "3.25.72"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^6.0.3"
+  }
+}
