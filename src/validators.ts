@@ -2,6 +2,8 @@
 // Keeping a single implementation here avoids drift between the security
 // checks enforced at runtime and the behavior asserted in tests.
 
+import { posix, win32 } from "node:path";
+
 const ARGUMENT_SAFE_PATTERN = /^[a-zA-Z0-9._\-"/\\@#=\s,.:()[\]{}]+$/;
 const MAX_ARGUMENT_LENGTH = 200;
 
@@ -18,19 +20,27 @@ export function validateArguments(args: string[]): boolean {
 const FORBIDDEN_OUTPUT_PATH_PATTERNS = [
   /^\./, // hidden file/dir at the root (.git, .config, ...)
   /\/\.[^/]/, // hidden file/dir nested anywhere (e.g. "sub/.git/hooks")
-  /^etc\//,
-  /^root\//,
-  /^home\//,
-  /^usr\//,
-  /^var\//,
-  /^sys\//,
-  /^proc\//,
+  /^etc(\/|$)/,
+  /^root(\/|$)/,
+  /^home(\/|$)/,
+  /^usr(\/|$)/,
+  /^var(\/|$)/,
+  /^sys(\/|$)/,
+  /^proc(\/|$)/,
 ];
 
 export function isValidOutputPath(filePath: string): boolean {
   const normalized = filePath.replace(/\\/g, "/");
 
-  if (normalized.startsWith("/")) {
+  // Reject both POSIX and Windows absolute forms regardless of the host OS, so
+  // the check is correct on Windows (the platform this hardening targets) and
+  // unit tests on macOS/Linux still exercise Windows paths.
+  const isAbsolute =
+    posix.isAbsolute(normalized) ||
+    win32.isAbsolute(filePath) ||
+    win32.isAbsolute(normalized) ||
+    /^[A-Za-z]:/.test(normalized);
+  if (isAbsolute) {
     return false;
   }
 

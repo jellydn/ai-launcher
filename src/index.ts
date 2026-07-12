@@ -64,13 +64,27 @@ function readStdin(): string | null {
   const chunks: Buffer[] = [];
   let total = 0;
 
+  // If stdin is non-blocking and not ready, readSync throws EAGAIN. Back off
+  // briefly between retries (rather than busy-spinning a core) and give up
+  // after a bounded wait, treating it as "no stdin" like the old best-effort
+  // readFileSync behavior.
+  const EAGAIN_BACKOFF_MS = 5;
+  const MAX_EAGAIN_RETRIES = 2000; // ~10s of retries before giving up
+  const sleepSlot = new Int32Array(new SharedArrayBuffer(4));
+  let eagainRetries = 0;
+
   while (true) {
     let bytesRead: number;
     try {
       bytesRead = readSync(0, buffer, 0, CHUNK_SIZE, null);
+      eagainRetries = 0;
     } catch (error) {
       const code = (error as NodeJS.ErrnoException).code;
-      if (code === "EAGAIN") continue; // stdin not ready yet, retry
+      if (code === "EAGAIN") {
+        if (++eagainRetries > MAX_EAGAIN_RETRIES) return null;
+        Atomics.wait(sleepSlot, 0, 0, EAGAIN_BACKOFF_MS);
+        continue;
+      }
       if (code === "EOF") break; // Windows signals end-of-input this way
       return null;
     }

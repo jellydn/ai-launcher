@@ -216,6 +216,12 @@ describe("Output Path Validation", () => {
     expect(isValidOutputPath("/tmp/output.txt")).toBe(false);
   });
 
+  test("rejects Windows absolute paths regardless of host OS", () => {
+    expect(isValidOutputPath("C:/Windows/foo.md")).toBe(false);
+    expect(isValidOutputPath("C:\\Windows\\foo.md")).toBe(false);
+    expect(isValidOutputPath("D:\\data\\out.txt")).toBe(false);
+  });
+
   test("rejects paths starting with dot", () => {
     expect(isValidOutputPath(".hidden.md")).toBe(false);
     expect(isValidOutputPath("./secret.txt")).toBe(false);

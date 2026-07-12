@@ -24,7 +24,14 @@ const binaryExt = isWindows ? ".exe" : "";
 // Network requests during upgrade should fail fast instead of hanging forever
 // on a flaky connection.
 const FETCH_TIMEOUT_MS = 30_000;
+// The binary download gets a larger wall-clock budget than metadata requests.
+const DOWNLOAD_TIMEOUT_MS = 5 * 60_000;
+// Guard against a malicious/misconfigured release trying to OOM the upgrader.
+const MAX_DOWNLOAD_SIZE = 200 * 1024 * 1024;
 
+// The AbortSignal is attached to the request, so it bounds the entire exchange
+// (headers *and* body). Reading the body (e.g. `arrayBuffer()`) aborts too if
+// the deadline elapses mid-download.
 async function fetchWithTimeout(url: string, timeoutMs = FETCH_TIMEOUT_MS): Promise<Response> {
   return fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
 }
@@ -123,13 +130,27 @@ export async function upgrade() {
 
     console.log(`Downloading from: ${downloadUrl}`);
 
-    const binaryResponse = await fetchWithTimeout(downloadUrl);
+    const binaryResponse = await fetchWithTimeout(downloadUrl, DOWNLOAD_TIMEOUT_MS);
     if (!binaryResponse.ok) {
       console.error(`Failed to download binary: ${binaryResponse.statusText}`);
       process.exit(1);
     }
 
+    const declaredSize = Number(binaryResponse.headers.get("content-length"));
+    if (Number.isFinite(declaredSize) && declaredSize > MAX_DOWNLOAD_SIZE) {
+      console.error(
+        `❌ Refusing to download: reported size ${declaredSize} exceeds ${MAX_DOWNLOAD_SIZE / 1024 / 1024}MB limit`
+      );
+      process.exit(1);
+    }
+
     const binaryData = await binaryResponse.arrayBuffer();
+    if (binaryData.byteLength > MAX_DOWNLOAD_SIZE) {
+      console.error(
+        `❌ Downloaded binary exceeds ${MAX_DOWNLOAD_SIZE / 1024 / 1024}MB limit and was rejected`
+      );
+      process.exit(1);
+    }
     await writeFile(tempBinaryPath, Buffer.from(binaryData));
 
     const checksumAsset = release.assets.find((a) => a.name === "checksums.txt");

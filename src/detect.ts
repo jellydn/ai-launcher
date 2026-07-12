@@ -290,7 +290,7 @@ const WINDOWS_SHADOWED_COMMANDS = new Set(["cmd"]);
 
 export function detectInstalledTools(): Tool[] {
   if (detectionCache !== null) {
-    return detectionCache;
+    return detectionCache.slice();
   }
 
   const detected: Tool[] = [];
@@ -329,7 +329,7 @@ export function detectInstalledTools(): Tool[] {
   }
 
   detectionCache = detected;
-  return detected;
+  return detected.slice();
 }
 
 export function mergeTools(configTools: Tool[], detectedTools: Tool[]): Tool[] {

@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { beforeEach, describe, expect, test } from "bun:test";
 import {
   detectCliProxyProfiles,
   detectGhCopilot,
@@ -8,8 +8,15 @@ import {
   KNOWN_TOOLS,
   type KnownToolDefinition,
   parseCcsApiList,
+  resetDetectionCache,
   SUGGESTED_INSTALL_TOOL_NAMES,
 } from "./detect";
+
+// Detection is memoized for the process lifetime; clear it before each test so
+// cases don't leak a cached result into one another.
+beforeEach(() => {
+  resetDetectionCache();
+});
 
 const CCS_API_LIST_OUTPUT = `CCS API Profiles
 
