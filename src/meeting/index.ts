@@ -18,19 +18,19 @@ interface Options {
 }
 
 function showHelp(): never {
-  console.log(`tiny-meeting-assistant
+  console.log(`ai-meeting
 Extract summaries, action items, and risks from meeting notes.
 
 Usage:
-  bun run src/cli.ts <path-to-meeting-notes.md>
-  cat meeting.md | bun run src/cli.ts
-  cat meeting.md | bun run src/cli.ts --json
-  cat meeting.md | bun run src/cli.ts --model gpt-4o --temperature 0.2
+  ai-meeting <path-to-meeting-notes.md>
+  cat meeting.md | ai-meeting
+  cat meeting.md | ai-meeting --json
+  cat meeting.md | ai-meeting --model gpt-4o --temperature 0.2
 
 OpenRouter (cost-free dev/test):
-  bun run src/cli.ts meeting.md --openrouter
-  OPENROUTER_API_KEY=... bun run src/cli.ts meeting.md --openrouter --model openai/gpt-4o
-  bun run src/cli.ts meeting.md --base-url https://openrouter.ai/api/v1 --model google/gemini-2.0-flash-exp:free
+  ai-meeting meeting.md --openrouter
+  OPENROUTER_API_KEY=... ai-meeting meeting.md --openrouter --model openai/gpt-4o
+  ai-meeting meeting.md --base-url https://openrouter.ai/api/v1 --model google/gemini-2.0-flash-exp:free
 
 Options:
   -h, --help              Show this help
@@ -139,9 +139,8 @@ function renderSummary(result: MeetingSummary): string {
   return lines.join("\n");
 }
 
-async function main(): Promise<void> {
-  const args = process.argv.slice(2);
-  const options = parseArgs(args);
+export async function main(argv: string[] = process.argv.slice(2)): Promise<void> {
+  const options = parseArgs(argv);
   const input = readInput(options.path).trim();
 
   if (input.length === 0) {
@@ -192,7 +191,9 @@ async function main(): Promise<void> {
   console.log(`\nJSON\n${JSON.stringify(result, null, 2)}`);
 }
 
-main().catch((error) => {
-  console.error(error instanceof Error ? error.message : error);
-  process.exit(1);
-});
+if (import.meta.main) {
+  main().catch((error) => {
+    console.error(error instanceof Error ? error.message : error);
+    process.exit(1);
+  });
+}

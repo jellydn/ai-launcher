@@ -1,4 +1,4 @@
-# tiny-meeting-assistant
+# ai-meeting
 
 A tiny CLI that extracts summaries, action items, and risks from meeting notes or transcripts using the OpenAI API with streaming, structured outputs, and Zod.
 
@@ -12,14 +12,12 @@ A tiny CLI that extracts summaries, action items, and risks from meeting notes o
 ## Project layout
 
 ```
-src/
+src/meeting/
+  index.ts    # CLI entrypoint
   schema.ts   # Zod schemas for the structured output
   prompt.ts   # Prompt builder
   summarize.ts# OpenAI streaming + structured output logic
-  cli.ts      # CLI entrypoint
 README.md
-package.json
-tsconfig.json
 ```
 
 ## Setup
@@ -40,25 +38,27 @@ export OPENROUTER_API_KEY="sk-or-..."
 
 ```bash
 # From a file
-bun run src/cli.ts meeting.md
+bun run src/meeting/index.ts meeting.md
 
 # From stdin
-cat meeting.md | bun run src/cli.ts
+cat meeting.md | bun run src/meeting/index.ts
 
 # JSON only
-cat meeting.md | bun run src/cli.ts --json
+cat meeting.md | bun run src/meeting/index.ts --json
 
 # Show the raw JSON stream as it arrives
-cat meeting.md | bun run src/cli.ts --progress
+cat meeting.md | bun run src/meeting/index.ts --progress
 
 # Tune the model and temperature
-bun run src/cli.ts meeting.md --model gpt-4o-mini-2024-07-18 --temperature 0.0
+bun run src/meeting/index.ts meeting.md --model gpt-4o-mini-2024-07-18 --temperature 0.0
 
 # Use OpenRouter for free/cost-effective dev and test
-bun run src/cli.ts meeting.md --openrouter
-OPENROUTER_API_KEY=... bun run src/cli.ts meeting.md --openrouter --model openai/gpt-4o
-bun run src/cli.ts meeting.md --base-url https://openrouter.ai/api/v1 --model google/gemini-2.0-flash-exp:free
+bun run src/meeting/index.ts meeting.md --openrouter
+OPENROUTER_API_KEY=... bun run src/meeting/index.ts meeting.md --openrouter --model openai/gpt-4o
+bun run src/meeting/index.ts meeting.md --base-url https://openrouter.ai/api/v1 --model google/gemini-2.0-flash-exp:free
 ```
+
+After running `bun run build`, the compiled `ai-meeting` binary is available at `dist/ai-meeting`.
 
 ## Example output
 
@@ -93,4 +93,4 @@ bun run src/cli.ts meeting.md --base-url https://openrouter.ai/api/v1 --model go
 - **Day 6:** Let the model decide when to call tools/functions.
 - **Day 7:** Combine everything into a small, usable application.
 
-This project ties all of these together into one tool that can be run with `bun run src/cli.ts <meeting.md>`.
+This project ties all of these together into one tool that can be run with `bun run src/meeting/index.ts <meeting.md>` or `ai-meeting <meeting.md>` after building.
