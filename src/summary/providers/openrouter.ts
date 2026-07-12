@@ -70,6 +70,7 @@ export class OpenRouterProvider implements Provider {
         messages: options.messages,
         temperature: options.temperature,
         stream: true,
+        response_format: { type: "json_object" },
       }),
     });
 

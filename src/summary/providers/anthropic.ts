@@ -34,13 +34,13 @@ function getAnthropicModel(config: AnthropicConfig): string {
   return config.model ?? process.env.AI_SUMMARY_MODEL ?? "claude-3-5-haiku-20241022";
 }
 
-function toAnthropicMessages(
-  messages: Message[]
-): { role: "user" | "assistant"; content: string }[] {
-  return messages.map((message) => ({
-    role: message.role === "system" ? "assistant" : "user",
-    content: message.content,
-  }));
+function toAnthropicMessages(messages: Message[]): { role: "user"; content: string }[] {
+  return messages.map((message) => {
+    if (message.role !== "user") {
+      throw new ProviderError("Anthropic messages must be user role");
+    }
+    return { role: "user", content: message.content };
+  });
 }
 
 async function* streamAnthropicResponse(

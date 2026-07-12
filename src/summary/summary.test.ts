@@ -194,9 +194,7 @@ describe("summary module", () => {
           ok: response.ok,
           status: response.status,
           statusText: response.statusText,
-          headers: new Map([
-            ["content-type", response.contentType ?? "text/plain"],
-          ]) as unknown as Headers,
+          headers: new Headers([["content-type", response.contentType ?? "text/plain"]]),
           text: async () => response.text,
         }) as Response) as unknown as typeof globalThis.fetch;
     }

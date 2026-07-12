@@ -31,7 +31,7 @@ export function detectCategory(content: string): SummaryCategory {
   }
 
   const lowerContent = content.toLowerCase();
-  if (lowerContent.includes("dear ") || lowerContent.includes("hi ")) {
+  if (lowerContent.includes("dear ")) {
     return "email";
   }
 

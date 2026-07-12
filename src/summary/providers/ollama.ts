@@ -101,6 +101,7 @@ export class OllamaProvider implements Provider {
         model: this.model,
         messages: toOllamaMessages(options.messages),
         stream: true,
+        format: "json",
         options: {
           temperature: options.temperature,
         },

@@ -7,10 +7,8 @@ import { renderJson, renderMarkdown } from "./output.ts";
 import { extractJson } from "./parse-json.ts";
 import { buildSummaryPrompt } from "./prompts.ts";
 import { createProvider, ProviderError } from "./provider.ts";
-import type { Summary } from "./schema.ts";
+import type { Summary, SummaryMode } from "./schema.ts";
 import { parseSummary, summaryModeSchema } from "./schema.ts";
-
-const MODES = ["tldr", "actions", "linkedin", "technical"] as const;
 
 function showHelp(): never {
   console.log(`ai-summary - Tiny Content Summarizer
@@ -64,14 +62,11 @@ function parseCliArgs(argv: string[]) {
   return { positionals, values };
 }
 
-function getMode(value: unknown): string {
-  if (typeof value !== "string" || value.length === 0) {
+function getMode(value: unknown): SummaryMode {
+  if (!value) {
     return "tldr";
   }
-  if (MODES.includes(value as (typeof MODES)[number])) {
-    return value;
-  }
-  throw new Error(`Invalid mode: ${value}. Valid modes: ${MODES.join(", ")}`);
+  return summaryModeSchema.parse(value);
 }
 
 async function collectStream(stream: AsyncIterable<string>): Promise<string> {
@@ -102,7 +97,7 @@ async function main(): Promise<void> {
   const prompt = buildSummaryPrompt({
     content,
     category,
-    mode: summaryModeSchema.parse(mode),
+    mode,
     source,
   });
 
