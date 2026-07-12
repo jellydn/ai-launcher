@@ -11,7 +11,7 @@ import { fuzzySelect, promptForInput, toSelectableItems } from "./fuzzy-select";
 import { getColoredLogo } from "./logo";
 import { findToolByName } from "./lookup";
 import { main as summaryMain } from "./summary/index.ts";
-import { isSafeCommand } from "./template";
+import { isSafeCommand, parseTemplateCommand } from "./template";
 import type { SelectableItem } from "./types";
 import { upgrade } from "./upgrade";
 import { VERSION } from "./version";
@@ -291,6 +291,16 @@ function isSummaryTemplate(item: SelectableItem): boolean {
   return item.isTemplate && item.command.trim().startsWith("ai summary");
 }
 
+function getSummaryArgsFromTemplate(command: string, userArgs: string[]): string[] {
+  const parsed = parseTemplateCommand(command);
+  const summaryIndex = parsed.args.indexOf("summary");
+  const placeholderIndex = parsed.args.indexOf("$@");
+  const endIndex = placeholderIndex === -1 ? parsed.args.length : placeholderIndex;
+  const flagArgs = parsed.args.slice(summaryIndex + 1, endIndex);
+  const strippedFlags = flagArgs.map((token) => token.replace(/^["']|["']$/g, ""));
+  return [...strippedFlags, ...userArgs];
+}
+
 async function main() {
   const args = process.argv.slice(2);
 
@@ -326,7 +336,8 @@ async function main() {
   if (toolQuery) {
     const result = findToolByName(toolQuery, lookupItems);
     if (result.success && result.item && isSummaryTemplate(result.item)) {
-      const summaryArgs = dashIndex !== -1 ? args.slice(dashIndex + 1) : args.slice(1);
+      const userArgs = dashIndex !== -1 ? args.slice(dashIndex + 1) : args.slice(1);
+      const summaryArgs = getSummaryArgsFromTemplate(result.item.command, userArgs);
       await summaryMain(summaryArgs);
       return;
     }

@@ -34,15 +34,34 @@ function isLocalHost(hostname: string): boolean {
   return hostname === "localhost" || hostname === "localhost.localdomain";
 }
 
+function isDottedDecimalIpv4(hostname: string): boolean {
+  const parts = hostname.split(".");
+  if (parts.length !== 4) return false;
+  return parts.every((part) => {
+    if (!/^\d+$/.test(part)) return false;
+    const num = Number(part);
+    return num >= 0 && num <= 255 && part === String(num);
+  });
+}
+
+function normalizeIpv4(hostname: string): string | null {
+  if (hostname.includes(":")) return null;
+  if (isDottedDecimalIpv4(hostname)) return hostname;
+  try {
+    const parsed = new URL(`http://${hostname}`);
+    return isDottedDecimalIpv4(parsed.hostname) ? parsed.hostname : null;
+  } catch {
+    return null;
+  }
+}
+
 function isPrivateIpv4(hostname: string): boolean {
-  const parts = hostname.split(".").map(Number);
-  if (parts.length !== 4 || parts.some((part) => Number.isNaN(part) || part < 0 || part > 255)) {
-    return false;
-  }
+  const normalized = isDottedDecimalIpv4(hostname) ? hostname : normalizeIpv4(hostname);
+  if (!normalized) return false;
+
+  const parts = normalized.split(".").map(Number);
   const [a, b] = parts;
-  if (a === undefined || b === undefined) {
-    return false;
-  }
+  if (a === undefined || b === undefined) return false;
 
   if (a === 0 || a === 10 || a === 127) return true;
   if (a === 169 && b === 254) return true;

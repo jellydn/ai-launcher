@@ -246,6 +246,24 @@ describe("summary module", () => {
       );
     });
 
+    test("rejects alternative IPv4 representations", async () => {
+      globalThis.fetch = (() => {
+        throw new Error("fetch should not be called for private URLs");
+      }) as unknown as typeof globalThis.fetch;
+
+      await expect(fetchUrlContent("http://2130706433/secret")).rejects.toBeInstanceOf(
+        SummaryUrlError
+      );
+      await expect(fetchUrlContent("http://0x7f000001/secret")).rejects.toBeInstanceOf(
+        SummaryUrlError
+      );
+      await expect(fetchUrlContent("http://0/secret")).rejects.toBeInstanceOf(SummaryUrlError);
+      await expect(fetchUrlContent("http://2852039166/")).rejects.toBeInstanceOf(SummaryUrlError);
+      await expect(fetchUrlContent("http://0x7f.0.0.1/secret")).rejects.toBeInstanceOf(
+        SummaryUrlError
+      );
+    });
+
     test("rejects URLs with content length over the limit", async () => {
       globalThis.fetch = (async () =>
         ({
