@@ -377,6 +377,7 @@ Different AI CLIs accept prompts in different ways. The `promptCommand` and `pro
 | `ccs`      | `ccs <profile> --permission-mode plan -p 'prompt'` | Uses plan mode for read-only analysis             |
 | `opencode` | `echo 'prompt' &#124; opencode run`                | First arg is treated as project path, needs stdin |
 | `amp`      | `echo 'prompt' &#124; amp -x`                      | Execute mode works best with stdin                |
+| `devin`    | `devin -- 'prompt'`                                | Direct Devin CLI invocation                       |
 
 **Example configuration:**
 
@@ -402,6 +403,7 @@ The following CLIs are auto-detected if installed and available in PATH:
 - `amp` - Sourcegraph Amp CLI
 - `copilot` - GitHub Copilot CLI
 - `codex` - OpenAI Codex CLI
+- `devin` - Devin CLI
 - `kilo` - Kilo Code CLI
 - `pi` - Pi AI CLI
 - `droid` - Factory Droid CLI

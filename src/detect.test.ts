@@ -181,6 +181,16 @@ describe("detectInstalledTools", () => {
     expect(copilot?.promptUseStdin).toBe(true);
   });
 
+  test("devin is in KNOWN_TOOLS with correct configuration", () => {
+    const devin = KNOWN_TOOLS.find((t) => t.name === "devin");
+
+    expect(devin).toBeDefined();
+    expect(devin?.name).toBe("devin");
+    expect(devin?.command).toBe("devin");
+    expect(devin?.description).toBe("Devin CLI");
+    expect(devin?.promptCommand).toBe("devin --");
+  });
+
   test("ollama is in KNOWN_TOOLS with correct configuration", () => {
     const ollama = KNOWN_TOOLS.find((t) => t.name === "ollama");
 

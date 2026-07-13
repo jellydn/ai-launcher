@@ -62,6 +62,12 @@ export const KNOWN_TOOLS = [
     promptCommand: "codex exec",
   },
   {
+    name: "devin",
+    command: "devin",
+    description: "Devin CLI",
+    promptCommand: "devin --",
+  },
+  {
     name: "kilo",
     command: "kilo",
     description: "Kilo Code CLI",
