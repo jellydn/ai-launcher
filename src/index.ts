@@ -128,6 +128,10 @@ OPTIONS:
     --diff-output <file>             Save analysis output to markdown file
     upgrade                          Upgrade to latest version
 
+BUILT-IN:
+    summary                          Summarize files, URLs, or stdin (see: ai summary --help)
+    meeting                          Extract summary, actions, risks from notes (see: ai meeting --help)
+
 EXAMPLES:
     ai                               Launch fuzzy search
     ai claude                        Launch Claude directly
@@ -140,7 +144,14 @@ EXAMPLES:
                                      Save analysis to file
     ai --diff-commit HEAD~1 --diff-prompt "Focus on security"
                                      Add custom prompt
-    ai summary article.txt           Summarize content with OpenCode
+    ai summary article.txt           Summarize a file (default template uses OpenCode)
+    ai summary README.md -p opencode Summarize with OpenCode CLI
+    cat email.txt | ai summary -m actions
+                                     Pull action items from stdin
+    ai meeting notes.md              Structure meeting notes (needs OPENAI_API_KEY)
+    ai meeting notes.md --openrouter Use OpenRouter (OPENROUTER_API_KEY)
+    cat transcript.md | ai meeting --json
+                                     JSON: summary, action_items, risks
     ai upgrade                       Upgrade to latest version
 
 CONFIG:
