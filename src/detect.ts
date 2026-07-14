@@ -5,6 +5,7 @@ export type KnownToolDefinition = {
   name: string;
   command: string;
   description: string;
+  aliases?: string[];
   execCommand?: string;
   promptCommand?: string;
   promptUseStdin?: boolean;
@@ -60,6 +61,19 @@ export const KNOWN_TOOLS = [
     command: "codex",
     description: "OpenAI Codex CLI",
     promptCommand: "codex exec",
+  },
+  {
+    name: "interpreter",
+    command: "interpreter",
+    aliases: ["i"],
+    description: "Open Interpreter CLI",
+    promptCommand: "interpreter exec",
+  },
+  {
+    name: "devin",
+    command: "devin",
+    description: "Devin CLI",
+    promptCommand: "devin -p",
   },
   {
     name: "kilo",
@@ -282,6 +296,7 @@ export function detectInstalledTools(): Tool[] {
         name: tool.name,
         command: tool.execCommand ?? tool.command,
         description: tool.description,
+        aliases: tool.aliases,
         promptCommand: tool.promptCommand,
         promptUseStdin: tool.promptUseStdin,
       });
