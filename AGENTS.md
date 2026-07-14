@@ -4,7 +4,7 @@ Guidelines for agentic coding agents working on this codebase.
 
 ## Project Overview
 
-**ai-launcher** - A fast, secure launcher CLI tool that switches between AI coding assistants using fuzzy search. Built with TypeScript and Bun.
+**ai-launcher** - A fast, secure launcher CLI tool that switches between AI coding assistants using fuzzy search. Built-in subcommands: `ai summary` (content summarization) and `ai meeting` (structured meeting notes). Built with TypeScript and Bun.
 
 ## Commands
 
@@ -113,6 +113,8 @@ src/
   lookup.ts       - Tool lookup by name, alias, or fuzzy match
   template.ts     - Template configuration
   upgrade.ts      - Upgrade functionality
+  summary/        - Built-in `ai summary` subcommand (providers, modes, streaming)
+  meeting/        - Built-in `ai meeting` subcommand (structured OpenAI output)
   types.ts        - Type definitions and interfaces
   logo.ts         - ASCII logo and colors
   version.ts      - Generated at build time (.gitignore)

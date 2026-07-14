@@ -19,12 +19,13 @@
 ## ✨ Features
 
 - **🔍 Fuzzy Search**: Interactive terminal UI with real-time filtering and keyboard navigation
-- **🔧 Auto-Detection**: Automatically finds installed AI CLIs (claude, gemini, agy, opencode, amp, copilot, codex, interpreter, devin, kilo, pi, droid, ollama, cursor, ccs, cmd, freebuff, grok)
+- **🔧 Auto-Detection**: Automatically finds installed AI CLIs (claude, cline, gemini, agy, opencode, amp, copilot, codex, interpreter, devin, kilo, kimi, mimo, pi, droid, ollama, cursor-agent, ccs, cmd, freebuff, grok)
 - **⚡ Direct Invocation**: Skip the menu with `ai <toolname>` or fuzzy matching
 - **🏷️ Aliases**: Define short aliases for frequently used tools (e.g., `ai c` for claude)
 - **📋 Templates**: Create command shortcuts with `$@` argument/stdin placeholders
 - **👤 CCS Profiles**: Automatically detects CCS profiles via `ccs api list`
 - **📊 Git Diff Analysis**: Analyze staged or commit diffs with AI assistants
+- **📝 ai summary**: Summarize articles, emails, newsletters, and URLs (built-in subcommand)
 - **📝 ai meeting**: Extract summaries, action items, and risks from meeting notes
 - **🔒 Security**: Built-in command validation and injection prevention
 - **🌍 Cross-Platform**: Works on macOS, Linux, and Windows
@@ -57,7 +58,7 @@ brew install jellydn/tap/ai
 
 ### Windows
 
-Download the latest `ai-windows-x64.exe` from [Releases](https://github.com/jellydn/ai-launcher/releases) and add to your PATH. The `ai meeting` subcommand is built into the `ai` binary.
+Download the latest `ai-windows-x64.exe` from [Releases](https://github.com/jellydn/ai-launcher/releases) and add to your PATH. Built-in `ai summary` and `ai meeting` subcommands are included in the `ai` binary.
 
 ### Build from Source
 
@@ -70,7 +71,7 @@ bun install
 bun run build
 ```
 
-This produces a standalone executable at `dist/ai`. `ai` now includes the `meeting` subcommand.
+This produces a standalone executable at `dist/ai`, including built-in `summary` and `meeting` subcommands.
 
 ### Manual Install
 
@@ -305,6 +306,12 @@ A default config is created on first run. Example:
       "aliases": ["zen", "logical-commit"]
     },
     {
+      "name": "summary",
+      "command": "ai summary --provider opencode --mode tldr $@",
+      "description": "Summarize content with OpenCode (free model)",
+      "aliases": ["sum", "summarize"]
+    },
+    {
       "name": "architecture-explanation",
       "command": "ccs gemini 'Explain this codebase architecture'",
       "description": "Explain architecture with Gemini",
@@ -396,6 +403,7 @@ This tells ai-launcher: when running `ai opencode --diff-staged`, pipe the diff 
 The following CLIs are auto-detected if installed and available in PATH:
 
 - `claude` - Anthropic Claude CLI
+- `cline` - Cline CLI
 - `gemini` - Google Gemini CLI
 - `agy` - Google Antigravity CLI
 - `opencode` - OpenCode AI assistant
@@ -405,10 +413,12 @@ The following CLIs are auto-detected if installed and available in PATH:
 - `interpreter` (`i`) - Open Interpreter CLI
 - `devin` - Devin CLI
 - `kilo` - Kilo Code CLI
+- `kimi` - Kimi Code (Moonshot AI) CLI
+- `mimo` - Mi AI (mimocode) CLI
 - `pi` - Pi AI CLI
 - `droid` - Factory Droid CLI
 - `ollama` - Ollama CLI
-- `cursor` - Cursor AI Editor
+- `cursor-agent` - Cursor AI Editor (`cursor-agent` CLI; avoids conflict with the `agent` command)
 - `ccs` - **Claude Code Switch** (with profile detection via `ccs api list`)
 - `cmd` - Command Code CLI
 - `freebuff` - Freebuff, free ad-supported AI coding agent (Codebuff variant)

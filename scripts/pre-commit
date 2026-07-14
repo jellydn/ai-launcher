@@ -9,6 +9,12 @@ NC='\033[0m' # No Color
 
 echo "${YELLOW}Running pre-commit checks...${NC}"
 
+# Skip Biome when no staged files it processes (e.g. docs-only commits)
+if ! git diff --cached --name-only | grep -qE '\.(ts|tsx|js|mjs|cjs|jsonc?)$'; then
+  echo "${GREEN}✓ No staged TS/JS files; skipping Biome${NC}"
+  exit 0
+fi
+
 # Run Biome check on staged files
 bun run check --staged 2>&1
 
