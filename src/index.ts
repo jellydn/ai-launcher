@@ -2,8 +2,8 @@
 
 import type { SpawnSyncReturns } from "node:child_process";
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, isAbsolute, normalize, resolve } from "node:path";
+import { existsSync, readSync, writeFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
 import { executeDiffCommand, parseDiffArgs } from "./cli/diff";
 import { loadConfig } from "./config";
 import { detectInstalledTools, formatSuggestedInstallHints, mergeTools } from "./detect";
@@ -15,6 +15,7 @@ import { main as summaryMain } from "./summary/index.ts";
 import { isSafeCommand, parseTemplateCommand } from "./template";
 import type { SelectableItem } from "./types";
 import { upgrade } from "./upgrade";
+import { checkOutputPath, type OutputPathRejection, validateArguments } from "./validators";
 import { VERSION } from "./version";
 
 const EXIT_CODE_SUCCESS = 0;
@@ -31,51 +32,21 @@ function handleChildProcessError(child: SpawnSyncReturns<string | Buffer>): void
   }
 }
 
-function isValidOutputPath(filePath: string): boolean {
-  const normalized = normalize(filePath);
-
-  if (isAbsolute(normalized)) {
-    console.error("Error: Output file path must be relative, not absolute");
-    return false;
-  }
-
-  const isPathEscape =
-    normalized.startsWith("..") || normalized.includes("/../") || normalized.includes("\\..\\");
-  if (isPathEscape) {
-    console.error("Error: Output file path cannot escape current directory");
-    return false;
-  }
-
-  const forbiddenPatterns = [
-    /^\./,
-    /\.git\//,
-    /\.config\//,
-    /etc\//,
-    /root\//,
-    /home\//,
-    /usr\//,
-    /var\//,
-    /sys\//,
-    /proc\//,
-  ];
-
-  for (const pattern of forbiddenPatterns) {
-    if (pattern.test(normalized)) {
-      console.error("Error: Output file path points to a protected location");
-      return false;
-    }
-  }
-
-  return true;
-}
+const OUTPUT_PATH_REASON_MESSAGES: Record<OutputPathRejection, string> = {
+  absolute: "Output file path must be relative, not absolute",
+  escape: "Output file path cannot escape the current directory",
+  hidden: "Output file path cannot point to a hidden file or directory",
+  protected: "Output file path points to a protected location",
+};
 
 function validateOutputFile(filePath: string): string | null {
   if (!filePath || filePath.trim().length === 0) {
     return "Output file path cannot be empty";
   }
 
-  if (!isValidOutputPath(filePath)) {
-    return "Invalid output file path";
+  const pathCheck = checkOutputPath(filePath);
+  if (!pathCheck.ok) {
+    return OUTPUT_PATH_REASON_MESSAGES[pathCheck.reason];
   }
 
   const resolvedPath = resolve(filePath);
@@ -89,19 +60,60 @@ function validateOutputFile(filePath: string): string | null {
   return null;
 }
 
-function validateArguments(args: string[]): boolean {
-  const safePattern = /^[a-zA-Z0-9._\-"/\\@#=\s,.:()[\]{}]+$/;
-  return args.every((arg) => safePattern.test(arg) && arg.length <= 200);
-}
+// Cap stdin so a huge pipe (e.g. `cat huge.bin | ai template`) cannot OOM the
+// launcher before it ever reaches the child process.
+const MAX_STDIN_SIZE = 10 * 1024 * 1024;
 
 function readStdin(): string | null {
-  try {
-    const isInteractive = process.stdin.isTTY;
-    if (isInteractive) return null;
-    return readFileSync(0, "utf-8").trim();
-  } catch {
-    return null;
+  const isInteractive = process.stdin.isTTY;
+  if (isInteractive) return null;
+
+  // Read fd 0 incrementally so an oversized pipe is aborted *before* the whole
+  // payload is buffered into memory, rather than after.
+  const CHUNK_SIZE = 64 * 1024;
+  const buffer = Buffer.alloc(CHUNK_SIZE);
+  const chunks: Buffer[] = [];
+  let total = 0;
+
+  // If stdin is non-blocking and not ready, readSync throws EAGAIN. Back off
+  // briefly between retries (rather than busy-spinning a core) and give up
+  // after a bounded wait, treating it as "no stdin" like the old best-effort
+  // readFileSync behavior.
+  const EAGAIN_BACKOFF_MS = 5;
+  const MAX_EAGAIN_RETRIES = 2000; // ~10s of retries before giving up
+  const sleepSlot = new Int32Array(new SharedArrayBuffer(4));
+  let eagainRetries = 0;
+
+  while (true) {
+    let bytesRead: number;
+    try {
+      bytesRead = readSync(0, buffer, 0, CHUNK_SIZE, null);
+      eagainRetries = 0;
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      if (code === "EAGAIN") {
+        if (++eagainRetries > MAX_EAGAIN_RETRIES) return null;
+        Atomics.wait(sleepSlot, 0, 0, EAGAIN_BACKOFF_MS);
+        continue;
+      }
+      if (code === "EOF") break; // Windows signals end-of-input this way
+      return null;
+    }
+
+    if (bytesRead === 0) break;
+
+    total += bytesRead;
+    if (total > MAX_STDIN_SIZE) {
+      console.error(
+        `Error: stdin input exceeds ${MAX_STDIN_SIZE / 1024 / 1024}MB limit and was rejected.`
+      );
+      process.exit(1);
+    }
+
+    chunks.push(Buffer.from(buffer.subarray(0, bytesRead)));
   }
+
+  return Buffer.concat(chunks).toString("utf-8").trim();
 }
 
 function showVersion() {

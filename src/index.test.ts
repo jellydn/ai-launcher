@@ -1,14 +1,6 @@
 import { describe, expect, test } from "bun:test";
-
-function validateToolCommand(command: string): boolean {
-  const safePattern = /^[a-zA-Z0-9._\s\-"':,!?/\\|$@]+$/;
-  return safePattern.test(command.trim()) && command.length > 0 && command.length <= 500;
-}
-
-function validateArguments(args: string[]): boolean {
-  const safePattern = /^[a-zA-Z0-9._\-"/\\@#=\s,.:()[\]{}]+$/;
-  return args.every((arg) => safePattern.test(arg) && arg.length <= 200);
-}
+import { isSafeCommand as validateToolCommand } from "./template";
+import { checkOutputPath, isValidOutputPath, validateArguments } from "./validators";
 
 describe("validateToolCommand", () => {
   test("accepts simple command", () => {
@@ -190,44 +182,14 @@ describe("Argument Parsing Logic", () => {
 });
 
 describe("Output Path Validation", () => {
-  function isValidOutputPath(path: string): boolean {
-    const normalized = path.replace(/\\/g, "/");
-
-    if (normalized.startsWith("/")) {
-      return false;
-    }
-
-    if (normalized.startsWith("..") || normalized.includes("/../")) {
-      return false;
-    }
-
-    const forbiddenPatterns = [
-      /^\./,
-      /\.git\//,
-      /\.config\//,
-      /etc\//,
-      /root\//,
-      /home\//,
-      /usr\//,
-      /var\//,
-    ];
-
-    for (const pattern of forbiddenPatterns) {
-      if (pattern.test(normalized)) {
-        return false;
-      }
-    }
-
-    return true;
-  }
-
   function validateOutputFile(filePath: string): string | null {
     if (!filePath || filePath.trim().length === 0) {
       return "Output file path cannot be empty";
     }
 
-    if (!isValidOutputPath(filePath)) {
-      return "Invalid output file path";
+    const check = checkOutputPath(filePath);
+    if (!check.ok) {
+      return check.reason;
     }
 
     return null;
@@ -243,10 +205,22 @@ describe("Output Path Validation", () => {
     expect(isValidOutputPath("docs/output.txt")).toBe(true);
   });
 
+  test("accepts nested dirs that merely contain a protected name as a substring", () => {
+    expect(isValidOutputPath("project/etc/config.md")).toBe(true);
+    expect(isValidOutputPath("notes/home-review.md")).toBe(true);
+    expect(isValidOutputPath("docs/usr-guide.md")).toBe(true);
+  });
+
   test("rejects absolute paths", () => {
     expect(isValidOutputPath("/etc/passwd")).toBe(false);
     expect(isValidOutputPath("/home/user/file.md")).toBe(false);
     expect(isValidOutputPath("/tmp/output.txt")).toBe(false);
+  });
+
+  test("rejects Windows absolute paths regardless of host OS", () => {
+    expect(isValidOutputPath("C:/Windows/foo.md")).toBe(false);
+    expect(isValidOutputPath("C:\\Windows\\foo.md")).toBe(false);
+    expect(isValidOutputPath("D:\\data\\out.txt")).toBe(false);
   });
 
   test("rejects paths starting with dot", () => {
@@ -258,6 +232,12 @@ describe("Output Path Validation", () => {
     expect(isValidOutputPath("../file.md")).toBe(false);
     expect(isValidOutputPath("sub/../../etc/passwd")).toBe(false);
     expect(isValidOutputPath("..%2F..%2Fetc%2Fpasswd")).toBe(false);
+  });
+
+  test("rejects nested hidden directories such as .git or .config", () => {
+    expect(isValidOutputPath("sub/.git/hooks/pre-commit")).toBe(false);
+    expect(isValidOutputPath("project/.config/settings.json")).toBe(false);
+    expect(isValidOutputPath("a/b/.ssh/id_rsa")).toBe(false);
   });
 
   test("rejects paths to protected directories", () => {
@@ -280,8 +260,20 @@ describe("Output Path Validation", () => {
     expect(validateOutputFile("   ")).toBe("Output file path cannot be empty");
   });
 
-  test("validateOutputFile returns error for invalid path", () => {
-    expect(validateOutputFile("/etc/passwd")).toBe("Invalid output file path");
-    expect(validateOutputFile("../file.md")).toBe("Invalid output file path");
+  test("validateOutputFile surfaces the specific rejection reason", () => {
+    expect(validateOutputFile("/etc/passwd")).toBe("absolute");
+    expect(validateOutputFile("C:/Windows/foo.md")).toBe("absolute");
+    expect(validateOutputFile("../file.md")).toBe("escape");
+    expect(validateOutputFile("sub/.git/config")).toBe("hidden");
+    expect(validateOutputFile("etc/passwd")).toBe("protected");
+  });
+
+  test("checkOutputPath reports a typed reason for each rejection class", () => {
+    expect(checkOutputPath("analysis.md")).toEqual({ ok: true });
+    expect(checkOutputPath("/etc/passwd")).toEqual({ ok: false, reason: "absolute" });
+    expect(checkOutputPath("C:\\Windows\\foo.md")).toEqual({ ok: false, reason: "absolute" });
+    expect(checkOutputPath("../escape.md")).toEqual({ ok: false, reason: "escape" });
+    expect(checkOutputPath("a/b/.ssh/id_rsa")).toEqual({ ok: false, reason: "hidden" });
+    expect(checkOutputPath("var/log/syslog")).toEqual({ ok: false, reason: "protected" });
   });
 });
