@@ -252,6 +252,29 @@ describe("detectInstalledTools", () => {
     expect(mimo?.promptCommand).toBe("mimo run");
   });
 
+  test("interpreter is in KNOWN_TOOLS with correct configuration", () => {
+    const interpreter = KNOWN_TOOLS.find((t) => t.name === "interpreter") as
+      | KnownToolDefinition
+      | undefined;
+
+    expect(interpreter).toBeDefined();
+    expect(interpreter?.name).toBe("interpreter");
+    expect(interpreter?.command).toBe("interpreter");
+    expect(interpreter?.aliases).toEqual(["i"]);
+    expect(interpreter?.description).toBe("Open Interpreter CLI");
+    expect(interpreter?.promptCommand).toBe("interpreter exec");
+  });
+
+  test("devin is in KNOWN_TOOLS with correct configuration", () => {
+    const devin = KNOWN_TOOLS.find((t) => t.name === "devin");
+
+    expect(devin).toBeDefined();
+    expect(devin?.name).toBe("devin");
+    expect(devin?.command).toBe("devin");
+    expect(devin?.description).toBe("Devin CLI");
+    expect(devin?.promptCommand).toBe("devin -p");
+  });
+
   test("returns only installed tools from KNOWN_TOOLS", () => {
     const tools = detectInstalledTools();
 
