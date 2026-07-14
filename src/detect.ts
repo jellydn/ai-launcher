@@ -5,7 +5,7 @@ export type KnownToolDefinition = {
   name: string;
   command: string;
   description: string;
-  aliases?: string[];
+  aliases?: readonly string[];
   execCommand?: string;
   promptCommand?: string;
   promptUseStdin?: boolean;
@@ -296,7 +296,7 @@ export function detectInstalledTools(): Tool[] {
         name: tool.name,
         command: tool.execCommand ?? tool.command,
         description: tool.description,
-        aliases: tool.aliases,
+        aliases: tool.aliases ? [...tool.aliases] : undefined,
         promptCommand: tool.promptCommand,
         promptUseStdin: tool.promptUseStdin,
       });
