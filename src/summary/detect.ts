@@ -1,3 +1,4 @@
+import { getSummaryModeInstruction } from "../prompts/summarize.ts";
 import type { SummaryCategory, SummaryMode } from "./schema.ts";
 
 const EMAIL_HEADERS = [
@@ -39,16 +40,5 @@ export function detectCategory(content: string): SummaryCategory {
 }
 
 export function getModeInstruction(mode: SummaryMode): string {
-  switch (mode) {
-    case "tldr":
-      return `tldr: Provide a concise 3-5 sentence summary. Keep key_points and action_items short and focused.`;
-    case "actions":
-      return `actions: Focus on deadlines, tasks, and action_items. Extract every actionable item and explicitly mention any deadlines or dates.`;
-    case "linkedin":
-      return `linkedin: Turn the content into a short LinkedIn post draft. The summary should be engaging, use a professional tone, and key_points should be punchy bullets. Include a clear call to action in action_items if appropriate.`;
-    case "technical":
-      return `technical: Preserve technical details, links, code snippets, and terminology. Be precise and do not oversimplify the technical content. Key_points should capture the technical takeaways.`;
-    default:
-      return `tldr`;
-  }
+  return getSummaryModeInstruction(mode);
 }

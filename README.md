@@ -283,6 +283,29 @@ OPENROUTER_API_KEY=... ai meeting meeting.md --openrouter
 
 By default it prints a human-readable summary. Pass `--json` for machine-readable JSON.
 
+## Prompt templates
+
+The built-in AI workflows use typed, versioned prompt templates. System instructions and user
+content are rendered separately, and variables are validated before a provider receives them.
+
+```bash
+ai prompt list
+ai prompt inspect summarize-content
+ai prompt inspect classify-input
+ai prompt inspect extract-meeting
+```
+
+Templates live in `src/prompts/`. To add one:
+
+1. Define a Zod schema with clearly named variables.
+2. Create it with `definePrompt()`, including a stable ID, semantic version, description, variable
+   metadata, and output fields.
+3. Return separate `system` and `user` messages from `render()`.
+4. Register it in `src/prompts/registry.ts` and add rendering and validation tests.
+
+Increment a template's version whenever its rendered instructions or expected output contract
+changes. Consumers can use the version to evaluate prompt changes independently from CLI releases.
+
 ## Configuration
 
 Config file location: `~/.config/ai-launcher/config.json`

@@ -11,6 +11,7 @@ import { fuzzySelect, promptForInput, toSelectableItems } from "./fuzzy-select";
 import { getColoredLogo } from "./logo";
 import { findToolByName, type LookupResult } from "./lookup";
 import { main as meetingMain } from "./meeting/index.ts";
+import { formatPromptInspection, formatPromptList } from "./prompts/registry.ts";
 import { main as summaryMain } from "./summary/index.ts";
 import { isSafeCommand, parseTemplateCommand } from "./template";
 import type { SelectableItem } from "./types";
@@ -131,6 +132,8 @@ OPTIONS:
 BUILT-IN:
     summary                          Summarize files, URLs, or stdin (see: ai summary --help)
     meeting                          Extract summary, actions, risks from notes (see: ai meeting --help)
+    prompt list                      List reusable prompt templates
+    prompt inspect <id>              Inspect a prompt's variables and output
 
 EXAMPLES:
     ai                               Launch fuzzy search
@@ -152,6 +155,9 @@ EXAMPLES:
     ai meeting notes.md --openrouter Use OpenRouter (OPENROUTER_API_KEY)
     cat transcript.md | ai meeting --json
                                      JSON: summary, action_items, risks
+    ai prompt list                   List prompt IDs and versions
+    ai prompt inspect extract-meeting
+                                     Inspect the meeting extraction prompt
     ai upgrade                       Upgrade to latest version
 
 CONFIG:
@@ -316,6 +322,29 @@ function getSummaryArgsFromTemplate(command: string, userArgs: string[]): string
   return [...strippedFlags, ...userArgs];
 }
 
+const PROMPT_ID_PATTERN = /^[a-z0-9-]+$/;
+
+export function runPromptCommand(args: string[]): { success: boolean; error?: string } {
+  if (args[0] === "list") {
+    console.log(formatPromptList());
+    return { success: true };
+  }
+
+  if (args[0] === "inspect" && args[1]) {
+    if (!PROMPT_ID_PATTERN.test(args[1])) {
+      return { success: false, error: `Invalid prompt ID format: ${args[1]}` };
+    }
+    const inspection = formatPromptInspection(args[1]);
+    if (!inspection) {
+      return { success: false, error: `Unknown prompt: ${args[1]}` };
+    }
+    console.log(inspection);
+    return { success: true };
+  }
+
+  return { success: false, error: "Usage: ai prompt list | ai prompt inspect <id>" };
+}
+
 async function main() {
   const args = process.argv.slice(2);
 
@@ -340,6 +369,15 @@ async function main() {
 
   if (args[0] === "meeting") {
     await meetingMain(args.slice(1));
+    return;
+  }
+
+  if (args[0] === "prompt") {
+    const result = runPromptCommand(args.slice(1));
+    if (!result.success) {
+      console.error(result.error);
+      process.exit(1);
+    }
     return;
   }
 
