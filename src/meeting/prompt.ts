@@ -1,22 +1,7 @@
-export const INSTRUCTIONS = `You are a structured meeting assistant.
+import { extractMeetingPrompt, MEETING_INSTRUCTIONS } from "../prompts/extract-meeting.ts";
 
-Extract from the meeting transcript or notes:
-1. A concise summary (2-4 sentences)
-2. Action items with: owner, task, and due date/timeframe
-3. Risks, blockers, or concerns
-
-Output must be a JSON object matching this schema:
-{
-  "summary": "...",
-  "action_items": [
-    {"owner": "...", "task": "...", "due": "..."}
-  ],
-  "risks": ["..."]
-}
-
-Use empty arrays for action_items and risks if none are present.
-Be specific, concise, and do not hallucinate details not in the transcript.`;
+export const INSTRUCTIONS = MEETING_INSTRUCTIONS;
 
 export function buildMeetingPrompt(transcript: string): string {
-  return `Transcript:\n"""\n${transcript}\n"""`;
+  return extractMeetingPrompt.render({ transcript }).user;
 }

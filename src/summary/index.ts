@@ -1,11 +1,11 @@
 #!/usr/bin/env bun
 
 import { parseArgs } from "node:util";
+import { summarizePrompt } from "../prompts/summarize.ts";
 import { detectCategory } from "./detect.ts";
 import { resolveInput, SummaryInputError, SummaryUrlError } from "./input.ts";
 import { renderJson, renderMarkdown } from "./output.ts";
 import { extractJson } from "./parse-json.ts";
-import { buildSummaryPrompt } from "./prompts.ts";
 import { createProvider, ProviderError } from "./provider.ts";
 import type { Summary, SummaryMode } from "./schema.ts";
 import { parseSummary, summaryModeSchema } from "./schema.ts";
@@ -94,7 +94,7 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
 
   const { content, source } = await resolveInput(positionals);
   const category = detectCategory(content);
-  const prompt = buildSummaryPrompt({
+  const prompt = summarizePrompt.render({
     content,
     category,
     mode,
@@ -103,8 +103,8 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
 
   const stream = provider.generate({
     messages: [
-      { role: "system", content: "You are a helpful summarization assistant." },
-      { role: "user", content: prompt },
+      { role: "system", content: prompt.system },
+      { role: "user", content: prompt.user },
     ],
     temperature: 0.1,
   });

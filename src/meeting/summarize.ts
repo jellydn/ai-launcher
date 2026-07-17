@@ -2,7 +2,7 @@
 import OpenAI from "openai";
 import { zodResponseFormat } from "openai/helpers/zod";
 import type { MeetingSummary } from "./schema.ts";
-import { buildMeetingPrompt, INSTRUCTIONS } from "./prompt.ts";
+import { extractMeetingPrompt } from "../prompts/extract-meeting.ts";
 import { MeetingSummarySchema } from "./schema.ts";
 
 export interface SummarizeOptions {
@@ -33,12 +33,13 @@ export async function summarizeMeeting(
   });
 
   const responseFormat = zodResponseFormat(MeetingSummarySchema, "meeting_summary");
+  const prompt = extractMeetingPrompt.render({ transcript });
 
   const stream = client.chat.completions.stream({
     model: options.model ?? DEFAULT_MODEL,
     messages: [
-      { role: "system", content: INSTRUCTIONS },
-      { role: "user", content: buildMeetingPrompt(transcript) },
+      { role: "system", content: prompt.system },
+      { role: "user", content: prompt.user },
     ],
     temperature: options.temperature ?? DEFAULT_TEMPERATURE,
     response_format: responseFormat,
