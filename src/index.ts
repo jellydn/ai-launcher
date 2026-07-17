@@ -322,22 +322,27 @@ function getSummaryArgsFromTemplate(command: string, userArgs: string[]): string
   return [...strippedFlags, ...userArgs];
 }
 
-export function runPromptCommand(args: string[]): void {
+const PROMPT_ID_PATTERN = /^[a-z0-9-]+$/;
+
+export function runPromptCommand(args: string[]): { success: boolean; error?: string } {
   if (args[0] === "list") {
     console.log(formatPromptList());
-    return;
+    return { success: true };
   }
 
   if (args[0] === "inspect" && args[1]) {
+    if (!PROMPT_ID_PATTERN.test(args[1])) {
+      return { success: false, error: `Invalid prompt ID format: ${args[1]}` };
+    }
     const inspection = formatPromptInspection(args[1]);
     if (!inspection) {
-      throw new Error(`Unknown prompt: ${args[1]}`);
+      return { success: false, error: `Unknown prompt: ${args[1]}` };
     }
     console.log(inspection);
-    return;
+    return { success: true };
   }
 
-  throw new Error("Usage: ai prompt list | ai prompt inspect <id>");
+  return { success: false, error: "Usage: ai prompt list | ai prompt inspect <id>" };
 }
 
 async function main() {
@@ -368,7 +373,11 @@ async function main() {
   }
 
   if (args[0] === "prompt") {
-    runPromptCommand(args.slice(1));
+    const result = runPromptCommand(args.slice(1));
+    if (!result.success) {
+      console.error(result.error);
+      process.exit(1);
+    }
     return;
   }
 

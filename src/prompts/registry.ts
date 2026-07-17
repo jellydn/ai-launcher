@@ -17,6 +17,9 @@ type PromptById<TId extends PromptId> = (typeof promptById)[TId];
 export function getPrompt<TId extends PromptId>(id: TId): PromptById<TId>;
 export function getPrompt(id: string): RegisteredPrompt | undefined;
 export function getPrompt(id: string): RegisteredPrompt | undefined {
+  if (!Object.hasOwn(promptById, id)) {
+    return undefined;
+  }
   return promptById[id as PromptId];
 }
 
@@ -33,10 +36,10 @@ export function formatPromptInspection(id: string): string | undefined {
     return undefined;
   }
 
-  const variables = prompt.variables.map(
-    (variable) =>
-      `  - ${variable.name}: ${variable.type}, ${variable.required ? "required" : "optional"} — ${variable.description}`
-  );
+  const variables = prompt.variables.map((variable) => {
+    const req = variable.required ? "required" : "optional";
+    return `  - ${variable.name}: ${variable.type}, ${req} — ${variable.description}`;
+  });
   const output = prompt.output.map((field) => `  - ${field}`);
 
   return [

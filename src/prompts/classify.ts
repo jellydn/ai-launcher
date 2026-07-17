@@ -36,7 +36,7 @@ Return only JSON with this shape:
   "reason": "Brief evidence-based explanation"
 }
 
-Confidence must be between 0 and 1. Use "unknown" when the evidence is ambiguous.`,
+Confidence must be between 0 and 1. Use "unknown" when the evidence is ambiguous. Do not use markdown code fences or add commentary.`,
     user: `Classify this content:\n\n---\n${content}\n---`,
   }),
 });
