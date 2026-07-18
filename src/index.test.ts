@@ -2,6 +2,8 @@ import { describe, expect, test } from "bun:test";
 import { isSafeCommand } from "./template";
 import { isValidOutputPath, validateArguments } from "./validators";
 
+// isValidOutputPath / validateArguments are the real shared implementations.
+
 describe("isSafeCommand (tool command validation)", () => {
   test("accepts simple command", () => {
     expect(isSafeCommand("claude")).toBe(true);
@@ -209,15 +211,22 @@ describe("Output Path Validation", () => {
     expect(isValidOutputPath("project/etc-config.md")).toBe(true);
   });
 
+  test("accepts explicit relative ./ prefix", () => {
+    expect(isValidOutputPath("./output.md")).toBe(true);
+  });
+
   test("rejects absolute paths", () => {
     expect(isValidOutputPath("/etc/passwd")).toBe(false);
     expect(isValidOutputPath("/home/user/file.md")).toBe(false);
     expect(isValidOutputPath("/tmp/output.txt")).toBe(false);
+    expect(isValidOutputPath("C:/Windows/System32/evil.dll")).toBe(false);
+    expect(isValidOutputPath("C:\\Windows\\foo.md")).toBe(false);
   });
 
-  test("rejects paths starting with dot", () => {
+  test("rejects hidden paths at any depth", () => {
     expect(isValidOutputPath(".hidden.md")).toBe(false);
-    expect(isValidOutputPath("./secret.txt")).toBe(false);
+    expect(isValidOutputPath("sub/.git/hooks/pre-commit")).toBe(false);
+    expect(isValidOutputPath("project/.config/settings.json")).toBe(false);
   });
 
   test("rejects paths with parent directory traversal", () => {
@@ -225,7 +234,7 @@ describe("Output Path Validation", () => {
     expect(isValidOutputPath("sub/../../etc/passwd")).toBe(false);
   });
 
-  test("rejects paths to protected directories", () => {
+  test("rejects paths to protected root directories", () => {
     expect(isValidOutputPath(".git/config")).toBe(false);
     expect(isValidOutputPath(".config/settings.json")).toBe(false);
     expect(isValidOutputPath("etc/passwd")).toBe(false);

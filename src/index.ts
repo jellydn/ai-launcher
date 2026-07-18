@@ -2,7 +2,7 @@
 
 import type { SpawnSyncReturns } from "node:child_process";
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { executeDiffCommand, parseDiffArgs } from "./cli/diff";
 import { loadConfig } from "./config";
@@ -16,7 +16,12 @@ import { main as summaryMain } from "./summary/index.ts";
 import { buildTemplateCommand, isSafeCommand, parseTemplateCommand } from "./template";
 import type { SelectableItem } from "./types";
 import { upgrade } from "./upgrade";
-import { isValidOutputPath, MAX_STDIN_BYTES, validateArguments } from "./validators";
+import {
+  checkOutputPath,
+  MAX_STDIN_BYTES,
+  type OutputPathRejection,
+  validateArguments,
+} from "./validators";
 import { VERSION } from "./version";
 
 const EXIT_CODE_SUCCESS = 0;
@@ -33,19 +38,21 @@ function handleChildProcessError(child: SpawnSyncReturns<string | Buffer>): void
   }
 }
 
+const OUTPUT_PATH_REASON_MESSAGES: Record<OutputPathRejection, string> = {
+  absolute: "Output file path must be relative, not absolute",
+  escape: "Output file path cannot escape the current directory",
+  hidden: "Output file path cannot point to a hidden file or directory",
+  protected: "Output file path points to a protected location",
+};
+
 function validateOutputFile(filePath: string): string | null {
   if (!filePath || filePath.trim().length === 0) {
     return "Output file path cannot be empty";
   }
 
-  if (!isValidOutputPath(filePath)) {
-    if (filePath.startsWith("/") || /^[a-zA-Z]:[\\/]/.test(filePath)) {
-      console.error("Error: Output file path must be relative, not absolute");
-    } else if (filePath.includes("..")) {
-      console.error("Error: Output file path cannot escape current directory");
-    } else {
-      console.error("Error: Output file path points to a protected location");
-    }
+  const pathCheck = checkOutputPath(filePath);
+  if (!pathCheck.ok) {
+    console.error(`Error: ${OUTPUT_PATH_REASON_MESSAGES[pathCheck.reason]}`);
     return "Invalid output file path";
   }
 
@@ -60,23 +67,53 @@ function validateOutputFile(filePath: string): string | null {
   return null;
 }
 
+// Cap stdin so a huge pipe cannot OOM the launcher. Read fd 0 in chunks and
+// abort as soon as the cumulative size exceeds the limit (do not buffer first).
 function readStdin(): string | null {
-  try {
-    const isInteractive = process.stdin.isTTY;
-    if (isInteractive) return null;
+  if (process.stdin.isTTY) return null;
 
-    // Cap stdin to avoid OOM from huge pipes (diff dumps, binary files).
-    const buffer = readFileSync(0);
-    if (buffer.byteLength > MAX_STDIN_BYTES) {
+  const CHUNK_SIZE = 64 * 1024;
+  const buffer = Buffer.alloc(CHUNK_SIZE);
+  const chunks: Buffer[] = [];
+  let total = 0;
+
+  // Non-blocking stdin may throw EAGAIN. Back off briefly and give up after a
+  // bounded wait rather than busy-spinning a core.
+  const EAGAIN_BACKOFF_MS = 5;
+  const MAX_EAGAIN_RETRIES = 2000; // ~10s
+  const sleepSlot = new Int32Array(new SharedArrayBuffer(4));
+  let eagainRetries = 0;
+
+  while (true) {
+    let bytesRead: number;
+    try {
+      bytesRead = readSync(0, buffer, 0, CHUNK_SIZE, null);
+      eagainRetries = 0;
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      if (code === "EAGAIN") {
+        if (++eagainRetries > MAX_EAGAIN_RETRIES) return null;
+        Atomics.wait(sleepSlot, 0, 0, EAGAIN_BACKOFF_MS);
+        continue;
+      }
+      if (code === "EOF") break;
+      return null;
+    }
+
+    if (bytesRead === 0) break;
+
+    total += bytesRead;
+    if (total > MAX_STDIN_BYTES) {
       console.error(
-        `Error: stdin exceeds maximum size of ${MAX_STDIN_BYTES} bytes (${buffer.byteLength} received)`
+        `Error: stdin input exceeds ${MAX_STDIN_BYTES / 1024 / 1024}MB limit and was rejected.`
       );
       process.exit(EXIT_CODE_VALIDATION_ERROR);
     }
-    return buffer.toString("utf-8").trim();
-  } catch {
-    return null;
+
+    chunks.push(Buffer.from(buffer.subarray(0, bytesRead)));
   }
+
+  return Buffer.concat(chunks).toString("utf-8").trim();
 }
 
 function showVersion() {

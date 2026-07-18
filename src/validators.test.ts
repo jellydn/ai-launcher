@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+  checkOutputPath,
   countPlaceholderOccurrences,
   isValidGitRef,
   isValidOutputPath,
@@ -71,21 +72,42 @@ describe("isValidOutputPath", () => {
     expect(isValidOutputPath("docs/output.txt")).toBe(true);
   });
 
-  test("accepts filenames that contain protected substrings but not segments", () => {
+  test("accepts filenames that contain protected substrings but not root segments", () => {
     expect(isValidOutputPath("notes/home-review.md")).toBe(true);
     expect(isValidOutputPath("project/etc-config.md")).toBe(true);
     expect(isValidOutputPath("docs/usr-guide.md")).toBe(true);
   });
 
-  test("rejects absolute paths", () => {
+  test("accepts nested paths that merely contain protected names as non-root segments", () => {
+    // Intentional: relative project/etc/ is not the system /etc
+    expect(isValidOutputPath("project/etc/config.md")).toBe(true);
+    expect(isValidOutputPath("myproject/var/log/output.txt")).toBe(true);
+  });
+
+  test("accepts explicit relative ./ prefix", () => {
+    expect(isValidOutputPath("./output.md")).toBe(true);
+    expect(isValidOutputPath("./docs/analysis.md")).toBe(true);
+  });
+
+  test("rejects absolute POSIX paths", () => {
     expect(isValidOutputPath("/etc/passwd")).toBe(false);
     expect(isValidOutputPath("/home/user/file.md")).toBe(false);
     expect(isValidOutputPath("/tmp/output.txt")).toBe(false);
   });
 
-  test("rejects paths starting with dot", () => {
+  test("rejects absolute Windows paths on any host OS", () => {
+    expect(isValidOutputPath("C:/Windows/System32/evil.dll")).toBe(false);
+    expect(isValidOutputPath("C:\\Windows\\foo.md")).toBe(false);
+    expect(isValidOutputPath("D:\\data\\out.txt")).toBe(false);
+  });
+
+  test("rejects hidden files/dirs at any depth", () => {
     expect(isValidOutputPath(".hidden.md")).toBe(false);
-    expect(isValidOutputPath("./secret.txt")).toBe(false);
+    expect(isValidOutputPath(".git/config")).toBe(false);
+    expect(isValidOutputPath(".config/settings.json")).toBe(false);
+    expect(isValidOutputPath("sub/.git/hooks/pre-commit")).toBe(false);
+    expect(isValidOutputPath("project/.config/settings.json")).toBe(false);
+    expect(isValidOutputPath("a/b/.ssh/id_rsa")).toBe(false);
   });
 
   test("rejects paths with parent directory traversal", () => {
@@ -93,16 +115,23 @@ describe("isValidOutputPath", () => {
     expect(isValidOutputPath("sub/../../etc/passwd")).toBe(false);
   });
 
-  test("rejects paths to protected directories as whole segments", () => {
-    expect(isValidOutputPath(".git/config")).toBe(false);
-    expect(isValidOutputPath(".config/settings.json")).toBe(false);
+  test("rejects protected root segments (including bare names)", () => {
     expect(isValidOutputPath("etc/passwd")).toBe(false);
+    expect(isValidOutputPath("etc")).toBe(false);
     expect(isValidOutputPath("root/.bashrc")).toBe(false);
     expect(isValidOutputPath("home/user/file.md")).toBe(false);
     expect(isValidOutputPath("usr/bin/claude")).toBe(false);
     expect(isValidOutputPath("var/log/syslog")).toBe(false);
     expect(isValidOutputPath("sys/kernel")).toBe(false);
     expect(isValidOutputPath("proc/self")).toBe(false);
+  });
+
+  test("checkOutputPath returns typed rejection reasons", () => {
+    expect(checkOutputPath("C:/Windows/foo.md")).toEqual({ ok: false, reason: "absolute" });
+    expect(checkOutputPath("../escape.md")).toEqual({ ok: false, reason: "escape" });
+    expect(checkOutputPath(".env")).toEqual({ ok: false, reason: "hidden" });
+    expect(checkOutputPath("etc/passwd")).toEqual({ ok: false, reason: "protected" });
+    expect(checkOutputPath("analysis.md")).toEqual({ ok: true });
   });
 });
 

@@ -1,4 +1,4 @@
-import { isAbsolute, normalize } from "node:path";
+import { posix, win32 } from "node:path";
 
 /** Max length for a single CLI argument passed through the launcher. */
 export const MAX_ARGUMENT_LENGTH = 200;
@@ -13,20 +13,14 @@ export const MAX_STDIN_BYTES = 10 * 1024 * 1024;
 const SAFE_ARGUMENT_PATTERN = /^[a-zA-Z0-9._\-"/\\@#=\s,.:()[\]{}]+$/;
 
 /**
- * Path segments that must not appear as whole components of relative output paths.
- * Matching whole segments (not substrings) avoids false rejects like `notes/home-review.md`.
+ * First path segment names that map to sensitive system directories.
+ * Only the leading segment is checked: a relative `project/etc/config.md`
+ * is not the system `/etc` (intentional relaxation of the old substring match).
  */
-const PROTECTED_PATH_SEGMENTS = new Set([
-  "etc",
-  "root",
-  "home",
-  "usr",
-  "var",
-  "sys",
-  "proc",
-  ".git",
-  ".config",
-]);
+const PROTECTED_ROOT_SEGMENTS = new Set(["etc", "root", "home", "usr", "var", "sys", "proc"]);
+
+export type OutputPathRejection = "absolute" | "escape" | "hidden" | "protected";
+export type OutputPathValidation = { ok: true } | { ok: false; reason: OutputPathRejection };
 
 /**
  * Validate extra CLI arguments before they are interpolated into a shell command.
@@ -35,59 +29,67 @@ export function validateArguments(args: string[]): boolean {
   return args.every((arg) => SAFE_ARGUMENT_PATTERN.test(arg) && arg.length <= MAX_ARGUMENT_LENGTH);
 }
 
+function isAbsolutePath(filePath: string, normalized: string): boolean {
+  // Reject both POSIX and Windows absolute forms regardless of host OS so
+  // unit tests on macOS/Linux still cover Windows paths, and Windows itself
+  // is protected (drive-letter and UNC forms).
+  return (
+    posix.isAbsolute(normalized) ||
+    win32.isAbsolute(filePath) ||
+    win32.isAbsolute(normalized) ||
+    /^[A-Za-z]:/.test(normalized)
+  );
+}
+
 /**
- * Validate a relative output file path for --diff-output (and similar).
- * Rejects absolute paths, traversal, hidden root entries, and protected segments.
+ * Policy is an explicit path-segment model:
+ * normalize separators, strip a leading `./`, reject absolute paths, then walk
+ * segments rejecting traversal, hidden entries at any depth, and protected roots.
  */
-export function isValidOutputPath(filePath: string): boolean {
+export function checkOutputPath(filePath: string): OutputPathValidation {
   if (!filePath || filePath.trim().length === 0) {
-    return false;
+    return { ok: false, reason: "escape" };
   }
 
-  // Check the raw path before normalize collapses "./foo" → "foo" or ".git/x" stays.
-  const raw = filePath.replace(/\\/g, "/");
-  if (raw.startsWith(".") || raw.includes("/./") || raw.includes("/../")) {
-    return false;
+  let normalized = filePath.replace(/\\/g, "/");
+  // Allow an explicit relative prefix (./output.md) without treating it as hidden.
+  while (normalized.startsWith("./")) {
+    normalized = normalized.slice(2);
   }
 
-  const normalized = normalize(filePath).replace(/\\/g, "/");
-
-  // Absolute POSIX or Windows paths
-  if (isAbsolute(filePath) || isAbsolute(normalized) || normalized.startsWith("/")) {
-    return false;
-  }
-  if (/^[a-zA-Z]:\//.test(normalized)) {
-    return false;
+  if (!normalized || normalized === ".") {
+    return { ok: false, reason: "escape" };
   }
 
-  // Directory traversal after normalize
-  if (
-    normalized === ".." ||
-    normalized.startsWith("../") ||
-    normalized.includes("/../") ||
-    normalized.endsWith("/..")
-  ) {
-    return false;
+  if (isAbsolutePath(filePath, normalized)) {
+    return { ok: false, reason: "absolute" };
   }
 
-  if (normalized.startsWith(".")) {
-    return false;
-  }
+  const segments = normalized.split("/").filter((segment) => segment.length > 0);
 
-  const segments = normalized.split("/").filter((segment) => segment.length > 0 && segment !== ".");
   for (const segment of segments) {
     if (segment === "..") {
-      return false;
+      return { ok: false, reason: "escape" };
     }
+    // Hidden files/dirs at any depth (.git, .config, .env, …)
     if (segment.startsWith(".")) {
-      return false;
-    }
-    if (PROTECTED_PATH_SEGMENTS.has(segment.toLowerCase())) {
-      return false;
+      return { ok: false, reason: "hidden" };
     }
   }
 
-  return true;
+  const firstSegment = segments[0];
+  if (firstSegment && PROTECTED_ROOT_SEGMENTS.has(firstSegment.toLowerCase())) {
+    return { ok: false, reason: "protected" };
+  }
+
+  return { ok: true };
+}
+
+/**
+ * Validate a relative output file path for --diff-output (and similar).
+ */
+export function isValidOutputPath(filePath: string): boolean {
+  return checkOutputPath(filePath).ok;
 }
 
 /**
