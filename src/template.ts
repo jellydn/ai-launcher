@@ -39,14 +39,10 @@ export function buildTemplateCommand(command: string, args: string[]): string {
       "Template command should contain at most one $@ placeholder. Multiple placeholders are not supported."
     );
   }
-
   if (placeholderCount === 1) {
     return command.replace("$@", args.join(" "));
   }
-  if (args.length > 0) {
-    return `${command} ${args.join(" ")}`;
-  }
-  return command;
+  return args.length > 0 ? `${command} ${args.join(" ")}` : command;
 }
 
 export function parseTemplateCommand(command: string): ParsedCommand {

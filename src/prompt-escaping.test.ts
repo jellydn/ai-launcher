@@ -1,6 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import { isSafeCommand } from "./template";
 
+/**
+ * Documents the launchToolWithPrompt contract: the prompt is a final argv
+ * element (spawnSync(cmd, [...args, prompt], { shell: true })), so Node/Bun
+ * quote it for the host shell and no manual '\'' escaping is required.
+ */
 describe("Prompt handling for launchToolWithPrompt", () => {
   describe("command validation", () => {
     test("accepts safe commands", () => {
@@ -17,43 +22,24 @@ describe("Prompt handling for launchToolWithPrompt", () => {
     });
   });
 
-  describe("prompt argv append (no shell re-parse)", () => {
-    // launchToolWithPrompt passes the prompt as a final argv element with
-    // spawnSync(cmd, [...args, prompt], { shell: true }). Node/Bun quote the
-    // argv for the shell, so quotes and metacharacters in the prompt do not
-    // need manual '\'' escaping.
+  describe("prompt content is preserved as argv", () => {
+    test("keeps single quotes, newlines, and shell metacharacters intact", () => {
+      const withQuotes = "Review this code: const foo = 'bar';";
+      const multiQuotes = "It's a test with 'multiple' quotes";
+      const multiline = "Line 1\nLine 2\nLine 3";
+      const special = 'Test with $var and `backticks` and "quotes"';
+      const empty = "";
 
-    test("prompt with single quotes is kept intact as argv", () => {
-      const prompt = "Review this code: const foo = 'bar';";
-      const args = ["claude", prompt];
-      expect(args[1]).toBe(prompt);
-      expect(args[1]).toContain("'bar'");
+      expect(["claude", withQuotes][1]).toBe(withQuotes);
+      expect((multiQuotes.match(/'/g) ?? []).length).toBe(3);
+      expect(multiline.split("\n")).toHaveLength(3);
+      expect(special).toContain("$var");
+      expect(special).toContain("`backticks`");
+      expect(special).toContain('"quotes"');
+      expect(empty).toBe("");
     });
 
-    test("prompt with multiple single quotes is kept intact", () => {
-      const prompt = "It's a test with 'multiple' quotes";
-      expect(prompt).toContain("'");
-      expect((prompt.match(/'/g) || []).length).toBe(3);
-    });
-
-    test("prompt with newlines is preserved", () => {
-      const prompt = "Line 1\nLine 2\nLine 3";
-      expect(prompt.split("\n")).toHaveLength(3);
-    });
-
-    test("prompt with special characters is preserved", () => {
-      const prompt = 'Test with $var and `backticks` and "quotes"';
-      expect(prompt).toContain("$var");
-      expect(prompt).toContain("`backticks`");
-      expect(prompt).toContain('"quotes"');
-    });
-
-    test("empty prompt is allowed as argv", () => {
-      const prompt = "";
-      expect(prompt).toBe("");
-    });
-
-    test("large prompt with git diff content is preserved", () => {
+    test("preserves large git-diff style prompts", () => {
       const prompt = `Please analyze the following git diff:
 
 diff --git a/file.ts b/file.ts
@@ -74,20 +60,9 @@ index abc123..def456 100644
   });
 
   describe("combined command and prompt safety", () => {
-    test("safe command with safe prompt", () => {
-      const command = "claude";
-      const prompt = "Review this code";
-
-      expect(isSafeCommand(command)).toBe(true);
-      expect(prompt.length).toBeGreaterThan(0);
-    });
-
-    test("safe command with prompt containing quotes", () => {
-      const command = "claude";
-      const prompt = "Review 'this' code";
-
-      expect(isSafeCommand(command)).toBe(true);
-      expect(prompt).toContain("'this'");
+    test("safe command accepts prompts with quotes", () => {
+      expect(isSafeCommand("claude")).toBe(true);
+      expect("Review 'this' code").toContain("'this'");
     });
   });
 });

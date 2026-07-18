@@ -340,7 +340,6 @@ describe("commandExists", () => {
 
   test("finds a known system command", async () => {
     const { commandExists } = await import("./detect");
-    // `node` or `bun` should be available in CI and local dev
     expect(commandExists("bun") || commandExists("node")).toBe(true);
   });
 

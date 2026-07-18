@@ -201,13 +201,11 @@ export function commandExists(command: string): boolean {
     return false;
   }
 
-  const isWindows = process.platform === "win32";
-  const locator = isWindows ? "where" : "which";
+  const locator = process.platform === "win32" ? "where" : "which";
   const result = spawnSync(locator, [command], {
     encoding: "utf-8",
     stdio: ["pipe", "pipe", "pipe"],
-    // Avoid shell so command names cannot inject metacharacters.
-    shell: false,
+    shell: false, // command names must not go through a shell
   });
   return result.status === 0;
 }

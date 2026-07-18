@@ -1,9 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 
-# Overwrite the package.json-backed version module with a compile-time constant
-# so standalone binaries do not need package.json next to the executable.
-# Restore the source file afterward so the working tree stays clean.
+# Embed package.json version as a constant for --compile, then restore the
+# package.json-backed source so the working tree stays clean.
 VERSION=$(node -p "require('./package.json').version")
 VERSION_SOURCE="src/version.ts"
 VERSION_BACKUP="$(mktemp)"

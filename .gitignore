@@ -6,9 +6,8 @@ out
 dist
 *.tgz
 
-# generated at build time (dev uses package.json via src/version.ts fallback)
-# Keep the committed source as a package.json reader; build.sh overwrites it
-# with a constant for --compile binaries. Do not commit the constant form.
+# src/version.ts is committed as a package.json reader; build.sh overwrites it
+# with a constant for --compile, then restores the source (do not commit that form).
 
 # code coverage
 coverage

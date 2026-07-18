@@ -3,9 +3,6 @@ import { posix, win32 } from "node:path";
 /** Max length for a single CLI argument passed through the launcher. */
 export const MAX_ARGUMENT_LENGTH = 200;
 
-/** Max length for a tool/template command string. */
-export const MAX_COMMAND_LENGTH = 500;
-
 /** Max stdin size accepted by the launcher (10 MiB). */
 export const MAX_STDIN_BYTES = 10 * 1024 * 1024;
 
@@ -31,8 +28,8 @@ export function validateArguments(args: string[]): boolean {
 
 function isAbsolutePath(filePath: string, normalized: string): boolean {
   // Reject both POSIX and Windows absolute forms regardless of host OS so
-  // unit tests on macOS/Linux still cover Windows paths, and Windows itself
-  // is protected (drive-letter and UNC forms).
+  // unit tests on macOS/Linux still cover Windows paths. Also reject
+  // drive-relative forms like `C:foo` that win32.isAbsolute leaves as relative.
   return (
     posix.isAbsolute(normalized) ||
     win32.isAbsolute(filePath) ||
@@ -47,7 +44,7 @@ function isAbsolutePath(filePath: string, normalized: string): boolean {
  * segments rejecting traversal, hidden entries at any depth, and protected roots.
  */
 export function checkOutputPath(filePath: string): OutputPathValidation {
-  if (!filePath || filePath.trim().length === 0) {
+  if (!filePath?.trim()) {
     return { ok: false, reason: "escape" };
   }
 
@@ -85,16 +82,12 @@ export function checkOutputPath(filePath: string): OutputPathValidation {
   return { ok: true };
 }
 
-/**
- * Validate a relative output file path for --diff-output (and similar).
- */
+/** Validate a relative output file path for --diff-output (and similar). */
 export function isValidOutputPath(filePath: string): boolean {
   return checkOutputPath(filePath).ok;
 }
 
-/**
- * Validate git reference format to prevent injection into git commands.
- */
+/** Validate git reference format to prevent injection into git commands. */
 export function isValidGitRef(ref: string): boolean {
   const validRefPattern = /^[a-zA-Z0-9._\-/~^@{}]+$/;
   return (
@@ -105,9 +98,7 @@ export function isValidGitRef(ref: string): boolean {
   );
 }
 
-/**
- * Count $@ placeholders in a template command.
- */
+/** Count `$@` placeholders in a template command. */
 export function countPlaceholderOccurrences(command: string): number {
   return (command.match(/\$@/g) ?? []).length;
 }

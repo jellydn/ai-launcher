@@ -198,7 +198,13 @@ function launchTool(command: string, extraArgs: string[] = [], stdinContent: str
   }
 
   // When stdin is used without CLI args, treat it as the sole $@ substitution value.
-  const templateArgs = hasArgs ? extraArgs : hasStdin ? [stdinContent as string] : [];
+  let templateArgs: string[] = [];
+  if (hasArgs) {
+    templateArgs = extraArgs;
+  } else if (hasStdin && stdinContent !== null) {
+    templateArgs = [stdinContent];
+  }
+
   let finalCommand: string;
   try {
     finalCommand = buildTemplateCommand(command, templateArgs);
@@ -267,8 +273,8 @@ function launchToolWithPrompt(
         encoding: "utf-8",
       });
     } else {
-      // Prefer argv append so Windows builds do not require `sh`.
-      // Tools that need a single shell-quoted prompt still work via shell:true.
+      // Argv append avoids `sh -c` so Windows builds work; shell:true still
+      // quotes the prompt for the host shell.
       child = spawnSync(cmd, [...args, prompt], {
         stdio: ["inherit", "pipe", "inherit"],
         shell: true,

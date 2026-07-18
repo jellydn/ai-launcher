@@ -2,8 +2,6 @@ import { describe, expect, test } from "bun:test";
 import { isSafeCommand } from "./template";
 import { isValidOutputPath, validateArguments } from "./validators";
 
-// isValidOutputPath / validateArguments are the real shared implementations.
-
 describe("isSafeCommand (tool command validation)", () => {
   test("accepts simple command", () => {
     expect(isSafeCommand("claude")).toBe(true);
