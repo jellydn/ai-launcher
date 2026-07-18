@@ -27,8 +27,8 @@
 - **CI Pipeline**: GitHub Actions (`.github/workflows/ci.yml` and `release.yml`) testing with `bun test`, building with `bun build --compile`, and publishing.
 
 ## Environment Configuration
-- **Required env vars**: None required for core launcher/fuzzy search functionality. AI features require at least one provider key (e.g., `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, etc.).
-- **Secrets location**: User's local environment or `.env` files. CI uses `HOMEBREW_TAP_TOKEN` and `GITHUB_TOKEN` for publishing.
+- **Required env vars**: None for core launcher/fuzzy search. AI features need at least one provider configuration via `process.env` (API keys such as `OPENAI_API_KEY` / `ANTHROPIC_API_KEY`, or non-key settings like `OLLAMA_HOST` and `OPENCODE_AGENT`).
+- **Secrets location**: Process environment supplied by the user/shell. CI uses `HOMEBREW_TAP_TOKEN` and `GITHUB_TOKEN` for publishing. The launcher does not load `.env` files itself.
 
 ## Webhooks & Callbacks
 - **Incoming**: None

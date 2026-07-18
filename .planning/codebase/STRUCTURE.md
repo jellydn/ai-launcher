@@ -3,7 +3,7 @@
 **Analysis Date:** 2026-07-18
 
 ## Directory Layout
-```
+```text
 ai-launcher/
 ├── .changeset/
 ├── .github/

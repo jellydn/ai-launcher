@@ -13,7 +13,7 @@ import { findToolByName, type LookupResult } from "./lookup";
 import { main as meetingMain } from "./meeting/index.ts";
 import { formatPromptInspection, formatPromptList } from "./prompts/registry.ts";
 import { main as summaryMain } from "./summary/index.ts";
-import { buildTemplateCommand, isSafeCommand, parseTemplateCommand } from "./template";
+import { isSafeCommand, parseTemplateCommand } from "./template";
 import type { SelectableItem } from "./types";
 import { upgrade } from "./upgrade";
 import {
@@ -177,6 +177,56 @@ CONFIG:
   process.exit(0);
 }
 
+/** Strip a matching pair of outer quotes left by parseTemplateCommand. */
+function stripOuterQuotes(token: string): string {
+  if (token.length < 2) return token;
+  const first = token[0];
+  const last = token[token.length - 1];
+  if ((first === "'" && last === "'") || (first === '"' && last === '"')) {
+    return token.slice(1, -1);
+  }
+  return token;
+}
+
+/**
+ * Build argv for a template/tool command without a shell.
+ * Substitutes $@ inside the token that contains it so multi-word / large input
+ * stays a single argv element (no whitespace re-split, no shell re-parse).
+ */
+function buildLaunchArgv(command: string, input: string): { cmd: string; args: string[] } {
+  const placeholderCount = (command.match(/\$@/g) ?? []).length;
+  if (placeholderCount > 1) {
+    throw new Error(
+      "Template command should contain at most one $@ placeholder. Multiple placeholders are not supported."
+    );
+  }
+
+  const parsed = parseTemplateCommand(command);
+  if (!parsed.cmd) {
+    throw new Error("Empty command");
+  }
+
+  if (placeholderCount === 1) {
+    const args = parsed.args.map((arg) => {
+      if (arg.includes("$@")) {
+        return stripOuterQuotes(arg.replace("$@", input));
+      }
+      return stripOuterQuotes(arg);
+    });
+    // Placeholder was the entire command (rare) or only in cmd
+    const cmd = parsed.cmd.includes("$@")
+      ? stripOuterQuotes(parsed.cmd.replace("$@", input))
+      : parsed.cmd;
+    return { cmd, args };
+  }
+
+  const args = parsed.args.map(stripOuterQuotes);
+  if (input.length > 0) {
+    args.push(input);
+  }
+  return { cmd: parsed.cmd, args };
+}
+
 function launchTool(command: string, extraArgs: string[] = [], stdinContent: string | null = null) {
   if (!isSafeCommand(command)) {
     console.error("Invalid command format");
@@ -197,32 +247,22 @@ function launchTool(command: string, extraArgs: string[] = [], stdinContent: str
     process.exit(1);
   }
 
-  // When stdin is used without CLI args, treat it as the sole $@ substitution value.
-  let templateArgs: string[] = [];
-  if (hasArgs) {
-    templateArgs = extraArgs;
-  } else if (hasStdin && stdinContent !== null) {
-    templateArgs = [stdinContent];
-  }
+  // CLI args win over stdin; join only validated extraArgs (each ≤ 200 chars).
+  const input = hasArgs ? extraArgs.join(" ") : hasStdin ? (stdinContent as string) : "";
 
-  let finalCommand: string;
+  let cmd: string;
+  let args: string[];
   try {
-    finalCommand = buildTemplateCommand(command, templateArgs);
+    ({ cmd, args } = buildLaunchArgv(command, input));
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error));
     process.exit(1);
   }
 
-  const parts = finalCommand.split(/\s+/).filter((p) => p !== "");
-  const [cmd, ...args] = parts;
-  if (!cmd) {
-    console.error("Empty command");
-    process.exit(1);
-  }
-
+  // shell:false — args are literal; shell metacharacters in input cannot inject.
   const child = spawnSync(cmd, args, {
     stdio: "inherit",
-    shell: true,
+    shell: false,
   });
 
   handleChildProcessError(child);
@@ -241,8 +281,10 @@ function launchToolWithPrompt(
     process.exit(1);
   }
 
-  const parts = command.split(/\s+/).filter((p) => p !== "");
-  const [cmd, ...args] = parts;
+  // Quote-aware parse so flags like -p stay intact; shell:false keeps args literal.
+  const parsed = parseTemplateCommand(command);
+  const cmd = parsed.cmd;
+  const args = parsed.args;
   if (!cmd) {
     console.error("Empty command");
     process.exit(1);
@@ -263,24 +305,19 @@ function launchToolWithPrompt(
       process.exit(EXIT_CODE_VALIDATION_ERROR);
     }
 
-    let child: SpawnSyncReturns<string>;
-
-    if (useStdin) {
-      child = spawnSync(cmd, args, {
-        input: prompt,
-        stdio: ["pipe", "pipe", "inherit"],
-        shell: true,
-        encoding: "utf-8",
-      });
-    } else {
-      // Argv append avoids `sh -c` so Windows builds work; shell:true still
-      // quotes the prompt for the host shell.
-      child = spawnSync(cmd, [...args, prompt], {
-        stdio: ["inherit", "pipe", "inherit"],
-        shell: true,
-        encoding: "utf-8",
-      });
-    }
+    // Prefer stdin for untrusted prompt content; argv append is literal with shell:false.
+    const child: SpawnSyncReturns<string> = useStdin
+      ? spawnSync(cmd, args, {
+          input: prompt,
+          stdio: ["pipe", "pipe", "inherit"],
+          shell: false,
+          encoding: "utf-8",
+        })
+      : spawnSync(cmd, [...args, prompt], {
+          stdio: ["inherit", "pipe", "inherit"],
+          shell: false,
+          encoding: "utf-8",
+        });
 
     handleChildProcessError(child);
 
@@ -303,7 +340,7 @@ function launchToolWithPrompt(
     const child = spawnSync(cmd, args, {
       input: prompt,
       stdio: ["pipe", "inherit", "inherit"],
-      shell: true,
+      shell: false,
     }) as SpawnSyncReturns<string | Buffer>;
 
     handleChildProcessError(child);
@@ -311,11 +348,10 @@ function launchToolWithPrompt(
     process.exit(child.status ?? 0);
   }
 
-  // Pass prompt as a final argv element instead of `sh -c` so Windows works
-  // and shell metacharacters in the prompt are not re-parsed by a shell.
+  // shell:false: prompt is a literal argv element (no shell metacharacter re-parse).
   const child = spawnSync(cmd, [...args, prompt], {
     stdio: "inherit",
-    shell: true,
+    shell: false,
   }) as SpawnSyncReturns<string | Buffer>;
 
   handleChildProcessError(child);

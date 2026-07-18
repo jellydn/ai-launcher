@@ -126,6 +126,16 @@ describe("isValidOutputPath", () => {
     expect(isValidOutputPath("proc/self")).toBe(false);
   });
 
+  test("rejects Windows reserved device names at any depth", () => {
+    expect(isValidOutputPath("NUL")).toBe(false);
+    expect(isValidOutputPath("nul")).toBe(false);
+    expect(isValidOutputPath("CON.md")).toBe(false);
+    expect(isValidOutputPath("COM1")).toBe(false);
+    expect(isValidOutputPath("LPT1")).toBe(false);
+    expect(isValidOutputPath("out/NUL")).toBe(false);
+    expect(isValidOutputPath("docs/con.txt")).toBe(false);
+  });
+
   test("checkOutputPath returns typed rejection reasons", () => {
     expect(checkOutputPath("C:/Windows/foo.md")).toEqual({ ok: false, reason: "absolute" });
     expect(checkOutputPath("../escape.md")).toEqual({ ok: false, reason: "escape" });

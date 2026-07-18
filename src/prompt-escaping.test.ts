@@ -1,10 +1,10 @@
 import { describe, expect, test } from "bun:test";
+import { spawnSync } from "node:child_process";
 import { isSafeCommand } from "./template";
 
 /**
- * Documents the launchToolWithPrompt contract: the prompt is a final argv
- * element (spawnSync(cmd, [...args, prompt], { shell: true })), so Node/Bun
- * quote it for the host shell and no manual '\'' escaping is required.
+ * launchToolWithPrompt uses spawnSync(cmd, [...args, prompt], { shell: false }).
+ * With shell:false, argv elements are literal — metacharacters must not execute.
  */
 describe("Prompt handling for launchToolWithPrompt", () => {
   describe("command validation", () => {
@@ -22,40 +22,31 @@ describe("Prompt handling for launchToolWithPrompt", () => {
     });
   });
 
-  describe("prompt content is preserved as argv", () => {
-    test("keeps single quotes, newlines, and shell metacharacters intact", () => {
-      const withQuotes = "Review this code: const foo = 'bar';";
-      const multiQuotes = "It's a test with 'multiple' quotes";
-      const multiline = "Line 1\nLine 2\nLine 3";
-      const special = 'Test with $var and `backticks` and "quotes"';
-      const empty = "";
+  describe("shell:false keeps prompt argv literal", () => {
+    test("does not execute shell metacharacters in prompt", () => {
+      const prompt = "a; echo INJECTED";
+      // shell:true re-parses; shell:false must print the literal string.
+      const withShell = spawnSync("printf", ["%s", prompt], {
+        shell: true,
+        encoding: "utf-8",
+      });
+      const withoutShell = spawnSync("printf", ["%s", prompt], {
+        shell: false,
+        encoding: "utf-8",
+      });
 
-      expect(["claude", withQuotes][1]).toBe(withQuotes);
-      expect((multiQuotes.match(/'/g) ?? []).length).toBe(3);
-      expect(multiline.split("\n")).toHaveLength(3);
-      expect(special).toContain("$var");
-      expect(special).toContain("`backticks`");
-      expect(special).toContain('"quotes"');
-      expect(empty).toBe("");
+      expect(withoutShell.stdout).toBe(prompt);
+      // Document the hazard shell:true introduces (may expand / re-parse).
+      expect(withShell.stdout).not.toBe(prompt);
     });
 
-    test("preserves large git-diff style prompts", () => {
-      const prompt = `Please analyze the following git diff:
-
-diff --git a/file.ts b/file.ts
-index abc123..def456 100644
---- a/file.ts
-+++ b/file.ts
-@@ -1,3 +1,4 @@
-+const message = 'Hello, world!';
- function test() {
-   console.log('test');
- }`;
-
-      expect(prompt).toContain("diff --git");
-      expect(prompt).toContain("@@ -1,3 +1,4 @@");
-      expect(prompt).toContain("'Hello, world!'");
-      expect(prompt).toContain("'test'");
+    test("preserves quotes, newlines, and special characters as argv", () => {
+      const prompt = "It's a test with 'quotes', $var, `ticks`, and\nnewlines";
+      const result = spawnSync("printf", ["%s", prompt], {
+        shell: false,
+        encoding: "utf-8",
+      });
+      expect(result.stdout).toBe(prompt);
     });
   });
 

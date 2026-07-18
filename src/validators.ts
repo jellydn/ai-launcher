@@ -16,8 +16,39 @@ const SAFE_ARGUMENT_PATTERN = /^[a-zA-Z0-9._\-"/\\@#=\s,.:()[\]{}]+$/;
  */
 const PROTECTED_ROOT_SEGMENTS = new Set(["etc", "root", "home", "usr", "var", "sys", "proc"]);
 
+// Windows reserved device names (with or without extension), case-insensitive.
+const WINDOWS_RESERVED_DEVICE_NAMES = new Set([
+  "con",
+  "prn",
+  "aux",
+  "nul",
+  "com1",
+  "com2",
+  "com3",
+  "com4",
+  "com5",
+  "com6",
+  "com7",
+  "com8",
+  "com9",
+  "lpt1",
+  "lpt2",
+  "lpt3",
+  "lpt4",
+  "lpt5",
+  "lpt6",
+  "lpt7",
+  "lpt8",
+  "lpt9",
+]);
+
 export type OutputPathRejection = "absolute" | "escape" | "hidden" | "protected";
 export type OutputPathValidation = { ok: true } | { ok: false; reason: OutputPathRejection };
+
+function isWindowsReservedDeviceName(segment: string): boolean {
+  const base = segment.split(".")[0]?.toLowerCase() ?? "";
+  return WINDOWS_RESERVED_DEVICE_NAMES.has(base);
+}
 
 /**
  * Validate extra CLI arguments before they are interpolated into a shell command.
@@ -71,6 +102,9 @@ export function checkOutputPath(filePath: string): OutputPathValidation {
     // Hidden files/dirs at any depth (.git, .config, .env, …)
     if (segment.startsWith(".")) {
       return { ok: false, reason: "hidden" };
+    }
+    if (isWindowsReservedDeviceName(segment)) {
+      return { ok: false, reason: "protected" };
     }
   }
 

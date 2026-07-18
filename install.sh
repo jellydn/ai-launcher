@@ -46,12 +46,13 @@ extract_asset_url() {
     printf '%s' "$RELEASE_DATA" | jq -r --arg name "$asset_name" \
       '.assets[] | select(.name == $name) | .browser_download_url' | head -n 1
   elif command -v node >/dev/null 2>&1; then
-    printf '%s' "$RELEASE_DATA" | node -e "
-      const name = process.argv[1];
+    # Pass the name via env to avoid -e argv index differences across Node versions.
+    printf '%s' "$RELEASE_DATA" | ASSET_NAME="$asset_name" node -e "
+      const name = process.env.ASSET_NAME;
       const data = JSON.parse(require('fs').readFileSync(0, 'utf8'));
       const asset = (data.assets || []).find((a) => a.name === name);
-      process.stdout.write(asset?.browser_download_url || '');
-    " "$asset_name"
+      process.stdout.write(asset && asset.browser_download_url ? asset.browser_download_url : '');
+    "
   else
     # Fragile if GitHub changes JSON whitespace — prefer jq/node when available
     printf '%s' "$RELEASE_DATA" | grep "browser_download_url.*${asset_name}\"" | cut -d '"' -f 4 | head -n 1

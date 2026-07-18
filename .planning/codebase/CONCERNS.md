@@ -4,34 +4,37 @@
 
 ## Fixed in branch `fix/codebase-concerns`
 
-- Validation logic duplication → extracted `src/validators.ts`; tests import real implementations
-- AGENTS.md architecture list updated (validators, cli/diff, git-diff, errors, prompts)
-- Version reporting reads `package.json` at runtime; build overwrites then restores constant form
-- Windows `commandExists` uses `where` on win32 / `which` elsewhere
-- Output path validation is segment-based (allows `notes/home-review.md`)
-- `buildTemplateCommand` rejects multiple `$@` to match `validateTemplate`
-- Install script prefers `jq`/`node` for GitHub release asset URLs
-- Non-stdin prompt launch no longer uses `sh -c` (argv append + shell:true)
-- Stdin size capped at 10 MiB
+Resolved (see git history; do not re-list as active debt below):
+- Validation extraction (`src/validators.ts`), AGENTS.md architecture list
+- Version from package.json (build embeds constant then restores)
+- Windows `commandExists` (`where`/`which`), cmd shadow skip, detection cache
+- Segment-based output paths (incl. `./` prefix, nested hidden, Windows reserved names)
+- Multi-`$@` rejection; install JSON via jq/node (env-safe name pass)
+- Prompt/tool launch uses `shell: false` with quote-aware argv
+- Chunked stdin with size cap + EAGAIN backoff
+- Upgrade fetch timeouts + download size cap
 
-Still open: TUI ESC race, CCS table parse brittleness, dual release/build paths, zod/schema migration, shell:true hardening, upgrade signature verification, performance items.
+Still open: TUI ESC race, CCS table parse brittleness, dual release/build paths, zod/schema migration, residual shell use in other paths if any, upgrade signature verification, performance items.
 
 
 ## Tech Debt
 
-**[Validation logic duplication in tests]:**
+**[Validation logic duplication in tests]:** ✅ RESOLVED in `fix/codebase-concerns` —
+  kept for history;
 - Issue: Multiple test files duplicate and reimplement core validation functions (validateArguments, isValidOutputPath, validateToolCommand, substitute helpers) as local copies instead of importing the real implementations.
 - Files: `src/index.test.ts`, `src/template.test.ts`
 - Impact: Logic drift risk between source security checks and tests; changes to patterns (e.g. safe chars) require dual edits; violates "test behavior" guideline.
 - Fix approach: Extract pure validators to e.g. src/validators.ts (or export from modules), import in tests and source; remove copies.
 
-**[Outdated and incomplete architecture documentation]:**
+**[Outdated and incomplete architecture documentation]:** ✅ RESOLVED in `fix/codebase-concerns` —
+  kept for history;
 - Issue: AGENTS.md architecture section lists only 10 src files and is missing later additions (cli/diff.ts, errors.ts, git-diff.ts, prompts.ts); historical docs use legacy names "ai-router"/"ai-switcher".
 - Files: `AGENTS.md`, `tasks/prd-ai-cli-router.md`, `scripts/ralph/progress.txt`
 - Impact: Misleading for agents/humans; search hits on old names; incorrect mental model of modules.
 - Fix approach: Update AGENTS.md file list + diagram; add note or move legacy PRDs under tasks/archive/; sync names.
 
-**[Version.ts generation and git state issues]:**
+**[Version.ts generation and git state issues]:** ✅ RESOLVED in `fix/codebase-concerns` —
+  kept for history;
 - Issue: src/version.ts is committed (with stale "0.7.4" while package.json is "0.7.5"); AGENTS.md claims it is .gitignore'd (but .gitignore does not list it); two generation paths (build.sh using node -p, CI inline echo).
 - Files: `src/version.ts`, `package.json`, `scripts/build.sh`, `.github/workflows/release.yml`, `AGENTS.md`, `.gitignore`
 - Impact: `ai --version` lies in git tree or after pkg bump without rebuild; CI/local inconsistency.
@@ -51,25 +54,29 @@ Still open: TUI ESC race, CCS table parse brittleness, dual release/build paths,
 
 ## Known Bugs
 
-**[Windows tool detection completely broken]:**
+**[Windows tool detection completely broken]:** ✅ RESOLVED in `fix/codebase-concerns` —
+  kept for history;
 - Symptoms: `commandExists` (used by detectInstalledTools and gh check) unconditionally spawns `"which"`, which does not exist on Windows; tools present via PATH or in expected locations are never auto-detected.
 - Files: `src/detect.ts`
 - Trigger: Any run of `ai` (or direct) on Windows (or mingw without which); CI ubuntu masks it.
 - Workaround: Manually add tools to config.json; `ai ccs:...` etc won't appear.
 
-**[Committed stale VERSION and runtime version reporting]:**
+**[Committed stale VERSION and runtime version reporting]:** ✅ RESOLVED in `fix/codebase-concerns` —
+  kept for history;
 - Symptoms: Built-in version may be behind package.json after edits; running `bun run src/index.ts --version` reports the committed src/version.ts value.
 - Files: `src/version.ts`, `package.json`
 - Trigger: Edit package.json version or use source tree without rebuild.
 - Workaround: Always `bun run build` before testing version.
 
-**[Overly broad output path forbidden patterns (substring match)]:**
+**[Overly broad output path forbidden patterns (substring match)]:** ✅ RESOLVED in `fix/codebase-concerns` —
+  kept for history;
 - Symptoms: `isValidOutputPath` rejects any relative path containing substrings like "etc/", "home/", "usr/", ".git/" even deep inside safe dirs (e.g. "notes/home-review.md").
 - Files: `src/index.ts`, `src/index.test.ts`
 - Trigger: `--diff-output notes/home-foo.md` or similar.
 - Workaround: Use names without the substrings.
 
-**[Template build vs validate inconsistency on multiple $@]:**
+**[Template build vs validate inconsistency on multiple $@]:** ✅ RESOLVED in `fix/codebase-concerns` —
+  kept for history;
 - Symptoms: `validateTemplate` (and thus loadConfig) rejects >1 $@ ; however `buildTemplateCommand` silently replaces only the first, leaving subsequent $@ in output.
 - Files: `src/config.ts`, `src/template.ts`, `src/template.test.ts`
 - Trigger: Direct calls or future bypasses hit it.
@@ -81,13 +88,15 @@ Still open: TUI ESC race, CCS table parse brittleness, dual release/build paths,
 - Trigger: Pressing arrows or ESC rapidly, high-latency terminal.
 - Workaround: None.
 
-**[Install script fragile unstructured parse of GitHub releases JSON]:**
+**[Install script fragile unstructured parse of GitHub releases JSON]:** ✅ RESOLVED in `fix/codebase-concerns` —
+  kept for history;
 - Symptoms: `grep "browser_download_url.*${ARTIFACT}" | cut -d '"' -f4 | head -n1` on raw JSON text; will break on whitespace changes.
 - Files: `install.sh`
 - Trigger: New release or GitHub API tweak.
 - Workaround: Prefer Homebrew or manual download.
 
-**[Non-stdin prompt launch always uses "sh" -c even for Windows artifacts]:**
+**[Non-stdin prompt launch always uses "sh" -c even for Windows artifacts]:** ✅ RESOLVED in `fix/codebase-concerns` —
+  kept for history;
 - Symptoms: `launchToolWithPrompt` constructs `sh -c "cmd 'escaped'"` or spawn "sh"; Windows builds of the launcher will fail or behave differently.
 - Files: `src/index.ts`, `.github/workflows/release.yml`
 - Trigger: `ai --diff-staged` on Windows.
@@ -107,7 +116,8 @@ Still open: TUI ESC race, CCS table parse brittleness, dual release/build paths,
 - Current mitigation: Length caps, explicit blocks for && || ; $( `, git ref no metachars, output path no .. / protected names.
 - Recommendations: Move to argument-array spawning; maintain an explicit allowlist of base binaries.
 
-**[Prompt injection surface in diff analysis and sh -c paths]:**
+**[Prompt injection surface in diff analysis and sh -c paths]:** ✅ RESOLVED in `fix/codebase-concerns` —
+  kept for history;
 - Risk: Git diff content (or --diff-prompt) is inserted into shell command string after only ' escaping.
 - Files: `src/index.ts`, `src/cli/diff.ts`, `src/prompt-escaping.test.ts`
 - Current mitigation: Single-quote wrapping + ' -> '\'' replace; git refs validated; diff comes from local git.
@@ -125,7 +135,8 @@ Still open: TUI ESC race, CCS table parse brittleness, dual release/build paths,
 - Current mitigation: None for stdin.
 - Recommendations: Apply validation to all user-controlled inputs before shell execution, or completely remove `shell: true`.
 
-**[Full stdin slurped with no size limit for template input]:**
+**[Full stdin slurped with no size limit for template input]:** ✅ RESOLVED in `fix/codebase-concerns` —
+  kept for history;
 - Risk: `cat huge.bin | ai template` or huge piped diff can OOM or cause slow/DoS on the launcher itself.
 - Files: `src/index.ts`
 - Current mitigation: Try/catch around readFileSync(0).
