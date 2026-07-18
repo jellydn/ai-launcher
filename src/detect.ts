@@ -192,14 +192,22 @@ function validateCommandName(command: string): boolean {
   return safePattern.test(command) && command.length > 0 && command.length <= 100;
 }
 
-function commandExists(command: string): boolean {
+/**
+ * Check whether a command is available on PATH.
+ * Uses `where` on Windows and `which` elsewhere (`which` is not available on native Windows).
+ */
+export function commandExists(command: string): boolean {
   if (!validateCommandName(command)) {
     return false;
   }
 
-  const result = spawnSync("which", [command], {
+  const isWindows = process.platform === "win32";
+  const locator = isWindows ? "where" : "which";
+  const result = spawnSync(locator, [command], {
     encoding: "utf-8",
     stdio: ["pipe", "pipe", "pipe"],
+    // Avoid shell so command names cannot inject metacharacters.
+    shell: false,
   });
   return result.status === 0;
 }

@@ -111,13 +111,19 @@ src/
   detect.ts       - Auto-detect installed AI CLI tools
   fuzzy-select.ts - Interactive terminal UI with fuzzy search
   lookup.ts       - Tool lookup by name, alias, or fuzzy match
-  template.ts     - Template configuration
+  template.ts     - Template command parsing and safety checks
+  validators.ts   - Shared pure validators (args, paths, git refs)
   upgrade.ts      - Upgrade functionality
+  cli/diff.ts     - --diff-staged / --diff-commit argument handling
+  git-diff.ts     - Git repository checks and diff capture
+  errors.ts       - Typed error classes for git/diff failures
+  prompts.ts      - Diff analysis prompt builder
+  prompts/        - Versioned prompt registry (list/inspect)
   summary/        - Built-in `ai summary` subcommand (providers, modes, streaming)
   meeting/        - Built-in `ai meeting` subcommand (structured OpenAI output)
   types.ts        - Type definitions and interfaces
   logo.ts         - ASCII logo and colors
-  version.ts      - Generated at build time (.gitignore)
+  version.ts      - Version from package.json (overwritten with constant at build)
 ```
 
 ## Testing

@@ -1,63 +1,35 @@
 # Technology Stack
 
-**Analysis Date:** 2026-06-04
+**Analysis Date:** 2026-07-18
 
 ## Languages
-
-**Primary:**
-- TypeScript (strict, ESNext target) - Core application logic, CLI entrypoint, all modules in `src/*.ts` (e.g. `src/index.ts:1`, `src/detect.ts`, `src/config.ts:1`); types in `src/types.ts`; path alias `@/*` in `tsconfig.json:24`
-
-**Secondary:**
-- Shell (Bash, POSIX sh) - Build, install, and hook scripts: `scripts/build.sh:1` (generates `src/version.ts`), `install.sh:1`, `scripts/setup-hooks.sh`, `justfile:1`, `scripts/sync-readme.sh`, `scripts/pre-commit`
+**Primary:** TypeScript, version >=6.0.3, used for core application logic and CLI.
+**Secondary:** Bash, used for installation (`install.sh`) and build scripts (`scripts/build.sh`).
 
 ## Runtime
-
-**Environment:**
-- Bun (runtime + bundler) - Shebang `src/index.ts:1` (`#!/usr/bin/env bun`), `package.json:12` (`"dev": "bun run src/index.ts"`), `package.json:22` ci script, `@types/bun` in devDeps `package.json:28`, CI setup ` .github/workflows/ci.yml:15` (oven-sh/setup-bun@v2 with latest)
-
-**Package Manager:**
-- Bun - Primary; lockfile: present (`bun.lock` at repo root, lockfileVersion 1)
-- No npm/yarn/pnpm lockfiles
+**Environment:** Bun, latest version
+**Package Manager:** Bun, latest version (`bun.lock`)
 
 ## Frameworks
-
-**Core:**
-- None (lightweight pure TypeScript CLI; relies on Node.js built-ins under Bun + minimal deps)
-
-**Testing:**
-- Bun test (`bun:test`) - `import { describe, test, expect } from "bun:test"` in all `*.test.ts` (e.g. `src/config.test.ts:1`, `src/detect.test.ts:1`, `src/index.test.ts`, `src/fuzzy-select.test.ts`, `src/lookup.test.ts`, `src/upgrade.test.ts`, `src/template.test.ts`, `src/git-diff.test.ts`, `src/cli/diff.test.ts`, `src/prompt-escaping.test.ts`); per `AGENTS.md:123`
-
-**Build/Dev:**
-- Biome 2.4.16 - Linting + formatting: `biome.json:1` (schema 2.4.10, lineWidth 100, indent 2, double quotes, semicolons always, noExplicitAny error, useConst error), `package.json:16-21` (lint, format, check scripts), overrides for `src/version.ts`
-- TypeScript ^6.0.3 - Strict type checking: `tsconfig.json:14` ("strict": true, "noUncheckedIndexedAccess": true, "noUnusedLocals": true, "verbatimModuleSyntax": true, "noEmit": true, "module": "Preserve"), `package.json:14` ("typecheck": "tsc --noEmit")
-- bun build --compile - Standalone executable: `scripts/build.sh:9` (`bun build src/index.ts --compile --outfile dist/ai`), also in release `.github/workflows/release.yml:63`
+**Core:** Node.js APIs (e.g., `node:fs`, `node:child_process`) via Bun compatibility layer, purpose: CLI operations and system integration.
+**Testing:** Bun test runner (`bun test`), purpose: unit and integration testing.
+**Build/Dev:** 
+- `tsc` (TypeScript compiler) version ^6.0.3, purpose: type checking (`--noEmit`).
+- `@biomejs/biome` version 2.4.16, purpose: fast linting and formatting.
+- `bumpp` version ^11.0.1, purpose: version bumping and tagging releases.
 
 ## Key Dependencies
-
-**Critical:**
-- fuse.js ^7.3.0 - Fuzzy search matching for interactive TUI and name lookup: `src/fuzzy-select.ts:1` (`import Fuse from "fuse.js"`), config `new Fuse(items, { keys: ["name", "description", "aliases"], threshold: 0.4 })`, also `src/lookup.ts:1` and `src/lookup.ts:37`
-- semver ^7.7.4 - Semantic version comparison for upgrade check: `src/upgrade.ts:6` (`import { gte as semverGte } from "semver"`), `src/upgrade.ts:97` (`semverGte(VERSION, latestVersion)`)
-
-**Infrastructure:**
-- Node.js built-ins (via Bun) - `node:child_process` (spawnSync/execSync for tool detection/launch/git/diff/which/ccs/gh): `src/index.ts:4`, `src/detect.ts:1`, `src/git-diff.ts:1`, `src/upgrade.ts:1`; `node:fs` / `node:fs/promises`, `node:path`, `node:os`, `node:crypto` (for upgrade temp files, checksums, paths): `src/config.ts:1`, `src/index.ts:5`, `src/upgrade.ts:3-5`
+**Critical:** 
+- `fuse.js` version ^7.3.0, why it matters: fuzzy searching AI tools and prompts.
+- `openai` version 6.45.0, why it matters: primary SDK for interacting with OpenAI and other compatible AI endpoints (Anthropic, OpenRouter).
+- `zod` version ^3.24.1, why it matters: defining and parsing structured outputs (e.g., JSON schemas for meetings).
+**Infrastructure:** 
+- `semver` version ^7.7.4, purpose: version comparison and parsing.
 
 ## Configuration
-
-**Environment:**
-- File-based user config (no env vars required for core use): `~/.config/ai-launcher/config.json` (`src/config.ts:7` `CONFIG_DIR = join(homedir(), ".config", "ai-launcher")`, `src/config.ts:8` `CONFIG_PATH`), auto-creates defaults on first run `src/config.ts:252-254`; old migration from `~/.config/ai-switcher`
-- Validation enforced at load: `src/config.ts:260` (validateConfig), safe patterns and $@ limit in `src/template.ts:7` and `src/config.ts:149`
-
-**Build:**
-- `scripts/build.sh` (version injection + compile), `tsconfig.json`, `biome.json`, `package.json` scripts, `.github/workflows/release.yml:53` (version.ts gen in CI), `renovate.json`
+**Environment:** Configured via `process.env` (e.g., `OPENAI_API_KEY`), and local user config (`~/.config/ai-launcher/config.json`).
+**Build:** `tsconfig.json` for TypeScript configuration, `biome.json` for code quality rules, and `package.json` for scripts.
 
 ## Platform Requirements
-
-**Development:**
-- Bun runtime (install via https://bun.sh), `bun install`, `bun run dev` / `bun run typecheck` / `bun run check` / `bun test` per `AGENTS.md:129-134`, `README.md:659`; macOS/Linux/Windows supported for dev with TTY for interactive
-
-**Production:**
-- Standalone native executable `dist/ai` (or `ai.exe` on win) produced by `bun build --compile --target=...` for darwin-{x64,arm64}, linux-{x64,arm64}, windows-x64; distributed via GitHub Releases ` .github/workflows/release.yml:14` matrix, Homebrew `HomebrewFormula/ai.rb`, one-line curl `install.sh:37`; runs without Bun installed
-
----
-
-*Stack analysis: 2026-06-04*
+**Development:** Bun runtime
+**Production:** Pre-compiled standalone binaries for macOS (arm64, x64), Linux (arm64, x64), and Windows (x64) via `bun build --compile`.

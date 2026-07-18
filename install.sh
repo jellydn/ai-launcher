@@ -36,11 +36,30 @@ fi
 
 echo "Detected: $OS-$ARCH"
 
-# Get latest release URL
+# Get latest release URL (prefer jq for structured JSON; fall back to node)
 LATEST_URL="https://api.github.com/repos/${REPO}/releases/latest"
 RELEASE_DATA=$(curl -fsSL "$LATEST_URL")
-DOWNLOAD_URL=$(echo "$RELEASE_DATA" | grep "browser_download_url.*${ARTIFACT}\"" | cut -d '"' -f 4 | head -n 1)
-CHECKSUM_URL=$(echo "$RELEASE_DATA" | grep "browser_download_url.*checksums.txt\"" | cut -d '"' -f 4 | head -n 1)
+
+extract_asset_url() {
+  asset_name="$1"
+  if command -v jq >/dev/null 2>&1; then
+    echo "$RELEASE_DATA" | jq -r --arg name "$asset_name" \
+      '.assets[] | select(.name == $name) | .browser_download_url' | head -n 1
+  elif command -v node >/dev/null 2>&1; then
+    echo "$RELEASE_DATA" | node -e "
+      const name = process.argv[1];
+      const data = JSON.parse(require('fs').readFileSync(0, 'utf8'));
+      const asset = (data.assets || []).find((a) => a.name === name);
+      process.stdout.write(asset && asset.browser_download_url ? asset.browser_download_url : '');
+    " "$asset_name"
+  else
+    # Last-resort unstructured parse (fragile if GitHub changes JSON whitespace)
+    echo "$RELEASE_DATA" | grep "browser_download_url.*${asset_name}\"" | cut -d '"' -f 4 | head -n 1
+  fi
+}
+
+DOWNLOAD_URL=$(extract_asset_url "$ARTIFACT")
+CHECKSUM_URL=$(extract_asset_url "checksums.txt")
 
 if [ -z "$DOWNLOAD_URL" ]; then
   echo "Error: Could not find download URL for $ARTIFACT"

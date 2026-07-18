@@ -324,3 +324,23 @@ describe("detectGhCopilot", () => {
     }
   });
 });
+
+describe("commandExists", () => {
+  test("rejects invalid command names", async () => {
+    const { commandExists } = await import("./detect");
+    expect(commandExists("")).toBe(false);
+    expect(commandExists("foo;bar")).toBe(false);
+    expect(commandExists("a".repeat(101))).toBe(false);
+  });
+
+  test("finds a known system command", async () => {
+    const { commandExists } = await import("./detect");
+    // `node` or `bun` should be available in CI and local dev
+    expect(commandExists("bun") || commandExists("node")).toBe(true);
+  });
+
+  test("returns false for a missing command", async () => {
+    const { commandExists } = await import("./detect");
+    expect(commandExists("ai-launcher-definitely-missing-xyz")).toBe(false);
+  });
+});

@@ -3,7 +3,7 @@
 import type { SpawnSyncReturns } from "node:child_process";
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, isAbsolute, normalize, resolve } from "node:path";
+import { dirname, resolve } from "node:path";
 import { executeDiffCommand, parseDiffArgs } from "./cli/diff";
 import { loadConfig } from "./config";
 import { detectInstalledTools, formatSuggestedInstallHints, mergeTools } from "./detect";
@@ -13,9 +13,10 @@ import { findToolByName, type LookupResult } from "./lookup";
 import { main as meetingMain } from "./meeting/index.ts";
 import { formatPromptInspection, formatPromptList } from "./prompts/registry.ts";
 import { main as summaryMain } from "./summary/index.ts";
-import { isSafeCommand, parseTemplateCommand } from "./template";
+import { buildTemplateCommand, isSafeCommand, parseTemplateCommand } from "./template";
 import type { SelectableItem } from "./types";
 import { upgrade } from "./upgrade";
+import { isValidOutputPath, MAX_STDIN_BYTES, validateArguments } from "./validators";
 import { VERSION } from "./version";
 
 const EXIT_CODE_SUCCESS = 0;
@@ -32,50 +33,19 @@ function handleChildProcessError(child: SpawnSyncReturns<string | Buffer>): void
   }
 }
 
-function isValidOutputPath(filePath: string): boolean {
-  const normalized = normalize(filePath);
-
-  if (isAbsolute(normalized)) {
-    console.error("Error: Output file path must be relative, not absolute");
-    return false;
-  }
-
-  const isPathEscape =
-    normalized.startsWith("..") || normalized.includes("/../") || normalized.includes("\\..\\");
-  if (isPathEscape) {
-    console.error("Error: Output file path cannot escape current directory");
-    return false;
-  }
-
-  const forbiddenPatterns = [
-    /^\./,
-    /\.git\//,
-    /\.config\//,
-    /etc\//,
-    /root\//,
-    /home\//,
-    /usr\//,
-    /var\//,
-    /sys\//,
-    /proc\//,
-  ];
-
-  for (const pattern of forbiddenPatterns) {
-    if (pattern.test(normalized)) {
-      console.error("Error: Output file path points to a protected location");
-      return false;
-    }
-  }
-
-  return true;
-}
-
 function validateOutputFile(filePath: string): string | null {
   if (!filePath || filePath.trim().length === 0) {
     return "Output file path cannot be empty";
   }
 
   if (!isValidOutputPath(filePath)) {
+    if (filePath.startsWith("/") || /^[a-zA-Z]:[\\/]/.test(filePath)) {
+      console.error("Error: Output file path must be relative, not absolute");
+    } else if (filePath.includes("..")) {
+      console.error("Error: Output file path cannot escape current directory");
+    } else {
+      console.error("Error: Output file path points to a protected location");
+    }
     return "Invalid output file path";
   }
 
@@ -90,16 +60,20 @@ function validateOutputFile(filePath: string): string | null {
   return null;
 }
 
-function validateArguments(args: string[]): boolean {
-  const safePattern = /^[a-zA-Z0-9._\-"/\\@#=\s,.:()[\]{}]+$/;
-  return args.every((arg) => safePattern.test(arg) && arg.length <= 200);
-}
-
 function readStdin(): string | null {
   try {
     const isInteractive = process.stdin.isTTY;
     if (isInteractive) return null;
-    return readFileSync(0, "utf-8").trim();
+
+    // Cap stdin to avoid OOM from huge pipes (diff dumps, binary files).
+    const buffer = readFileSync(0);
+    if (buffer.byteLength > MAX_STDIN_BYTES) {
+      console.error(
+        `Error: stdin exceeds maximum size of ${MAX_STDIN_BYTES} bytes (${buffer.byteLength} received)`
+      );
+      process.exit(EXIT_CODE_VALIDATION_ERROR);
+    }
+    return buffer.toString("utf-8").trim();
   } catch {
     return null;
   }
@@ -186,14 +160,15 @@ function launchTool(command: string, extraArgs: string[] = [], stdinContent: str
     process.exit(1);
   }
 
-  const inputString = hasArgs ? extraArgs.join(" ") : (stdinContent ?? "");
-  const usesPlaceholder = command.includes("$@");
-
-  const finalCommand = usesPlaceholder
-    ? command.replace("$@", inputString)
-    : hasArgs || hasStdin
-      ? `${command} ${inputString}`
-      : command;
+  // When stdin is used without CLI args, treat it as the sole $@ substitution value.
+  const templateArgs = hasArgs ? extraArgs : hasStdin ? [stdinContent as string] : [];
+  let finalCommand: string;
+  try {
+    finalCommand = buildTemplateCommand(command, templateArgs);
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exit(1);
+  }
 
   const parts = finalCommand.split(/\s+/).filter((p) => p !== "");
   const [cmd, ...args] = parts;
@@ -255,11 +230,11 @@ function launchToolWithPrompt(
         encoding: "utf-8",
       });
     } else {
-      const escapedPrompt = prompt.replace(/'/g, "'\\''");
-      const finalCommand = `${command} '${escapedPrompt}'`;
-
-      child = spawnSync("sh", ["-c", finalCommand], {
+      // Prefer argv append so Windows builds do not require `sh`.
+      // Tools that need a single shell-quoted prompt still work via shell:true.
+      child = spawnSync(cmd, [...args, prompt], {
         stdio: ["inherit", "pipe", "inherit"],
+        shell: true,
         encoding: "utf-8",
       });
     }
@@ -293,11 +268,11 @@ function launchToolWithPrompt(
     process.exit(child.status ?? 0);
   }
 
-  const escapedPrompt = prompt.replace(/'/g, "'\\''");
-  const finalCommand = `${command} '${escapedPrompt}'`;
-
-  const child = spawnSync("sh", ["-c", finalCommand], {
+  // Pass prompt as a final argv element instead of `sh -c` so Windows works
+  // and shell metacharacters in the prompt are not re-parsed by a shell.
+  const child = spawnSync(cmd, [...args, prompt], {
     stdio: "inherit",
+    shell: true,
   }) as SpawnSyncReturns<string | Buffer>;
 
   handleChildProcessError(child);

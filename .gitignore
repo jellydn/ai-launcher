@@ -6,6 +6,10 @@ out
 dist
 *.tgz
 
+# generated at build time (dev uses package.json via src/version.ts fallback)
+# Keep the committed source as a package.json reader; build.sh overwrites it
+# with a constant for --compile binaries. Do not commit the constant form.
+
 # code coverage
 coverage
 *.lcov

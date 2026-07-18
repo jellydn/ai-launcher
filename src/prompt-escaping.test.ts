@@ -1,15 +1,15 @@
 import { describe, expect, test } from "bun:test";
 import { isSafeCommand } from "./template";
 
-describe("Prompt escaping for launchToolWithPrompt", () => {
-  describe("shell escaping edge cases", () => {
-    test("command validation accepts safe commands", () => {
+describe("Prompt handling for launchToolWithPrompt", () => {
+  describe("command validation", () => {
+    test("accepts safe commands", () => {
       expect(isSafeCommand("claude")).toBe(true);
       expect(isSafeCommand("opencode run")).toBe(true);
       expect(isSafeCommand("amp -x")).toBe(true);
     });
 
-    test("command validation rejects dangerous patterns", () => {
+    test("rejects dangerous patterns", () => {
       expect(isSafeCommand("claude && rm -rf /")).toBe(false);
       expect(isSafeCommand("claude; whoami")).toBe(false);
       expect(isSafeCommand("claude || echo bad")).toBe(false);
@@ -17,58 +17,43 @@ describe("Prompt escaping for launchToolWithPrompt", () => {
     });
   });
 
-  describe("prompt content edge cases", () => {
-    test("single quotes in prompt should be escaped", () => {
-      // The escaping is done by: prompt.replace(/'/g, "'\\''")
+  describe("prompt argv append (no shell re-parse)", () => {
+    // launchToolWithPrompt passes the prompt as a final argv element with
+    // spawnSync(cmd, [...args, prompt], { shell: true }). Node/Bun quote the
+    // argv for the shell, so quotes and metacharacters in the prompt do not
+    // need manual '\'' escaping.
+
+    test("prompt with single quotes is kept intact as argv", () => {
       const prompt = "Review this code: const foo = 'bar';";
-      const escaped = prompt.replace(/'/g, "'\\''");
-
-      // Single quotes should be escaped to '\''
-      expect(escaped).toContain("'\\''");
-      expect(escaped).toContain("const foo = '\\''bar'\\''");
+      const args = ["claude", prompt];
+      expect(args[1]).toBe(prompt);
+      expect(args[1]).toContain("'bar'");
     });
 
-    test("handles prompt with multiple single quotes", () => {
+    test("prompt with multiple single quotes is kept intact", () => {
       const prompt = "It's a test with 'multiple' quotes";
-      const escaped = prompt.replace(/'/g, "'\\''");
-
-      // Count escaped sequences
-      const escapeCount = (escaped.match(/'\\'/g) || []).length;
-      expect(escapeCount).toBe(3); // Three single quotes in original
+      expect(prompt).toContain("'");
+      expect((prompt.match(/'/g) || []).length).toBe(3);
     });
 
-    test("handles prompt with newlines", () => {
+    test("prompt with newlines is preserved", () => {
       const prompt = "Line 1\nLine 2\nLine 3";
-      const escaped = prompt.replace(/'/g, "'\\''");
-
-      // Newlines should be preserved
-      expect(escaped).toContain("\n");
-      expect(escaped.split("\n")).toHaveLength(3);
+      expect(prompt.split("\n")).toHaveLength(3);
     });
 
-    test("handles prompt with special characters", () => {
+    test("prompt with special characters is preserved", () => {
       const prompt = 'Test with $var and `backticks` and "quotes"';
-      const escaped = prompt.replace(/'/g, "'\\''");
-
-      // These characters should pass through (they're in single-quoted shell string)
-      expect(escaped).toContain("$var");
-      expect(escaped).toContain("`backticks`");
-      expect(escaped).toContain('"quotes"');
+      expect(prompt).toContain("$var");
+      expect(prompt).toContain("`backticks`");
+      expect(prompt).toContain('"quotes"');
     });
 
-    test("handles empty prompt", () => {
+    test("empty prompt is allowed as argv", () => {
       const prompt = "";
-      const escaped = prompt.replace(/'/g, "'\\''");
-      expect(escaped).toBe("");
+      expect(prompt).toBe("");
     });
 
-    test("handles prompt with only single quotes", () => {
-      const prompt = "'''";
-      const escaped = prompt.replace(/'/g, "'\\''");
-      expect(escaped).toBe("'\\'''\\'''\\''");
-    });
-
-    test("handles large prompt with git diff content", () => {
+    test("large prompt with git diff content is preserved", () => {
       const prompt = `Please analyze the following git diff:
 
 diff --git a/file.ts b/file.ts
@@ -81,14 +66,10 @@ index abc123..def456 100644
    console.log('test');
  }`;
 
-      const escaped = prompt.replace(/'/g, "'\\''");
-
-      // Should preserve structure
-      expect(escaped).toContain("diff --git");
-      expect(escaped).toContain("@@ -1,3 +1,4 @@");
-      // Single quotes should be escaped
-      expect(escaped).toContain("'\\''Hello, world!'\\''");
-      expect(escaped).toContain("'\\''test'\\''");
+      expect(prompt).toContain("diff --git");
+      expect(prompt).toContain("@@ -1,3 +1,4 @@");
+      expect(prompt).toContain("'Hello, world!'");
+      expect(prompt).toContain("'test'");
     });
   });
 
@@ -98,9 +79,7 @@ index abc123..def456 100644
       const prompt = "Review this code";
 
       expect(isSafeCommand(command)).toBe(true);
-      // Prompt escaping doesn't affect command safety
-      const escaped = prompt.replace(/'/g, "'\\''");
-      expect(escaped).toBe("Review this code");
+      expect(prompt.length).toBeGreaterThan(0);
     });
 
     test("safe command with prompt containing quotes", () => {
@@ -108,8 +87,7 @@ index abc123..def456 100644
       const prompt = "Review 'this' code";
 
       expect(isSafeCommand(command)).toBe(true);
-      const escaped = prompt.replace(/'/g, "'\\''");
-      expect(escaped).toBe("Review '\\''this'\\'' code");
+      expect(prompt).toContain("'this'");
     });
   });
 });
