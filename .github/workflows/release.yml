@@ -31,7 +31,7 @@ jobs:
 
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - uses: oven-sh/setup-bun@v2
         with:
@@ -71,7 +71,7 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -161,13 +161,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout tap repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: jellydn/homebrew-tap
           token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
 
       - name: Checkout main repo for formula
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: jellydn/ai-launcher
           path: source
