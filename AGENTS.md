@@ -20,7 +20,10 @@ Guidelines for agentic coding agents working on this codebase.
 | `bun run check` | Combined lint + format check |
 | `bun run check:fix` | Auto-fix lint and format |
 | `bun run ci` | Full CI: typecheck + check + test |
-| `bun test` | Run all unit tests |
+| `bun test` | Run all tests (unit + e2e) |
+| `bun test src` | Run unit tests only |
+| `bun run test:e2e` | Run e2e tests (dev entrypoint) |
+| `bun run ci:e2e` | Build binary + run e2e against `dist/ai` |
 | `bun test src/config.test.ts` | Run specific test file |
 | `bun run src/index.ts claude` | Test with specific tool |
 

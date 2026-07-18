@@ -24,5 +24,22 @@ jobs:
       - name: Run TypeScript checks
         run: bun run typecheck
 
-      - name: Run tests
-        run: bun test
+      - name: Run unit tests
+        run: bun test src
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - run: bun install --frozen-lockfile
+
+      - name: Build standalone CLI
+        run: bun run build
+
+      - name: Run e2e tests against compiled binary
+        run: AI_LAUNCHER_BIN=./dist/ai bun test e2e
