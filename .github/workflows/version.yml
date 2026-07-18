@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Version bump type (major/minor/patch) or \"skip\""
+        description: "Version bump type (major/minor/patch/conventional) or \"skip\""
         required: false
         default: "skip"
 
@@ -51,22 +51,58 @@ jobs:
 
           echo "Commits to process: $COMMITS"
 
-      - name: Bump version
-        if: steps.check.outputs.commits != '0' && github.event.inputs.version != 'skip'
+      - name: Resolve release type
+        id: release
         run: |
-          # Build bumpp command
-          BUMP_CMD="bunx bumpp --yes --commit --tag --push"
-
-          # Add version override if specified
-          if [ "${{ github.event.inputs.version }}" != "" ] && [ "${{ github.event.inputs.version }}" != "skip" ]; then
-            BUMP_CMD="$BUMP_CMD --release ${{ github.event.inputs.version }}"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            RELEASE="${{ github.event.inputs.version }}"
+            if [ -z "$RELEASE" ]; then
+              RELEASE="skip"
+            fi
+          else
+            # Push to main: derive bump from conventional commits (non-interactive)
+            RELEASE="conventional"
           fi
 
-          echo "Running: $BUMP_CMD"
-          $BUMP_CMD
+          case "$RELEASE" in
+            skip|major|minor|patch|premajor|preminor|prepatch|prerelease|conventional) ;;
+            *)
+              # Allow explicit semver like 1.2.3
+              if ! echo "$RELEASE" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$'; then
+                echo "Invalid release type/version: $RELEASE"
+                exit 1
+              fi
+              ;;
+          esac
+
+          echo "release=$RELEASE" >> $GITHUB_OUTPUT
+          echo "Resolved release type: $RELEASE"
+
+      - name: Bump version
+        if: steps.check.outputs.commits != '0' && steps.release.outputs.release != 'skip'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          RELEASE="${{ steps.release.outputs.release }}"
+          # --release is required for non-interactive CI: without it, bumpp opens a
+          # picker even with --yes and never commits/tags (see v0.9.0 release notes).
+          BUMP_CMD=(
+            bunx bumpp
+            --yes
+            --commit "chore: release v%s"
+            --tag "v%s"
+            --push
+            --release "$RELEASE"
+          )
+
+          printf "Running:"
+          printf " %q" "${BUMP_CMD[@]}"
+          echo
+          "${BUMP_CMD[@]}"
 
       - name: Verify version consistency
-        if: steps.check.outputs.commits != '0' && github.event.inputs.version != 'skip'
+        if: steps.check.outputs.commits != '0' && steps.release.outputs.release != 'skip'
         run: |
           # Ensure the created tag matches package.json version
           TAG_VERSION=$(git describe --tags --abbrev=0 | sed 's/^v//')
@@ -81,8 +117,8 @@ jobs:
         run: |
           if [ "${{ steps.check.outputs.commits }}" == "0" ]; then
             echo "No commits to process (all have [skip ci])"
-          elif [ "${{ github.event.inputs.version }}" == "skip" ]; then
+          elif [ "${{ steps.release.outputs.release }}" == "skip" ]; then
             echo "Versioning skipped via workflow_dispatch"
           else
-            echo "Version bumped successfully"
+            echo "Version bumped successfully (${{ steps.release.outputs.release }})"
           fi

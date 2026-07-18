@@ -22,7 +22,7 @@
     "check": "biome check .",
     "check:fix": "biome check --write .",
     "ci": "bun run typecheck && bun run check && bun test",
-    "release:version": "bumpp --commit --tag --push"
+    "release:version": "bumpp --release conventional --yes --commit \"chore: release v%s\" --tag \"v%s\" --push"
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.16",
