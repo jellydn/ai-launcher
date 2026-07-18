@@ -192,14 +192,20 @@ function validateCommandName(command: string): boolean {
   return safePattern.test(command) && command.length > 0 && command.length <= 100;
 }
 
-function commandExists(command: string): boolean {
+/**
+ * Check whether a command is available on PATH.
+ * Uses `where` on Windows and `which` elsewhere (`which` is not available on native Windows).
+ */
+export function commandExists(command: string): boolean {
   if (!validateCommandName(command)) {
     return false;
   }
 
-  const result = spawnSync("which", [command], {
+  const locator = process.platform === "win32" ? "where" : "which";
+  const result = spawnSync(locator, [command], {
     encoding: "utf-8",
     stdio: ["pipe", "pipe", "pipe"],
+    shell: false, // command names must not go through a shell
   });
   return result.status === 0;
 }
@@ -286,11 +292,32 @@ export function detectCliProxyProfiles(): Tool[] {
   }));
 }
 
+// Detection spawns several external processes (which/where, ccs, gh). The
+// result is stable for the lifetime of a single invocation, so memoize it.
+let detectionCache: Tool[] | null = null;
+
+/** Clears the memoized detection result. Primarily useful in tests. */
+export function resetDetectionCache(): void {
+  detectionCache = null;
+}
+
+// Command names that collide with a built-in Windows executable and would
+// therefore be falsely "detected" by `where` on Windows (e.g. cmd -> cmd.exe).
+const WINDOWS_SHADOWED_COMMANDS = new Set(["cmd"]);
+
 export function detectInstalledTools(): Tool[] {
+  if (detectionCache !== null) {
+    return detectionCache.slice();
+  }
+
   const detected: Tool[] = [];
+  const isWindows = process.platform === "win32";
 
   for (const entry of KNOWN_TOOLS) {
     const tool: KnownToolDefinition = entry;
+    if (isWindows && WINDOWS_SHADOWED_COMMANDS.has(tool.command)) {
+      continue;
+    }
     if (commandExists(tool.command)) {
       detected.push({
         name: tool.name,
@@ -319,7 +346,8 @@ export function detectInstalledTools(): Tool[] {
     detected.push(ghCopilot);
   }
 
-  return detected;
+  detectionCache = detected;
+  return detectionCache.slice();
 }
 
 export function mergeTools(configTools: Tool[], detectedTools: Tool[]): Tool[] {

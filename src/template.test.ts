@@ -180,40 +180,38 @@ describe("Template Lookup", () => {
 });
 
 describe("Template Command Substitution", () => {
-  function substituteTemplateArgs(command: string, args: string[]): string {
-    if (command.includes("$@")) {
-      return command.replace("$@", args.join(" "));
-    }
-    return args.length > 0 ? `${command} ${args.join(" ")}` : command;
-  }
-
-  test("substitutes $@ with arguments", () => {
+  test("substitutes $@ with arguments", async () => {
+    const { buildTemplateCommand } = await import("./template");
     const command = "amp -x 'Review: $@'";
-    const result = substituteTemplateArgs(command, ["file.ts"]);
+    const result = buildTemplateCommand(command, ["file.ts"]);
     expect(result).toBe("amp -x 'Review: file.ts'");
   });
 
-  test("substitutes $@ with multiple arguments", () => {
+  test("substitutes $@ with multiple arguments", async () => {
+    const { buildTemplateCommand } = await import("./template");
     const command = "amp -x 'Review: $@'";
-    const result = substituteTemplateArgs(command, ["file1.ts", "file2.ts"]);
+    const result = buildTemplateCommand(command, ["file1.ts", "file2.ts"]);
     expect(result).toBe("amp -x 'Review: file1.ts file2.ts'");
   });
 
-  test("appends arguments when no $@ placeholder", () => {
+  test("appends arguments when no $@ placeholder", async () => {
+    const { buildTemplateCommand } = await import("./template");
     const command = "claude --help";
-    const result = substituteTemplateArgs(command, ["extra", "args"]);
+    const result = buildTemplateCommand(command, ["extra", "args"]);
     expect(result).toBe("claude --help extra args");
   });
 
-  test("returns command unchanged when no args and no $@", () => {
+  test("returns command unchanged when no args and no $@", async () => {
+    const { buildTemplateCommand } = await import("./template");
     const command = "amp --version";
-    const result = substituteTemplateArgs(command, []);
+    const result = buildTemplateCommand(command, []);
     expect(result).toBe("amp --version");
   });
 
-  test("handles empty $@ substitution", () => {
+  test("handles empty $@ substitution", async () => {
+    const { buildTemplateCommand } = await import("./template");
     const command = "amp -x 'Review: $@'";
-    const result = substituteTemplateArgs(command, []);
+    const result = buildTemplateCommand(command, []);
     expect(result).toBe("amp -x 'Review: '");
   });
 });
@@ -302,13 +300,11 @@ describe("Template Execution", () => {
 });
 
 describe("Template Edge Cases", () => {
-  test("template with multiple $@ placeholders", async () => {
+  test("template with multiple $@ placeholders throws", async () => {
     const { buildTemplateCommand } = await import("./template");
-    const result = buildTemplateCommand("claude -p 'Review $@ and explain $@'", [
-      "file1.ts",
-      "file2.ts",
-    ]);
-    expect(result).toBe("claude -p 'Review file1.ts file2.ts and explain $@'");
+    expect(() =>
+      buildTemplateCommand("claude -p 'Review $@ and explain $@'", ["file1.ts", "file2.ts"])
+    ).toThrow(/at most one \$@ placeholder/);
   });
 
   test("template with empty args for $@", async () => {

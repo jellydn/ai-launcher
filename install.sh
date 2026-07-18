@@ -36,11 +36,31 @@ fi
 
 echo "Detected: $OS-$ARCH"
 
-# Get latest release URL
+# Get latest release URL (prefer jq, then node; grep is last-resort)
 LATEST_URL="https://api.github.com/repos/${REPO}/releases/latest"
 RELEASE_DATA=$(curl -fsSL "$LATEST_URL")
-DOWNLOAD_URL=$(echo "$RELEASE_DATA" | grep "browser_download_url.*${ARTIFACT}\"" | cut -d '"' -f 4 | head -n 1)
-CHECKSUM_URL=$(echo "$RELEASE_DATA" | grep "browser_download_url.*checksums.txt\"" | cut -d '"' -f 4 | head -n 1)
+
+extract_asset_url() {
+  asset_name="$1"
+  if command -v jq >/dev/null 2>&1; then
+    printf '%s' "$RELEASE_DATA" | jq -r --arg name "$asset_name" \
+      '.assets[] | select(.name == $name) | .browser_download_url' | head -n 1
+  elif command -v node >/dev/null 2>&1; then
+    # Pass the name via env to avoid -e argv index differences across Node versions.
+    printf '%s' "$RELEASE_DATA" | ASSET_NAME="$asset_name" node -e "
+      const name = process.env.ASSET_NAME;
+      const data = JSON.parse(require('fs').readFileSync(0, 'utf8'));
+      const asset = (data.assets || []).find((a) => a.name === name);
+      process.stdout.write(asset && asset.browser_download_url ? asset.browser_download_url : '');
+    "
+  else
+    # Fragile if GitHub changes JSON whitespace — prefer jq/node when available
+    printf '%s' "$RELEASE_DATA" | grep "browser_download_url.*${asset_name}\"" | cut -d '"' -f 4 | head -n 1
+  fi
+}
+
+DOWNLOAD_URL=$(extract_asset_url "$ARTIFACT")
+CHECKSUM_URL=$(extract_asset_url "checksums.txt")
 
 if [ -z "$DOWNLOAD_URL" ]; then
   echo "Error: Could not find download URL for $ARTIFACT"

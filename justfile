@@ -42,7 +42,15 @@ ci:
 
 # Run all unit tests
 test:
-  bun test
+  bun test src
+
+# Run e2e tests (dev entrypoint)
+test-e2e:
+  bun run test:e2e
+
+# Build + run e2e against compiled binary
+ci-e2e:
+  bun run ci:e2e
 
 # Release with version bump
 release:

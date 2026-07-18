@@ -10,6 +10,7 @@ import { ensureGitRepository, getGitDiff } from "../git-diff";
 import { findToolByName } from "../lookup";
 import { buildDiffAnalysisPrompt } from "../prompts";
 import type { SelectableItem } from "../types";
+import { isValidGitRef } from "../validators";
 
 export interface DiffCommandOptions {
   type: "staged" | "commit";
@@ -24,19 +25,6 @@ export interface DiffCommandContext {
   fuzzySelect: (items: SelectableItem[]) => Promise<SelectionResult>;
   items: SelectableItem[];
   outputFile?: string;
-}
-
-/**
- * Validate git reference format to prevent injection
- */
-function isValidGitRef(ref: string): boolean {
-  const validRefPattern = /^[a-zA-Z0-9._\-/~^@{}]+$/;
-  return (
-    validRefPattern.test(ref) &&
-    !ref.startsWith("-") &&
-    !ref.includes("..") &&
-    !/[;&|`$()<>[\]]/.test(ref)
-  );
 }
 
 /**

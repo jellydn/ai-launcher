@@ -15,13 +15,16 @@
     "build": "bash scripts/build.sh",
     "typecheck": "tsc --noEmit",
     "test": "bun test",
+    "test:unit": "bun test src",
+    "test:e2e": "bun test e2e",
+    "ci:e2e": "bun run build && AI_LAUNCHER_BIN=./dist/ai bun run test:e2e",
     "lint": "biome lint .",
     "lint:fix": "biome lint --write .",
     "format": "biome format .",
     "format:fix": "biome format --write .",
     "check": "biome check .",
     "check:fix": "biome check --write .",
-    "ci": "bun run typecheck && bun run check && bun test",
+    "ci": "bun run typecheck && bun run check && bun test src",
     "release:version": "bumpp --release conventional --yes --commit \"chore: release v%s\" --tag \"v%s\" --push"
   },
   "devDependencies": {

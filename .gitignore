@@ -6,6 +6,9 @@ out
 dist
 *.tgz
 
+# src/version.ts is committed as a package.json reader; build.sh overwrites it
+# with a constant for --compile, then restores the source (do not commit that form).
+
 # code coverage
 coverage
 *.lcov

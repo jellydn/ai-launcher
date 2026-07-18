@@ -20,7 +20,10 @@ Guidelines for agentic coding agents working on this codebase.
 | `bun run check` | Combined lint + format check |
 | `bun run check:fix` | Auto-fix lint and format |
 | `bun run ci` | Full CI: typecheck + check + test |
-| `bun test` | Run all unit tests |
+| `bun test` | Run all tests (unit + e2e) |
+| `bun test src` | Run unit tests only |
+| `bun run test:e2e` | Run e2e tests (dev entrypoint) |
+| `bun run ci:e2e` | Build binary + run e2e against `dist/ai` |
 | `bun test src/config.test.ts` | Run specific test file |
 | `bun run src/index.ts claude` | Test with specific tool |
 
@@ -111,13 +114,19 @@ src/
   detect.ts       - Auto-detect installed AI CLI tools
   fuzzy-select.ts - Interactive terminal UI with fuzzy search
   lookup.ts       - Tool lookup by name, alias, or fuzzy match
-  template.ts     - Template configuration
+  template.ts     - Template command parsing and safety checks
+  validators.ts   - Shared pure validators (args, paths, git refs)
   upgrade.ts      - Upgrade functionality
+  cli/diff.ts     - --diff-staged / --diff-commit argument handling
+  git-diff.ts     - Git repository checks and diff capture
+  errors.ts       - Typed error classes for git/diff failures
+  prompts.ts      - Diff analysis prompt builder
+  prompts/        - Versioned prompt registry (list/inspect)
   summary/        - Built-in `ai summary` subcommand (providers, modes, streaming)
   meeting/        - Built-in `ai meeting` subcommand (structured OpenAI output)
   types.ts        - Type definitions and interfaces
   logo.ts         - ASCII logo and colors
-  version.ts      - Generated at build time (.gitignore)
+  version.ts      - Version from package.json (overwritten with constant at build)
 ```
 
 ## Testing

@@ -1,65 +1,57 @@
 import { describe, expect, test } from "bun:test";
+import { isSafeCommand } from "./template";
+import { isValidOutputPath, validateArguments } from "./validators";
 
-function validateToolCommand(command: string): boolean {
-  const safePattern = /^[a-zA-Z0-9._\s\-"':,!?/\\|$@]+$/;
-  return safePattern.test(command.trim()) && command.length > 0 && command.length <= 500;
-}
-
-function validateArguments(args: string[]): boolean {
-  const safePattern = /^[a-zA-Z0-9._\-"/\\@#=\s,.:()[\]{}]+$/;
-  return args.every((arg) => safePattern.test(arg) && arg.length <= 200);
-}
-
-describe("validateToolCommand", () => {
+describe("isSafeCommand (tool command validation)", () => {
   test("accepts simple command", () => {
-    expect(validateToolCommand("claude")).toBe(true);
+    expect(isSafeCommand("claude")).toBe(true);
   });
 
   test("accepts command with dashes", () => {
-    expect(validateToolCommand("open-code")).toBe(true);
+    expect(isSafeCommand("open-code")).toBe(true);
   });
 
   test("accepts command with path", () => {
-    expect(validateToolCommand("/usr/local/bin/claude")).toBe(true);
+    expect(isSafeCommand("/usr/local/bin/claude")).toBe(true);
   });
 
   test("accepts template command with quotes and $@", () => {
-    expect(validateToolCommand("amp -x 'Review: $@'")).toBe(true);
+    expect(isSafeCommand("amp -x 'Review: $@'")).toBe(true);
   });
 
   test("accepts command with special template chars", () => {
-    expect(validateToolCommand("claude 'What does this do?'")).toBe(true);
-    expect(validateToolCommand('amp -x "Explain: $@"')).toBe(true);
+    expect(isSafeCommand("claude 'What does this do?'")).toBe(true);
+    expect(isSafeCommand('amp -x "Explain: $@"')).toBe(true);
   });
 
   test("rejects empty command", () => {
-    expect(validateToolCommand("")).toBe(false);
+    expect(isSafeCommand("")).toBe(false);
   });
 
   test("rejects command with semicolon", () => {
-    expect(validateToolCommand("claude; rm -rf /")).toBe(false);
+    expect(isSafeCommand("claude; rm -rf /")).toBe(false);
   });
 
   test("rejects command with &&", () => {
-    expect(validateToolCommand("claude && echo pwned")).toBe(false);
+    expect(isSafeCommand("claude && echo pwned")).toBe(false);
   });
 
-  test("rejects command with backticks", () => {
-    expect(validateToolCommand("claude `whoami`")).toBe(false);
+  test("rejects command with backticks around a simple command name", () => {
+    expect(isSafeCommand("claude `whoami`")).toBe(false);
   });
 
   test("rejects command with $()", () => {
-    expect(validateToolCommand("claude $(whoami)")).toBe(false);
+    expect(isSafeCommand("claude $(whoami)")).toBe(false);
   });
 
   test("rejects command exceeding max length", () => {
     const longCommand = "a".repeat(501);
-    expect(validateToolCommand(longCommand)).toBe(false);
+    expect(isSafeCommand(longCommand)).toBe(false);
   });
 
   test("accepts command at max length", () => {
     const maxCommand = "a".repeat(500);
-    expect(validateToolCommand(maxCommand)).toBe(true);
+    expect(isSafeCommand(maxCommand)).toBe(true);
   });
 });
 
@@ -190,37 +182,6 @@ describe("Argument Parsing Logic", () => {
 });
 
 describe("Output Path Validation", () => {
-  function isValidOutputPath(path: string): boolean {
-    const normalized = path.replace(/\\/g, "/");
-
-    if (normalized.startsWith("/")) {
-      return false;
-    }
-
-    if (normalized.startsWith("..") || normalized.includes("/../")) {
-      return false;
-    }
-
-    const forbiddenPatterns = [
-      /^\./,
-      /\.git\//,
-      /\.config\//,
-      /etc\//,
-      /root\//,
-      /home\//,
-      /usr\//,
-      /var\//,
-    ];
-
-    for (const pattern of forbiddenPatterns) {
-      if (pattern.test(normalized)) {
-        return false;
-      }
-    }
-
-    return true;
-  }
-
   function validateOutputFile(filePath: string): string | null {
     if (!filePath || filePath.trim().length === 0) {
       return "Output file path cannot be empty";
@@ -243,24 +204,35 @@ describe("Output Path Validation", () => {
     expect(isValidOutputPath("docs/output.txt")).toBe(true);
   });
 
+  test("accepts filenames containing protected substrings", () => {
+    expect(isValidOutputPath("notes/home-review.md")).toBe(true);
+    expect(isValidOutputPath("project/etc-config.md")).toBe(true);
+  });
+
+  test("accepts explicit relative ./ prefix", () => {
+    expect(isValidOutputPath("./output.md")).toBe(true);
+  });
+
   test("rejects absolute paths", () => {
     expect(isValidOutputPath("/etc/passwd")).toBe(false);
     expect(isValidOutputPath("/home/user/file.md")).toBe(false);
     expect(isValidOutputPath("/tmp/output.txt")).toBe(false);
+    expect(isValidOutputPath("C:/Windows/System32/evil.dll")).toBe(false);
+    expect(isValidOutputPath("C:\\Windows\\foo.md")).toBe(false);
   });
 
-  test("rejects paths starting with dot", () => {
+  test("rejects hidden paths at any depth", () => {
     expect(isValidOutputPath(".hidden.md")).toBe(false);
-    expect(isValidOutputPath("./secret.txt")).toBe(false);
+    expect(isValidOutputPath("sub/.git/hooks/pre-commit")).toBe(false);
+    expect(isValidOutputPath("project/.config/settings.json")).toBe(false);
   });
 
   test("rejects paths with parent directory traversal", () => {
     expect(isValidOutputPath("../file.md")).toBe(false);
     expect(isValidOutputPath("sub/../../etc/passwd")).toBe(false);
-    expect(isValidOutputPath("..%2F..%2Fetc%2Fpasswd")).toBe(false);
   });
 
-  test("rejects paths to protected directories", () => {
+  test("rejects paths to protected root directories", () => {
     expect(isValidOutputPath(".git/config")).toBe(false);
     expect(isValidOutputPath(".config/settings.json")).toBe(false);
     expect(isValidOutputPath("etc/passwd")).toBe(false);

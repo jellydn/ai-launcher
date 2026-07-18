@@ -1,76 +1,35 @@
 # External Integrations
 
-**Analysis Date:** 2026-06-04
+**Analysis Date:** 2026-07-18
 
 ## APIs & External Services
-
-**GitHub Releases API:**
-- GitHub - Fetches latest release metadata, lists assets, downloads platform binaries and checksums.txt for self-upgrade and distribution
-- SDK/Client: native `fetch` (no third-party package)
-- Auth: none (public unauthenticated endpoints)
-
-**Local AI CLI Tool Spawning (user-installed):**
-- Detected tools (claude, gemini, opencode, amp, grok, ccs, ollama, cursor/agent, gh copilot, etc.) - Launched via subprocess to provide the actual AI coding functionality; also `ccs api list` for profile discovery and `gh copilot --version`
-- SDK/Client: `node:child_process` spawnSync (see `src/detect.ts:166`, `src/detect.ts:221`, `src/index.ts:184`)
-- Auth: delegated to the individual tools (OAuth or api_key metadata only in `src/types.ts:8` `authType`)
-
-**Git (for diff analysis):**
-- Git - Invoked for `git diff --cached`, `git diff <ref>`, `git rev-parse --git-dir` to support `--diff-staged` / `--diff-commit` features
-- SDK/Client: `spawnSync("git", ...)` in `src/git-diff.ts:36` and `src/git-diff.ts:87`
-- Auth: none (local repo operations)
+- **OpenAI**: Used for generating AI summaries and meeting notes. Uses `openai` SDK (`src/summary/providers/openai.ts`, `src/meeting/index.ts`). Auth env var: `OPENAI_API_KEY`.
+- **Anthropic**: Used as an AI provider for summaries (`src/summary/providers/anthropic.ts`). Uses standard HTTP or OpenAI SDK wrapper. Auth env var: `ANTHROPIC_API_KEY`.
+- **Ollama**: Used for local LLM inference for summaries (`src/summary/providers/ollama.ts`). Auth env var: `OLLAMA_HOST` (API endpoint, no auth).
+- **OpenRouter**: Used as an AI model aggregator for summaries and meetings (`src/summary/providers/openrouter.ts`). Uses `openai` SDK. Auth env var: `OPENROUTER_API_KEY`.
+- **OpenCode**: Used as a fallback agent for plans/summaries (`src/summary/providers/opencode.ts`). Auth env var: `OPENCODE_AGENT`.
 
 ## Data Storage
-
-**Databases:**
-- None
-
-**File Storage:**
-- Local filesystem only - User config `~/.config/ai-launcher/config.json` (`src/config.ts:7`), temp binary during upgrade `src/upgrade.ts:114` (in `tmpdir()`), output files for `--diff-output` (validated relative paths in `src/index.ts:32`)
-
-**Caching:**
-- None
+- **Databases**: None.
+- **File Storage**: Local file system (e.g., reading/writing markdown files for notes or `~/.config/ai-launcher/config.json` for tool configurations).
+- **Caching**: None explicitly configured, entirely stateless between runs.
 
 ## Authentication & Identity
-
-**Auth Provider:**
-- None (no auth provider integrated into the launcher itself)
-
-**Implementation:**
-- No authentication, tokens, or login flows in the app; `authType` is only descriptive metadata for auto-detected proxy profiles (`src/detect.ts:250` "oauth", `src/detect.ts:237` "api_key") passed through to spawned tools
+- **Auth Provider**: No centralized auth. Relies entirely on developer-provided API keys in environment variables for integrations.
+- **Implementation approach**: Checks `process.env` and local `~/.config/ai-launcher/config.json` at runtime.
 
 ## Monitoring & Observability
-
-**Error Tracking:**
-- None
-
-**Logs:**
-- Console-based (stdout/stderr) - Direct `console.log`, `console.error`, `console.warn` for messages, errors, progress; no structured logging, files, or external services (examples throughout `src/index.ts`, `src/upgrade.ts:90`)
+- **Error Tracking**: Basic CLI standard exit codes (e.g., `process.exit(1)`) and standard error logging (`console.error`).
+- **Logs**: Output to standard IO (stdout/stderr).
 
 ## CI/CD & Deployment
-
-**Hosting:**
-- GitHub Releases (binaries + checksums hosted at https://github.com/jellydn/ai-launcher/releases; referenced in `install.sh:39`, `HomebrewFormula/ai.rb:8`, `src/upgrade.ts:9`)
-
-**CI Pipeline:**
-- GitHub Actions - Workflows: `.github/workflows/ci.yml` (checkout@v6, setup-bun, typecheck/check/test), `.github/workflows/release.yml` (multi-arch bun build, upload-artifact@v7, softprops/action-gh-release@v3, checksums, homebrew tap update), `.github/workflows/version.yml` (bumpp auto), `.github/workflows/sync-readme.yml`
+- **Hosting**: Distributed as pre-compiled standalone binaries via GitHub Releases and Homebrew tap (`jellydn/homebrew-tap`).
+- **CI Pipeline**: GitHub Actions (`.github/workflows/ci.yml` and `release.yml`) testing with `bun test`, building with `bun build --compile`, and publishing.
 
 ## Environment Configuration
-
-**Required env vars:**
-- None for normal operation or interactive use
-- Optional path discovery only (in upgrade): `HOME`, `LOCALAPPDATA` (`src/upgrade.ts:39`, `src/upgrade.ts:42`)
-
-**Secrets location:**
-- None (application stores no secrets, tokens, or credentials; config is plain JSON without sensitive data)
+- **Required env vars**: None for core launcher/fuzzy search. AI features need at least one provider configuration via `process.env` (API keys such as `OPENAI_API_KEY` / `ANTHROPIC_API_KEY`, or non-key settings like `OLLAMA_HOST` and `OPENCODE_AGENT`).
+- **Secrets location**: Process environment supplied by the user/shell. CI uses `HOMEBREW_TAP_TOKEN` and `GITHUB_TOKEN` for publishing. The launcher does not load `.env` files itself.
 
 ## Webhooks & Callbacks
-
-**Incoming:**
-- None
-
-**Outgoing:**
-- None
-
----
-
-*Integration audit: 2026-06-04*
+- **Incoming**: None
+- **Outgoing**: None

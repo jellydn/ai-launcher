@@ -2,12 +2,13 @@
 
 import type { SpawnSyncReturns } from "node:child_process";
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, isAbsolute, normalize, resolve } from "node:path";
+import { existsSync, readSync, writeFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
 import { executeDiffCommand, parseDiffArgs } from "./cli/diff";
 import { loadConfig } from "./config";
 import { detectInstalledTools, formatSuggestedInstallHints, mergeTools } from "./detect";
 import { fuzzySelect, promptForInput, toSelectableItems } from "./fuzzy-select";
+import { buildLaunchArgv } from "./launch-argv";
 import { getColoredLogo } from "./logo";
 import { findToolByName, type LookupResult } from "./lookup";
 import { main as meetingMain } from "./meeting/index.ts";
@@ -16,6 +17,12 @@ import { main as summaryMain } from "./summary/index.ts";
 import { isSafeCommand, parseTemplateCommand } from "./template";
 import type { SelectableItem } from "./types";
 import { upgrade } from "./upgrade";
+import {
+  checkOutputPath,
+  MAX_STDIN_BYTES,
+  type OutputPathRejection,
+  validateArguments,
+} from "./validators";
 import { VERSION } from "./version";
 
 const EXIT_CODE_SUCCESS = 0;
@@ -32,50 +39,21 @@ function handleChildProcessError(child: SpawnSyncReturns<string | Buffer>): void
   }
 }
 
-function isValidOutputPath(filePath: string): boolean {
-  const normalized = normalize(filePath);
-
-  if (isAbsolute(normalized)) {
-    console.error("Error: Output file path must be relative, not absolute");
-    return false;
-  }
-
-  const isPathEscape =
-    normalized.startsWith("..") || normalized.includes("/../") || normalized.includes("\\..\\");
-  if (isPathEscape) {
-    console.error("Error: Output file path cannot escape current directory");
-    return false;
-  }
-
-  const forbiddenPatterns = [
-    /^\./,
-    /\.git\//,
-    /\.config\//,
-    /etc\//,
-    /root\//,
-    /home\//,
-    /usr\//,
-    /var\//,
-    /sys\//,
-    /proc\//,
-  ];
-
-  for (const pattern of forbiddenPatterns) {
-    if (pattern.test(normalized)) {
-      console.error("Error: Output file path points to a protected location");
-      return false;
-    }
-  }
-
-  return true;
-}
+const OUTPUT_PATH_REASON_MESSAGES: Record<OutputPathRejection, string> = {
+  absolute: "Output file path must be relative, not absolute",
+  escape: "Output file path cannot escape the current directory",
+  hidden: "Output file path cannot point to a hidden file or directory",
+  protected: "Output file path points to a protected location",
+};
 
 function validateOutputFile(filePath: string): string | null {
   if (!filePath || filePath.trim().length === 0) {
     return "Output file path cannot be empty";
   }
 
-  if (!isValidOutputPath(filePath)) {
+  const pathCheck = checkOutputPath(filePath);
+  if (!pathCheck.ok) {
+    console.error(`Error: ${OUTPUT_PATH_REASON_MESSAGES[pathCheck.reason]}`);
     return "Invalid output file path";
   }
 
@@ -90,19 +68,53 @@ function validateOutputFile(filePath: string): string | null {
   return null;
 }
 
-function validateArguments(args: string[]): boolean {
-  const safePattern = /^[a-zA-Z0-9._\-"/\\@#=\s,.:()[\]{}]+$/;
-  return args.every((arg) => safePattern.test(arg) && arg.length <= 200);
-}
-
+// Cap stdin so a huge pipe cannot OOM the launcher. Read fd 0 in chunks and
+// abort as soon as the cumulative size exceeds the limit (do not buffer first).
 function readStdin(): string | null {
-  try {
-    const isInteractive = process.stdin.isTTY;
-    if (isInteractive) return null;
-    return readFileSync(0, "utf-8").trim();
-  } catch {
-    return null;
+  if (process.stdin.isTTY) return null;
+
+  const CHUNK_SIZE = 64 * 1024;
+  const buffer = Buffer.alloc(CHUNK_SIZE);
+  const chunks: Buffer[] = [];
+  let total = 0;
+
+  // Non-blocking stdin may throw EAGAIN. Back off briefly and give up after a
+  // bounded wait rather than busy-spinning a core.
+  const EAGAIN_BACKOFF_MS = 5;
+  const MAX_EAGAIN_RETRIES = 2000; // ~10s
+  const sleepSlot = new Int32Array(new SharedArrayBuffer(4));
+  let eagainRetries = 0;
+
+  while (true) {
+    let bytesRead: number;
+    try {
+      bytesRead = readSync(0, buffer, 0, CHUNK_SIZE, null);
+      eagainRetries = 0;
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      if (code === "EAGAIN") {
+        if (++eagainRetries > MAX_EAGAIN_RETRIES) return null;
+        Atomics.wait(sleepSlot, 0, 0, EAGAIN_BACKOFF_MS);
+        continue;
+      }
+      if (code === "EOF") break;
+      return null;
+    }
+
+    if (bytesRead === 0) break;
+
+    total += bytesRead;
+    if (total > MAX_STDIN_BYTES) {
+      console.error(
+        `Error: stdin input exceeds ${MAX_STDIN_BYTES / 1024 / 1024}MB limit and was rejected.`
+      );
+      process.exit(EXIT_CODE_VALIDATION_ERROR);
+    }
+
+    chunks.push(Buffer.from(buffer.subarray(0, bytesRead)));
   }
+
+  return Buffer.concat(chunks).toString("utf-8").trim();
 }
 
 function showVersion() {
@@ -186,25 +198,22 @@ function launchTool(command: string, extraArgs: string[] = [], stdinContent: str
     process.exit(1);
   }
 
-  const inputString = hasArgs ? extraArgs.join(" ") : (stdinContent ?? "");
-  const usesPlaceholder = command.includes("$@");
+  // CLI args win over stdin; join only validated extraArgs (each ≤ 200 chars).
+  const input = hasArgs ? extraArgs.join(" ") : hasStdin ? (stdinContent as string) : "";
 
-  const finalCommand = usesPlaceholder
-    ? command.replace("$@", inputString)
-    : hasArgs || hasStdin
-      ? `${command} ${inputString}`
-      : command;
-
-  const parts = finalCommand.split(/\s+/).filter((p) => p !== "");
-  const [cmd, ...args] = parts;
-  if (!cmd) {
-    console.error("Empty command");
+  let cmd: string;
+  let args: string[];
+  try {
+    ({ cmd, args } = buildLaunchArgv(command, input));
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
     process.exit(1);
   }
 
+  // shell:false — args are literal; shell metacharacters in input cannot inject.
   const child = spawnSync(cmd, args, {
     stdio: "inherit",
-    shell: true,
+    shell: false,
   });
 
   handleChildProcessError(child);
@@ -223,8 +232,10 @@ function launchToolWithPrompt(
     process.exit(1);
   }
 
-  const parts = command.split(/\s+/).filter((p) => p !== "");
-  const [cmd, ...args] = parts;
+  // Quote-aware parse so flags like -p stay intact; shell:false keeps args literal.
+  const parsed = parseTemplateCommand(command);
+  const cmd = parsed.cmd;
+  const args = parsed.args;
   if (!cmd) {
     console.error("Empty command");
     process.exit(1);
@@ -245,24 +256,19 @@ function launchToolWithPrompt(
       process.exit(EXIT_CODE_VALIDATION_ERROR);
     }
 
-    let child: SpawnSyncReturns<string>;
-
-    if (useStdin) {
-      child = spawnSync(cmd, args, {
-        input: prompt,
-        stdio: ["pipe", "pipe", "inherit"],
-        shell: true,
-        encoding: "utf-8",
-      });
-    } else {
-      const escapedPrompt = prompt.replace(/'/g, "'\\''");
-      const finalCommand = `${command} '${escapedPrompt}'`;
-
-      child = spawnSync("sh", ["-c", finalCommand], {
-        stdio: ["inherit", "pipe", "inherit"],
-        encoding: "utf-8",
-      });
-    }
+    // Prefer stdin for untrusted prompt content; argv append is literal with shell:false.
+    const child: SpawnSyncReturns<string> = useStdin
+      ? spawnSync(cmd, args, {
+          input: prompt,
+          stdio: ["pipe", "pipe", "inherit"],
+          shell: false,
+          encoding: "utf-8",
+        })
+      : spawnSync(cmd, [...args, prompt], {
+          stdio: ["inherit", "pipe", "inherit"],
+          shell: false,
+          encoding: "utf-8",
+        });
 
     handleChildProcessError(child);
 
@@ -285,7 +291,7 @@ function launchToolWithPrompt(
     const child = spawnSync(cmd, args, {
       input: prompt,
       stdio: ["pipe", "inherit", "inherit"],
-      shell: true,
+      shell: false,
     }) as SpawnSyncReturns<string | Buffer>;
 
     handleChildProcessError(child);
@@ -293,11 +299,10 @@ function launchToolWithPrompt(
     process.exit(child.status ?? 0);
   }
 
-  const escapedPrompt = prompt.replace(/'/g, "'\\''");
-  const finalCommand = `${command} '${escapedPrompt}'`;
-
-  const child = spawnSync("sh", ["-c", finalCommand], {
+  // shell:false: prompt is a literal argv element (no shell metacharacter re-parse).
+  const child = spawnSync(cmd, [...args, prompt], {
     stdio: "inherit",
+    shell: false,
   }) as SpawnSyncReturns<string | Buffer>;
 
   handleChildProcessError(child);

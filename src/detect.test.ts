@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { beforeEach, describe, expect, test } from "bun:test";
 import {
   detectCliProxyProfiles,
   detectGhCopilot,
@@ -8,8 +8,13 @@ import {
   KNOWN_TOOLS,
   type KnownToolDefinition,
   parseCcsApiList,
+  resetDetectionCache,
   SUGGESTED_INSTALL_TOOL_NAMES,
 } from "./detect";
+
+beforeEach(() => {
+  resetDetectionCache();
+});
 
 const CCS_API_LIST_OUTPUT = `CCS API Profiles
 
@@ -322,5 +327,24 @@ describe("detectGhCopilot", () => {
       expect(tool.description).toBe("GitHub Copilot CLI");
       expect(tool.promptCommand).toBe("gh copilot suggest");
     }
+  });
+});
+
+describe("commandExists", () => {
+  test("rejects invalid command names", async () => {
+    const { commandExists } = await import("./detect");
+    expect(commandExists("")).toBe(false);
+    expect(commandExists("foo;bar")).toBe(false);
+    expect(commandExists("a".repeat(101))).toBe(false);
+  });
+
+  test("finds a known system command", async () => {
+    const { commandExists } = await import("./detect");
+    expect(commandExists("bun") || commandExists("node")).toBe(true);
+  });
+
+  test("returns false for a missing command", async () => {
+    const { commandExists } = await import("./detect");
+    expect(commandExists("ai-launcher-definitely-missing-xyz")).toBe(false);
   });
 });
