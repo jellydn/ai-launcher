@@ -28,7 +28,7 @@
     "release:version": "bumpp --release conventional --yes --commit \"chore: release v%s\" --tag \"v%s\" --push"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.4.16",
+    "@biomejs/biome": "2.5.5",
     "@biomejs/cli-win32-arm64": "^2.4.14",
     "@types/bun": "latest",
     "@types/semver": "^7.7.1",
