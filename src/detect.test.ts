@@ -314,7 +314,7 @@ describe("detectInstalledTools", () => {
   });
 
   test("jcode is in KNOWN_TOOLS with correct configuration", () => {
-    const jcode = KNOWN_TOOLS.find((t) => t.name === "jcode");
+    const jcode = KNOWN_TOOLS.find((t) => t.name === "jcode") as KnownToolDefinition | undefined;
 
     expect(jcode).toBeDefined();
     expect(jcode?.name).toBe("jcode");
