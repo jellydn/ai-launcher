@@ -280,6 +280,16 @@ describe("detectInstalledTools", () => {
     expect(devin?.promptCommand).toBe("devin -p");
   });
 
+  test("jcode is in KNOWN_TOOLS with correct configuration", () => {
+    const jcode = KNOWN_TOOLS.find((t) => t.name === "jcode") as KnownToolDefinition | undefined;
+
+    expect(jcode).toBeDefined();
+    expect(jcode?.name).toBe("jcode");
+    expect(jcode?.command).toBe("jcode");
+    expect(jcode?.description).toBe("J-Code - coding agent (Claude Max / ChatGPT Pro)");
+    expect(jcode?.promptCommand).toBeUndefined();
+  });
+
   test("returns only installed tools from KNOWN_TOOLS", () => {
     const tools = detectInstalledTools();
 
