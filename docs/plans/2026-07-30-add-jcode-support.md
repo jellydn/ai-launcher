@@ -5,7 +5,7 @@
 
 ## Goal
 
-Auto-detect and launch [J-Code](https://github.com/) (`jcode`) from `ai`, same as other known AI CLIs.
+Auto-detect and launch [J-Code](https://github.com/1jehuang/jcode) (`jcode`) from `ai`, same as other known AI CLIs.
 
 ## CLI facts (from `jcode --help` / `jcode run --help`)
 
