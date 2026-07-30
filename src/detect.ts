@@ -149,6 +149,11 @@ export const KNOWN_TOOLS = [
     description: "fx.sh coding agent",
     promptCommand: "fx ask",
   },
+  {
+    name: "jcode",
+    command: "jcode",
+    description: "J-Code - coding agent (Claude Max / ChatGPT Pro)",
+  },
 ] as const satisfies readonly KnownToolDefinition[];
 
 export type KnownToolName = (typeof KNOWN_TOOLS)[number]["name"];
