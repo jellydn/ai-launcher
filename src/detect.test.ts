@@ -257,6 +257,19 @@ describe("detectInstalledTools", () => {
     expect(mimo?.promptCommand).toBe("mimo run");
   });
 
+  test("reasonix is in KNOWN_TOOLS with correct configuration", () => {
+    const reasonix = KNOWN_TOOLS.find((t) => t.name === "reasonix");
+
+    expect(reasonix).toBeDefined();
+    expect(reasonix?.name).toBe("reasonix");
+    expect(reasonix?.command).toBe("reasonix");
+    expect(reasonix?.description).toBe(
+      "Reasonix — DeepSeek-native terminal coding agent (multi-model)"
+    );
+    expect(reasonix?.promptCommand).toBe("reasonix run --stdin");
+    expect(reasonix?.promptUseStdin).toBe(true);
+  });
+
   test("interpreter is in KNOWN_TOOLS with correct configuration", () => {
     const interpreter = KNOWN_TOOLS.find((t) => t.name === "interpreter") as
       | KnownToolDefinition
