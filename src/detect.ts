@@ -130,6 +130,13 @@ export const KNOWN_TOOLS = [
     description: "Kimi Code - Moonshot AI CLI",
     promptCommand: "kimi -p",
   },
+  {
+    name: "reasonix",
+    command: "reasonix",
+    description: "Reasonix — DeepSeek-native terminal coding agent (multi-model)",
+    promptCommand: "reasonix run --stdin",
+    promptUseStdin: true,
+  },
 ] as const satisfies readonly KnownToolDefinition[];
 
 export type KnownToolName = (typeof KNOWN_TOOLS)[number]["name"];
@@ -139,6 +146,7 @@ export const SUGGESTED_INSTALL_TOOL_NAMES = [
   "claude",
   "agy",
   "opencode",
+  "reasonix",
   "amp",
   "codex",
   "grok",
