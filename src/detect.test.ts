@@ -270,6 +270,16 @@ describe("detectInstalledTools", () => {
     expect(reasonix?.promptUseStdin).toBe(true);
   });
 
+  test("omp is in KNOWN_TOOLS with correct configuration", () => {
+    const omp = KNOWN_TOOLS.find((t) => t.name === "omp");
+
+    expect(omp).toBeDefined();
+    expect(omp?.name).toBe("omp");
+    expect(omp?.command).toBe("omp");
+    expect(omp?.description).toBe("Oh My Pi CLI");
+    expect(omp?.promptCommand).toBe("omp -p");
+  });
+
   test("interpreter is in KNOWN_TOOLS with correct configuration", () => {
     const interpreter = KNOWN_TOOLS.find((t) => t.name === "interpreter") as
       | KnownToolDefinition

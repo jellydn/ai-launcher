@@ -137,6 +137,12 @@ export const KNOWN_TOOLS = [
     promptCommand: "reasonix run --stdin",
     promptUseStdin: true,
   },
+  {
+    name: "omp",
+    command: "omp",
+    description: "Oh My Pi CLI",
+    promptCommand: "omp -p",
+  },
 ] as const satisfies readonly KnownToolDefinition[];
 
 export type KnownToolName = (typeof KNOWN_TOOLS)[number]["name"];
@@ -153,6 +159,7 @@ export const SUGGESTED_INSTALL_TOOL_NAMES = [
   "kimi",
   "ollama",
   "mimo",
+  "omp",
 ] as const satisfies readonly KnownToolName[];
 
 export type SuggestedInstallTool = {
