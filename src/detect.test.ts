@@ -280,6 +280,16 @@ describe("detectInstalledTools", () => {
     expect(omp?.promptCommand).toBe("omp -p");
   });
 
+  test("fx is in KNOWN_TOOLS with correct configuration", () => {
+    const fx = KNOWN_TOOLS.find((t) => t.name === "fx");
+
+    expect(fx).toBeDefined();
+    expect(fx?.name).toBe("fx");
+    expect(fx?.command).toBe("fx");
+    expect(fx?.description).toBe("fx.sh coding agent");
+    expect(fx?.promptCommand).toBe("fx ask");
+  });
+
   test("interpreter is in KNOWN_TOOLS with correct configuration", () => {
     const interpreter = KNOWN_TOOLS.find((t) => t.name === "interpreter") as
       | KnownToolDefinition

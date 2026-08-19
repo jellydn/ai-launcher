@@ -143,6 +143,12 @@ export const KNOWN_TOOLS = [
     description: "Oh My Pi CLI",
     promptCommand: "omp -p",
   },
+  {
+    name: "fx",
+    command: "fx",
+    description: "fx.sh coding agent",
+    promptCommand: "fx ask",
+  },
 ] as const satisfies readonly KnownToolDefinition[];
 
 export type KnownToolName = (typeof KNOWN_TOOLS)[number]["name"];
