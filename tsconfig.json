@@ -1,6 +1,5 @@
 {
   "compilerOptions": {
-    "ignoreDeprecations": "6.0",
     "lib": ["ESNext", "DOM"],
     "types": ["bun"],
     "target": "ESNext",
@@ -19,9 +18,8 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "rootDir": "src",
-    "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["./src/*"]
     }
   },
   "include": ["src/**/*.ts"],
