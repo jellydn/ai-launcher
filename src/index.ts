@@ -125,7 +125,6 @@ function readStdin(): string | null {
   return Buffer.concat(chunks).toString("utf-8").trim();
 }
 
-
 function showVersion() {
   console.log(`ai-launcher v${VERSION}`);
   process.exit(0);
@@ -395,7 +394,14 @@ export function runPromptCommand(args: string[]): { success: boolean; error?: st
   return { success: false, error: "Usage: ai prompt list | ai prompt inspect <id>" };
 }
 
+function canPromptUser(): boolean {
+  return Boolean(process.stdin.isTTY && process.stdout.isTTY);
+}
+
 async function confirmPrompt(message: string): Promise<boolean> {
+  if (!canPromptUser()) {
+    return true;
+  }
   const answer = await promptForInput(message);
   return /^(y|yes)$/i.test(answer.trim());
 }
