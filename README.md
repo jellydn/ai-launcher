@@ -19,7 +19,7 @@
 ## ✨ Features
 
 - **🔍 Fuzzy Search**: Interactive terminal UI with real-time filtering and keyboard navigation
-- **🔧 Auto-Detection**: Automatically finds installed AI CLIs (claude, cline, gemini, agy, opencode, amp, copilot, codex, interpreter, devin, kilo, kimi, mimo, pi, droid, ollama, cursor-agent, ccs, cmd, freebuff, grok, reasonix, omp, fx, jcode)
+- **🔧 Auto-Detection**: Automatically finds installed AI CLIs (claude, cline, gemini, agy, opencode, amp, copilot, codex, interpreter, devin, kilo, kimi, mimo, pi, droid, ollama, cursor-agent, ccs, cmd, freebuff, grok, reasonix, omp, fx, jcode, pool)
 - **⚡ Direct Invocation**: Skip the menu with `ai <toolname>` or fuzzy matching
 - **🏷️ Aliases**: Define short aliases for frequently used tools (e.g., `ai c` for claude)
 - **📋 Templates**: Create command shortcuts with `$@` argument/stdin placeholders
@@ -484,6 +484,7 @@ The following CLIs are auto-detected if installed and available in PATH:
 - `omp` - Oh My Pi CLI
 - `fx` - fx.sh coding agent (`fx` starts an interactive session; `fx ask` runs one request)
 - `jcode` - J-Code coding agent (Claude Max / ChatGPT Pro subscriptions)
+- `pool` - Poolside ACP CLI
 
 **Precedence Rules:**
 
