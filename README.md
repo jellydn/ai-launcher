@@ -238,7 +238,7 @@ The router returns structured JSON like:
 
 AI Launcher resolves that to the configured `review-security` template and enforces the template's safety metadata before execution.
 
-Missing metadata is treated conservatively: templates without explicit safety flags require confirmation.
+Set `mode` and `requiresConfirmation` on each template (see [Config Options](#config-options)). Write templates must keep confirmation enabled. Missing metadata is treated conservatively: templates without explicit safety flags require confirmation.
 
 ### Git Diff Analysis
 
@@ -422,12 +422,22 @@ A default config is created on first run. Example:
 
 **templates**: Array of command templates
 
-| Field         | Required | Description                                        |
-| ------------- | -------- | -------------------------------------------------- |
-| `name`        | ✅       | Template name (shown with [T] indicator)           |
-| `command`     | ✅       | Command string, use `$@` for argument substitution |
-| `description` | ✅       | Template description                               |
-| `aliases`     | ❌       | Array of short aliases                             |
+| Field                  | Required | Description                                                                 |
+| ---------------------- | -------- | --------------------------------------------------------------------------- |
+| `name`                 | ✅       | Template name (shown with [T] indicator)                                    |
+| `command`              | ✅       | Command string, use `$@` for argument substitution                          |
+| `description`          | ✅       | Template description                                                        |
+| `aliases`              | ❌       | Array of short aliases                                                      |
+| `mode`                 | ❌       | `"read-only"` or `"write"`; used as router safety metadata                  |
+| `requiresConfirmation` | ❌       | If `true`, confirm before running. Write templates cannot set this `false`. |
+
+**router**: Optional. When set, unmatched free-form input is sent to this command to pick a template.
+
+| Field            | Required | Description                                        |
+| ---------------- | -------- | -------------------------------------------------- |
+| `command`        | ✅       | CLI that prints JSON `{ "template", "arguments" }` |
+| `description`    | ❌       | Human-readable label                               |
+| `promptUseStdin` | ❌       | If `true`, pipe the routing prompt via stdin       |
 
 ### Git Diff Prompt Configuration
 
@@ -442,6 +452,7 @@ Different AI CLIs accept prompts in different ways. The `promptCommand` and `pro
 | `amp`      | `echo 'prompt' &#124; amp -x`                      | Execute mode works best with stdin                |
 | `fx`       | `fx ask 'prompt'`                                  | Runs one noninteractive request                   |
 | `devin`    | `devin -p 'prompt'`                                | Direct Devin CLI invocation                       |
+| `pool`     | `pool -q 'prompt'`                                 | Quiet/noninteractive ACP request                  |
 
 **Example configuration:**
 
