@@ -4,18 +4,26 @@ import type { SpawnSyncReturns } from "node:child_process";
 import { spawnSync } from "node:child_process";
 import { existsSync, readSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
+import { parseArgs } from "./args";
 import { executeDiffCommand, parseDiffArgs } from "./cli/diff";
 import { loadConfig } from "./config";
 import { detectInstalledTools, formatSuggestedInstallHints, mergeTools } from "./detect";
-import { fuzzySelect, promptForInput, toSelectableItems } from "./fuzzy-select";
+import { fuzzySelect, toSelectableItems } from "./fuzzy-select";
 import { buildLaunchArgv } from "./launch-argv";
 import { getColoredLogo } from "./logo";
 import { findToolByName, type LookupResult } from "./lookup";
 import { main as meetingMain } from "./meeting/index.ts";
+import { promptForInput } from "./prompt-input";
 import { formatPromptInspection, formatPromptList } from "./prompts/registry.ts";
+import { buildRouterPrompt, parseRouterResponse, resolveRouterSelection } from "./router";
 import { main as summaryMain } from "./summary/index.ts";
-import { isSafeCommand, parseTemplateCommand } from "./template";
-import type { SelectableItem } from "./types";
+import {
+  isSafeCommand,
+  parseCommand,
+  parseTemplateCommand,
+  templateRequiresConfirmation,
+} from "./template";
+import type { SelectableItem, Template } from "./types";
 import { upgrade } from "./upgrade";
 import {
   checkOutputPath,
@@ -221,6 +229,38 @@ function launchTool(command: string, extraArgs: string[] = [], stdinContent: str
   process.exit(child.status ?? EXIT_CODE_SUCCESS);
 }
 
+function runCommandWithPrompt(
+  command: string,
+  prompt: string,
+  useStdin = false
+): SpawnSyncReturns<string | Buffer> {
+  if (!isSafeCommand(command)) {
+    console.error("Invalid command format");
+    process.exit(1);
+  }
+
+  const parsedCommand = parseCommand(command);
+  if (!parsedCommand.cmd) {
+    console.error("Empty command");
+    process.exit(1);
+  }
+
+  if (useStdin) {
+    return spawnSync(parsedCommand.cmd, parsedCommand.args, {
+      input: prompt,
+      stdio: ["pipe", "pipe", "inherit"],
+      shell: false,
+      encoding: "utf-8",
+    }) as SpawnSyncReturns<string | Buffer>;
+  }
+
+  return spawnSync(parsedCommand.cmd, [...parsedCommand.args, prompt], {
+    stdio: ["inherit", "pipe", "inherit"],
+    shell: false,
+    encoding: "utf-8",
+  }) as SpawnSyncReturns<string | Buffer>;
+}
+
 function launchToolWithPrompt(
   command: string,
   prompt: string,
@@ -307,6 +347,10 @@ function launchToolWithPrompt(
 
   handleChildProcessError(child);
 
+  if (child.stdout) {
+    process.stdout.write(child.stdout);
+  }
+
   process.exit(child.status ?? 0);
 }
 
@@ -348,6 +392,96 @@ export function runPromptCommand(args: string[]): { success: boolean; error?: st
   }
 
   return { success: false, error: "Usage: ai prompt list | ai prompt inspect <id>" };
+}
+
+function canPromptUser(): boolean {
+  return Boolean(process.stdin.isTTY && process.stdout.isTTY);
+}
+
+async function confirmPrompt(message: string): Promise<boolean> {
+  if (!canPromptUser()) {
+    return true;
+  }
+  const answer = await promptForInput(message);
+  return /^(y|yes)$/i.test(answer.trim());
+}
+
+async function routeNaturalLanguageTask(
+  request: string,
+  stdinContent: string | null,
+  config: Awaited<ReturnType<typeof loadConfig>>
+): Promise<void> {
+  if (!config.router) {
+    console.error(`No tool or template found matching '${request}'`);
+    process.exit(1);
+  }
+
+  const routingPrompt = buildRouterPrompt(request, config.templates, stdinContent ?? undefined);
+  const routerResult = runCommandWithPrompt(
+    config.router.command,
+    routingPrompt,
+    config.router.promptUseStdin ?? false
+  );
+  handleChildProcessError(routerResult);
+
+  if ((routerResult.status ?? 0) !== 0) {
+    console.error(`Router command failed with exit code ${routerResult.status ?? "unknown"}`);
+    process.exit(routerResult.status ?? 1);
+  }
+
+  const rawOutput = String(routerResult.stdout ?? "").trim();
+  const selection = parseRouterResponse(rawOutput);
+  if (!selection) {
+    console.error("Router did not return valid JSON selection");
+    process.exit(1);
+  }
+
+  const resolved = resolveRouterSelection(selection, config.templates);
+  if (!resolved) {
+    console.error(`Router selected unknown template '${selection.template}'`);
+    process.exit(1);
+  }
+
+  if (resolved.requiresConfirmation) {
+    console.log(`\nSelected template: ${resolved.template.name}`);
+    console.log(
+      `Preview: ${resolved.template.command.replace("$@", selection.arguments.join(" "))}`
+    );
+    const isConfirmed = await confirmPrompt("This template may modify files. Continue? [y/N] ");
+    if (!isConfirmed) {
+      process.exit(0);
+    }
+  }
+
+  launchTool(resolved.template.command, selection.arguments, stdinContent);
+}
+
+async function confirmTemplateExecution(item: SelectableItem, args: string[]): Promise<boolean> {
+  if (!item.isTemplate) {
+    return true;
+  }
+
+  const templateLike: Template = {
+    name: item.name,
+    command: item.command,
+    description: item.description,
+    aliases: item.aliases,
+    mode: item.mode,
+    requiresConfirmation: item.requiresConfirmation,
+  };
+
+  if (templateRequiresConfirmation(templateLike)) {
+    console.log(`\nSelected template: ${item.name}`);
+    const previewCmd = item.command.includes("$@")
+      ? item.command.replace("$@", args.join(" "))
+      : args.length > 0
+        ? `${item.command} ${args.join(" ")}`
+        : item.command;
+    console.log(`Preview: ${previewCmd}`);
+    return await confirmPrompt("This template may modify files. Continue? [y/N] ");
+  }
+
+  return true;
 }
 
 async function main() {
@@ -432,9 +566,11 @@ async function main() {
     }
   }
 
-  if (dashIndex !== -1) {
-    const beforeDash = args.slice(0, dashIndex);
-    const afterDash = args.slice(dashIndex + 1);
+  const parsedArgs = parseArgs(args);
+
+  if (parsedArgs.dashSeparator) {
+    const beforeDash = parsedArgs.beforeDash;
+    const afterDash = parsedArgs.afterDash;
 
     if (beforeDash.length === 0) {
       const result = await fuzzySelect(items);
@@ -442,6 +578,12 @@ async function main() {
         process.exit(0);
       }
       if (result.item) {
+        if (result.item.isTemplate) {
+          const isConfirmed = await confirmTemplateExecution(result.item, afterDash);
+          if (!isConfirmed) {
+            process.exit(0);
+          }
+        }
         launchTool(result.item.command, afterDash, stdinContent);
       }
       return;
@@ -455,6 +597,12 @@ async function main() {
 
     const lookupResult = findToolByName(query, lookupItems);
     if (lookupResult.success && lookupResult.item) {
+      if (lookupResult.item.isTemplate) {
+        const isConfirmed = await confirmTemplateExecution(lookupResult.item, afterDash);
+        if (!isConfirmed) {
+          process.exit(0);
+        }
+      }
       launchTool(lookupResult.item.command, afterDash, stdinContent);
       return;
     }
@@ -463,8 +611,12 @@ async function main() {
   }
 
   if (args.length > 0) {
-    const query = args[0];
-    const extraArgs = args.slice(1);
+    const query = parsedArgs.toolQuery;
+    if (!query) {
+      console.error("No tool query found");
+      process.exit(1);
+    }
+    const extraArgs = parsedArgs.extraArgs;
 
     const result =
       cachedToolLookup && toolQuery === query
@@ -472,7 +624,18 @@ async function main() {
         : findToolByName(query, lookupItems);
 
     if (result.success && result.item) {
+      if (result.item.isTemplate) {
+        const isConfirmed = await confirmTemplateExecution(result.item, extraArgs);
+        if (!isConfirmed) {
+          process.exit(0);
+        }
+      }
       launchTool(result.item.command, extraArgs, stdinContent);
+      return;
+    }
+
+    if (config.router) {
+      await routeNaturalLanguageTask(args.join(" "), stdinContent, config);
       return;
     }
 
@@ -487,13 +650,23 @@ async function main() {
   }
 
   if (result.item) {
-    if (result.item.isTemplate && result.item.command.includes("$@")) {
-      console.log(`\nSelected: ${result.item.name}`);
-      const input = await promptForInput(`Enter arguments for "${result.item.name}": `);
-      if (input.length === 0) {
+    if (result.item.isTemplate) {
+      let argsToUse: string[] = [];
+      if (result.item.command.includes("$@")) {
+        console.log(`\nSelected: ${result.item.name}`);
+        const input = await promptForInput(`Enter arguments for "${result.item.name}": `);
+        if (input.length === 0) {
+          process.exit(0);
+        }
+        argsToUse = [input];
+      }
+      const isConfirmed = await confirmTemplateExecution(result.item, argsToUse);
+      if (!isConfirmed) {
         process.exit(0);
       }
-      const finalCommand = result.item.command.replace("$@", input);
+      const finalCommand = result.item.command.includes("$@")
+        ? result.item.command.replace("$@", argsToUse[0] ?? "")
+        : result.item.command;
       console.log(`\nRunning: ${finalCommand}\n`);
       launchTool(finalCommand, [], stdinContent);
     } else {

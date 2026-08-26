@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { parseArgs } from "./args";
 import { isSafeCommand } from "./template";
 import { isValidOutputPath, validateArguments } from "./validators";
 
@@ -110,32 +111,6 @@ describe("validateArguments", () => {
 });
 
 describe("Argument Parsing Logic", () => {
-  function parseArgs(argv: string[]): {
-    toolQuery: string | null;
-    extraArgs: string[];
-    dashSeparator: boolean;
-    beforeDash: string[];
-    afterDash: string[];
-  } {
-    const dashIndex = argv.indexOf("--");
-    if (dashIndex !== -1) {
-      return {
-        toolQuery: argv[0] ?? null,
-        extraArgs: [],
-        dashSeparator: true,
-        beforeDash: argv.slice(0, dashIndex),
-        afterDash: argv.slice(dashIndex + 1),
-      };
-    }
-    return {
-      toolQuery: argv[0] ?? null,
-      extraArgs: argv.slice(1),
-      dashSeparator: false,
-      beforeDash: [],
-      afterDash: [],
-    };
-  }
-
   test("parses tool name only", () => {
     const result = parseArgs(["claude"]);
     expect(result.toolQuery).toBe("claude");
@@ -180,7 +155,6 @@ describe("Argument Parsing Logic", () => {
     expect(result.afterDash).toEqual(["arg1", "arg2", "arg3"]);
   });
 });
-
 describe("Output Path Validation", () => {
   function validateOutputFile(filePath: string): string | null {
     if (!filePath || filePath.trim().length === 0) {

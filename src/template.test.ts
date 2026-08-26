@@ -291,11 +291,46 @@ describe("Template Execution", () => {
     expect(isSafeCommand("claude 'Explain this'")).toBe(true);
   });
 
-  test("parseTemplateCommand splits command correctly", async () => {
-    const { parseTemplateCommand } = await import("./template");
-    const result = parseTemplateCommand("amp -x 'Review: hello'");
-    expect(result.cmd).toBe("amp");
-    expect(result.args).toContain("-x");
+  test("parseCommand handles quoted arguments without preserving quotes", async () => {
+    const { parseCommand } = await import("./template");
+    const result = parseCommand('opencode run --model "custom model" --agent plan');
+    expect(result.cmd).toBe("opencode");
+    expect(result.args).toEqual(["run", "--model", "custom model", "--agent", "plan"]);
+  });
+
+  test("parseCommand handles backtick-delimited prompts", async () => {
+    const { parseCommand } = await import("./template");
+    const result = parseCommand("ccs gemini `Explain this codebase architecture`");
+    expect(result.cmd).toBe("ccs");
+    expect(result.args).toEqual(["gemini", "Explain this codebase architecture"]);
+  });
+
+  test("parseCommand handles backslash escapes outside quotes", async () => {
+    const { parseCommand } = await import("./template");
+    const result = parseCommand("cmd arg\\ with\\ space");
+    expect(result.cmd).toBe("cmd");
+    expect(result.args).toEqual(["arg with space"]);
+  });
+
+  test("parseCommand preserves backslashes inside single quotes", async () => {
+    const { parseCommand } = await import("./template");
+    const result = parseCommand("cmd 'path\\to\\file'");
+    expect(result.cmd).toBe("cmd");
+    expect(result.args).toEqual(["path\\to\\file"]);
+  });
+
+  test("parseCommand handles empty input", async () => {
+    const { parseCommand } = await import("./template");
+    const result = parseCommand("");
+    expect(result.cmd).toBe("");
+    expect(result.args).toEqual([]);
+  });
+
+  test("parseCommand handles unclosed quotes leniently", async () => {
+    const { parseCommand } = await import("./template");
+    const result = parseCommand("cmd 'unclosed text");
+    expect(result.cmd).toBe("cmd");
+    expect(result.args).toEqual(["unclosed text"]);
   });
 });
 
@@ -314,10 +349,10 @@ describe("Template Edge Cases", () => {
   });
 
   test("template with colon in name", async () => {
-    const { parseTemplateCommand } = await import("./template");
-    const result = parseTemplateCommand("ccs glm 'Create draft pr'");
+    const { parseCommand } = await import("./template");
+    const result = parseCommand("ccs glm 'Create draft pr'");
     expect(result.cmd).toBe("ccs");
-    expect(result.args).toEqual(["glm", "'Create draft pr'"]);
+    expect(result.args).toEqual(["glm", "Create draft pr"]);
   });
 
   test("template command with double quotes inside single quotes", async () => {

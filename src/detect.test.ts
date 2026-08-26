@@ -5,12 +5,14 @@ import {
   detectInstalledTools,
   formatSuggestedInstallHints,
   getSuggestedInstallTools,
-  KNOWN_TOOLS,
-  type KnownToolDefinition,
   parseCcsApiList,
   resetDetectionCache,
-  SUGGESTED_INSTALL_TOOL_NAMES,
 } from "./detect";
+import {
+  KNOWN_TOOLS,
+  type KnownToolDefinition,
+  SUGGESTED_INSTALL_TOOL_NAMES,
+} from "./tool-catalog";
 
 beforeEach(() => {
   resetDetectionCache();

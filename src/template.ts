@@ -1,3 +1,5 @@
+import type { Template } from "./types";
+
 export interface ParsedCommand {
   cmd: string;
   args: string[];
@@ -72,6 +74,81 @@ export function parseTemplateCommand(command: string): ParsedCommand {
     } else {
       current += char;
     }
+  }
+
+  if (current.length > 0) {
+    parts.push(current);
+  }
+
+  return {
+    cmd: parts[0] ?? "",
+    args: parts.slice(1),
+  };
+}
+
+export function templateRequiresConfirmation(template: Template): boolean {
+  if (template.mode === "write") {
+    return true;
+  }
+
+  if (typeof template.requiresConfirmation === "boolean") {
+    return template.requiresConfirmation;
+  }
+
+  return template.mode !== "read-only";
+}
+
+export function parseCommand(command: string): ParsedCommand {
+  if (command.length === 0) {
+    return { cmd: "", args: [] };
+  }
+
+  const parts: string[] = [];
+  let current = "";
+  let quote: "'" | '"' | "`" | null = null;
+  let escapeNext = false;
+
+  for (let i = 0; i < command.length; i++) {
+    const char = command[i] ?? "";
+
+    if (escapeNext) {
+      current += char;
+      escapeNext = false;
+      continue;
+    }
+
+    if (char === "\\" && quote !== "'") {
+      escapeNext = true;
+      continue;
+    }
+
+    if (quote !== null) {
+      if (char === quote) {
+        quote = null;
+      } else {
+        current += char;
+      }
+      continue;
+    }
+
+    if (/\s/.test(char)) {
+      if (current.length > 0) {
+        parts.push(current);
+        current = "";
+      }
+      continue;
+    }
+
+    if (char === "'" || char === '"' || char === "`") {
+      quote = char;
+      continue;
+    }
+
+    current += char;
+  }
+
+  if (escapeNext) {
+    current += "\\";
   }
 
   if (current.length > 0) {
