@@ -6,7 +6,9 @@ import {
   formatSuggestedInstallHints,
   getSuggestedInstallTools,
   parseCcsApiList,
+  promptCommandForInstalledBinary,
   resetDetectionCache,
+  selectInstalledCommand,
 } from "./detect";
 import {
   KNOWN_TOOLS,
@@ -335,6 +337,50 @@ describe("detectInstalledTools", () => {
     expect(pool?.promptCommand).toBe("pool -q");
   });
 
+  test("muse is in KNOWN_TOOLS with correct configuration", () => {
+    const muse = KNOWN_TOOLS.find((t) => t.name === "muse");
+
+    expect(muse).toBeDefined();
+    expect(muse?.name).toBe("muse");
+    expect(muse?.command).toBe("muse");
+    expect(muse?.description).toBe("Muse Code CLI");
+    expect(muse?.promptCommand).toBe("muse exec");
+  });
+
+  test("qodercli is in KNOWN_TOOLS with correct configuration", () => {
+    const qodercli = KNOWN_TOOLS.find((t) => t.name === "qodercli");
+
+    expect(qodercli).toBeDefined();
+    expect(qodercli?.name).toBe("qodercli");
+    expect(qodercli?.command).toBe("qodercli");
+    expect(qodercli?.aliases).toEqual(["qoder"]);
+    expect(qodercli?.description).toBe("Qoder CLI");
+    expect(qodercli?.promptCommand).toBe("qodercli -p");
+    expect(qodercli?.alternateCommands).toEqual(["qoder"]);
+  });
+
+  test("dsh is in KNOWN_TOOLS with correct configuration", () => {
+    const dsh = KNOWN_TOOLS.find((t) => t.name === "dsh");
+
+    expect(dsh).toBeDefined();
+    expect(dsh?.name).toBe("dsh");
+    expect(dsh?.command).toBe("dsh");
+    expect(dsh?.description).toBe("DeepSeek Harness CLI");
+    expect(dsh?.promptCommand).toBe("dsh headless");
+  });
+
+  test("kiro is in KNOWN_TOOLS with correct configuration", () => {
+    const kiro = KNOWN_TOOLS.find((t) => t.name === "kiro");
+
+    expect(kiro).toBeDefined();
+    expect(kiro?.name).toBe("kiro");
+    expect(kiro?.command).toBe("kiro-cli");
+    expect(kiro?.aliases).toEqual(["kiro-cli"]);
+    expect(kiro?.description).toBe("Kiro CLI");
+    expect(kiro?.promptCommand).toBe("kiro-cli --print");
+    expect(kiro?.alternateCommands).toEqual(["kiro"]);
+  });
+
   test("returns only installed tools from KNOWN_TOOLS", () => {
     const tools = detectInstalledTools();
 
@@ -345,6 +391,27 @@ describe("detectInstalledTools", () => {
       const isKnown = KNOWN_TOOLS.some((k) => k.name === tool.name);
       expect(isCcs || isGhCopilot || isKnown).toBe(true);
     }
+  });
+});
+
+describe("alternate command selection", () => {
+  test("selectInstalledCommand returns the first command that exists", () => {
+    const installed = selectInstalledCommand(["kiro-cli", "kiro"], (command) => command === "kiro");
+
+    expect(installed).toBe("kiro");
+  });
+
+  test("selectInstalledCommand returns undefined when none exist", () => {
+    expect(selectInstalledCommand(["qodercli", "qoder"], () => false)).toBeUndefined();
+  });
+
+  test("promptCommandForInstalledBinary swaps only the leading command", () => {
+    expect(promptCommandForInstalledBinary("kiro-cli --print", "kiro-cli", "kiro")).toBe(
+      "kiro --print"
+    );
+    expect(promptCommandForInstalledBinary("qodercli -p", "qodercli", "qodercli")).toBe(
+      "qodercli -p"
+    );
   });
 });
 
