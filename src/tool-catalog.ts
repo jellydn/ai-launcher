@@ -6,6 +6,8 @@ export type KnownToolDefinition = {
   execCommand?: string;
   promptCommand?: string;
   promptUseStdin?: boolean;
+  /** Other binaries for the same tool. Detection uses the first one on PATH. */
+  alternateCommands?: readonly string[];
 };
 
 export const KNOWN_TOOLS = [
@@ -156,6 +158,34 @@ export const KNOWN_TOOLS = [
     command: "pool",
     description: "Poolside ACP CLI",
     promptCommand: "pool -q",
+  },
+  {
+    name: "muse",
+    command: "muse",
+    description: "Muse Code CLI",
+    promptCommand: "muse exec",
+  },
+  {
+    name: "qodercli",
+    command: "qodercli",
+    aliases: ["qoder"],
+    description: "Qoder CLI",
+    promptCommand: "qodercli -p",
+    alternateCommands: ["qoder"],
+  },
+  {
+    name: "dsh",
+    command: "dsh",
+    description: "DeepSeek Harness CLI",
+    promptCommand: "dsh headless",
+  },
+  {
+    name: "kiro",
+    command: "kiro-cli",
+    aliases: ["kiro-cli"],
+    description: "Kiro CLI",
+    promptCommand: "kiro-cli --print",
+    alternateCommands: ["kiro"],
   },
 ] as const satisfies readonly KnownToolDefinition[];
 

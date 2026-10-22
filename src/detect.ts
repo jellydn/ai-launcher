@@ -37,6 +37,35 @@ function validateCommandName(command: string): boolean {
  * Check whether a command is available on PATH.
  * Uses `where` on Windows and `which` elsewhere (`which` is not available on native Windows).
  */
+/** First command that exists, in catalog order. */
+export function selectInstalledCommand(
+  commands: readonly string[],
+  exists: (command: string) => boolean
+): string | undefined {
+  return commands.find((command) => exists(command));
+}
+
+/**
+ * Keep a catalog prompt command when the primary binary is installed.
+ * When an alternate binary is installed, swap only the leading command.
+ */
+export function promptCommandForInstalledBinary(
+  promptCommand: string | undefined,
+  catalogCommand: string,
+  installedCommand: string
+): string | undefined {
+  if (!promptCommand || installedCommand === catalogCommand) {
+    return promptCommand;
+  }
+
+  const prefix = `${catalogCommand} `;
+  if (promptCommand.startsWith(prefix)) {
+    return `${installedCommand} ${promptCommand.slice(prefix.length)}`;
+  }
+
+  return promptCommand;
+}
+
 export function commandExists(command: string): boolean {
   if (!validateCommandName(command)) {
     return false;
@@ -156,16 +185,17 @@ export function detectInstalledTools(): Tool[] {
 
   for (const entry of KNOWN_TOOLS) {
     const tool: KnownToolDefinition = entry;
-    if (isWindows && WINDOWS_SHADOWED_COMMANDS.has(tool.command)) {
-      continue;
-    }
-    if (commandExists(tool.command)) {
+    const candidates = [tool.command, ...(tool.alternateCommands ?? [])].filter(
+      (command) => !(isWindows && WINDOWS_SHADOWED_COMMANDS.has(command))
+    );
+    const installed = selectInstalledCommand(candidates, commandExists);
+    if (installed) {
       detected.push({
         name: tool.name,
-        command: tool.execCommand ?? tool.command,
+        command: tool.execCommand ?? installed,
         description: tool.description,
         aliases: tool.aliases ? [...tool.aliases] : undefined,
-        promptCommand: tool.promptCommand,
+        promptCommand: promptCommandForInstalledBinary(tool.promptCommand, tool.command, installed),
         promptUseStdin: tool.promptUseStdin,
       });
     }
