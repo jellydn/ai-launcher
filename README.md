@@ -238,7 +238,7 @@ The router returns structured JSON like:
 
 AI Launcher resolves that to the configured `review-security` template and enforces the template's safety metadata before execution.
 
-Set `mode` and `requiresConfirmation` on each template (see [Config Options](#config-options)). Write templates must keep confirmation enabled. Missing metadata is treated conservatively: templates without explicit safety flags require confirmation.
+Set `mode` and `requiresConfirmation` on each template (see [Config Options](#config-options)). Router-selected write templates must keep confirmation enabled. Missing metadata is treated conservatively: router-selected templates without explicit safety flags require confirmation. Direct template names, aliases (such as `ai ac`), and picker selections run without this extra confirmation. Declining confirmation exits with status 1, so a chained `&&` command does not run. If confirmation is required but no interactive terminal is available, execution is refused; invoke the template explicitly instead.
 
 ### Git Diff Analysis
 
@@ -429,7 +429,7 @@ A default config is created on first run. Example:
 | `description`          | ✅       | Template description                                                        |
 | `aliases`              | ❌       | Array of short aliases                                                      |
 | `mode`                 | ❌       | `"read-only"` or `"write"`; used as router safety metadata                  |
-| `requiresConfirmation` | ❌       | If `true`, confirm before running. Write templates cannot set this `false`. |
+| `requiresConfirmation` | ❌       | If `true`, confirm before router-selected execution. Write templates cannot set this `false`. |
 
 **router**: Optional. When set, unmatched free-form input is sent to this command to pick a template.
 

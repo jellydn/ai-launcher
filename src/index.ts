@@ -17,13 +17,8 @@ import { promptForInput } from "./prompt-input";
 import { formatPromptInspection, formatPromptList } from "./prompts/registry.ts";
 import { buildRouterPrompt, parseRouterResponse, resolveRouterSelection } from "./router";
 import { main as summaryMain } from "./summary/index.ts";
-import {
-  isSafeCommand,
-  parseCommand,
-  parseTemplateCommand,
-  templateRequiresConfirmation,
-} from "./template";
-import type { SelectableItem, Template } from "./types";
+import { isSafeCommand, parseCommand, parseTemplateCommand } from "./template";
+import type { SelectableItem } from "./types";
 import { upgrade } from "./upgrade";
 import {
   checkOutputPath,
@@ -400,7 +395,8 @@ function canPromptUser(): boolean {
 
 async function confirmPrompt(message: string): Promise<boolean> {
   if (!canPromptUser()) {
-    return true;
+    console.error("Confirmation requires an interactive terminal. Invoke the template explicitly.");
+    return false;
   }
   const answer = await promptForInput(message);
   return /^(y|yes)$/i.test(answer.trim());
@@ -449,39 +445,11 @@ async function routeNaturalLanguageTask(
     );
     const isConfirmed = await confirmPrompt("This template may modify files. Continue? [y/N] ");
     if (!isConfirmed) {
-      process.exit(0);
+      process.exit(1);
     }
   }
 
   launchTool(resolved.template.command, selection.arguments, stdinContent);
-}
-
-async function confirmTemplateExecution(item: SelectableItem, args: string[]): Promise<boolean> {
-  if (!item.isTemplate) {
-    return true;
-  }
-
-  const templateLike: Template = {
-    name: item.name,
-    command: item.command,
-    description: item.description,
-    aliases: item.aliases,
-    mode: item.mode,
-    requiresConfirmation: item.requiresConfirmation,
-  };
-
-  if (templateRequiresConfirmation(templateLike)) {
-    console.log(`\nSelected template: ${item.name}`);
-    const previewCmd = item.command.includes("$@")
-      ? item.command.replace("$@", args.join(" "))
-      : args.length > 0
-        ? `${item.command} ${args.join(" ")}`
-        : item.command;
-    console.log(`Preview: ${previewCmd}`);
-    return await confirmPrompt("This template may modify files. Continue? [y/N] ");
-  }
-
-  return true;
 }
 
 async function main() {
@@ -578,12 +546,6 @@ async function main() {
         process.exit(0);
       }
       if (result.item) {
-        if (result.item.isTemplate) {
-          const isConfirmed = await confirmTemplateExecution(result.item, afterDash);
-          if (!isConfirmed) {
-            process.exit(0);
-          }
-        }
         launchTool(result.item.command, afterDash, stdinContent);
       }
       return;
@@ -597,12 +559,6 @@ async function main() {
 
     const lookupResult = findToolByName(query, lookupItems);
     if (lookupResult.success && lookupResult.item) {
-      if (lookupResult.item.isTemplate) {
-        const isConfirmed = await confirmTemplateExecution(lookupResult.item, afterDash);
-        if (!isConfirmed) {
-          process.exit(0);
-        }
-      }
       launchTool(lookupResult.item.command, afterDash, stdinContent);
       return;
     }
@@ -624,12 +580,6 @@ async function main() {
         : findToolByName(query, lookupItems);
 
     if (result.success && result.item) {
-      if (result.item.isTemplate) {
-        const isConfirmed = await confirmTemplateExecution(result.item, extraArgs);
-        if (!isConfirmed) {
-          process.exit(0);
-        }
-      }
       launchTool(result.item.command, extraArgs, stdinContent);
       return;
     }
@@ -659,10 +609,6 @@ async function main() {
           process.exit(0);
         }
         argsToUse = [input];
-      }
-      const isConfirmed = await confirmTemplateExecution(result.item, argsToUse);
-      if (!isConfirmed) {
-        process.exit(0);
       }
       const finalCommand = result.item.command.includes("$@")
         ? result.item.command.replace("$@", argsToUse[0] ?? "")

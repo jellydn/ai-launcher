@@ -43,6 +43,44 @@ function writeExecutable(path: string, body: string): void {
   chmodSync(path, 0o755);
 }
 
+async function runAiInTerminal(
+  args: string[],
+  env: NodeJS.ProcessEnv,
+  answer: string
+): Promise<{ status: number; output: string }> {
+  let output = "";
+  let answered = false;
+  const command = BIN ? [resolve(BIN), ...args] : ["bun", "run", "src/index.ts", ...args];
+  const child = Bun.spawn(["bash", "-c", '"$@" && echo CHAIN_RAN', "bash", ...command], {
+    cwd: ROOT,
+    env,
+    terminal: {
+      cols: 100,
+      rows: 24,
+      data(terminal, data) {
+        output += Buffer.from(data).toString();
+        if (!answered && output.includes("Continue? [y/N]")) {
+          answered = true;
+          setTimeout(() => {
+            terminal.write(answer);
+            if (answer === "y" || answer === "n") {
+              setTimeout(() => terminal.write("\r"), 20);
+            }
+          }, 50);
+        }
+      },
+    },
+  });
+  const timeout = setTimeout(() => child.kill(), 10000);
+  try {
+    const status = await child.exited;
+    return { status, output };
+  } finally {
+    clearTimeout(timeout);
+    child.terminal?.close();
+  }
+}
+
 describe("CLI e2e", () => {
   let homeDir = "";
   let binDir = "";
@@ -182,6 +220,77 @@ console.log("FAKE_AI_OK");
     expect(`${result.stdout}${result.stderr}`.toLowerCase()).toMatch(
       /no tool|not found|no match|unknown/
     );
+  });
+
+  describe("template confirmation boundary", () => {
+    beforeEach(() => {
+      // Do not let host GitHub authentication consume the terminal's input.
+      writeExecutable(join(binDir, "gh"), "#!/bin/sh\nexit 1\n");
+      writeExecutable(join(binDir, "write-template"), "#!/bin/sh\necho TEMPLATE_RAN\n");
+      writeExecutable(
+        join(binDir, "fake-router"),
+        '#!/bin/sh\necho \'{"template":"auto-commit","arguments":[]}\'\n'
+      );
+      writeFileSync(
+        join(homeDir, ".config", "ai-launcher", "config.json"),
+        JSON.stringify({
+          tools: [],
+          templates: [
+            {
+              name: "auto-commit",
+              aliases: ["ac"],
+              command: "write-template",
+              description: "Commit changes",
+              mode: "write",
+              requiresConfirmation: true,
+            },
+          ],
+          router: { command: "fake-router" },
+        })
+      );
+    });
+
+    test.each([["ac"], ["auto-commit"], ["ac", "--", "message"]])(
+      "explicit invocation %j runs without confirmation",
+      async (...args) => {
+        const result = await runAiInTerminal(args, env, "\x1b");
+        expect(result.status).toBe(0);
+        expect(result.output).toContain("TEMPLATE_RAN");
+        expect(result.output).toContain("CHAIN_RAN");
+        expect(result.output).not.toContain("Continue?");
+        const piped = runAi(args, env);
+        expect(piped.status).toBe(0);
+        expect(piped.stdout).toContain("TEMPLATE_RAN");
+        expect(piped.stdout).not.toContain("Selected template:");
+      },
+      15000
+    );
+
+    test.each(["n", "\r", "\x1b", "\x03"])(
+      "router cancellation %j prevents execution and shell chaining",
+      async (answer) => {
+        const result = await runAiInTerminal(["please commit my changes"], env, answer);
+        expect(result.output).toContain("Continue? [y/N]");
+        expect(result.status).toBe(1);
+        expect(result.output).not.toContain("TEMPLATE_RAN");
+        expect(result.output).not.toContain("CHAIN_RAN");
+      }
+    );
+
+    test("router executes a write template only after approval", async () => {
+      const result = await runAiInTerminal(["please commit my changes"], env, "y");
+      expect(result.status).toBe(0);
+      expect(result.output).toContain("Continue? [y/N]");
+      expect(result.output).toContain("TEMPLATE_RAN");
+      expect(result.output).toContain("CHAIN_RAN");
+    });
+
+    test("router cannot silently approve a write template without a terminal", () => {
+      const result = runAi(["please commit my changes"], env);
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain("Confirmation requires an interactive terminal");
+      expect(result.stdout).not.toContain("TEMPLATE_RAN");
+    });
   });
 
   test("prompt list works without installed AI tools", () => {
