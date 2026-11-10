@@ -51,6 +51,13 @@ sh install.sh
 
 </details>
 
+The installer requires `sha256sum` or `shasum`. It checks the release SHA-256 and runs
+`--version` before replacing an existing executable. A failed download or check leaves
+the existing executable unchanged. Downloads use at most three attempts for connection
+failures, partial transfers, timeouts, and resets. Curl 35 is retried only when its
+error message reports a connection reset, not a general TLS error. TLS verification
+stays enabled. Each attempt has a 15-second connection timeout and a 120-second total timeout.
+
 ### Homebrew (macOS/Linux)
 
 ```sh
@@ -60,6 +67,12 @@ brew install jellydn/tap/ai
 ### Windows
 
 Download the latest `ai-windows-x64.exe` from [Releases](https://github.com/jellydn/ai-launcher/releases) and add to your PATH. Built-in `ai summary` and `ai meeting` subcommands are included in the `ai` binary.
+
+`install.sh` also supports Git Bash, MSYS2, and Cygwin on Windows; it is not a
+PowerShell or Command Prompt script. It installs `ai.exe` in `$HOME/.local/bin` by
+default. To use another directory, set `AI_INSTALL_DIR` and quote paths with spaces,
+for example: `AI_INSTALL_DIR="$HOME/My Tools/bin" sh install.sh`. WSL uses the Linux
+binary, not the Windows executable.
 
 ### Build from Source
 

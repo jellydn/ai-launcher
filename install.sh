@@ -36,9 +36,49 @@ fi
 
 echo "Detected: $OS-$ARCH"
 
+# Stage on the destination filesystem so replacement happens only after validation.
+mkdir -p "$INSTALL_DIR"
+STAGING_DIR=$(mktemp -d "${INSTALL_DIR}/.ai-install.XXXXXX")
+trap 'rm -rf "$STAGING_DIR"' 0
+trap 'exit 1' HUP INT TERM
+
+# Only retry read-only transfers with transient errors. Curl 35 also covers
+# persistent TLS configuration errors, so require an explicit reset diagnostic.
+download() {
+  url="$1"
+  destination="$2"
+  attempt=1
+  while :; do
+    if curl -fsSL --connect-timeout 15 --max-time 120 "$url" \
+      -o "$destination" 2>"$STAGING_DIR/curl-error"; then
+      return 0
+    else
+      status=$?
+    fi
+    cat "$STAGING_DIR/curl-error" >&2
+    retry=false
+    case "$status" in
+      7|18|28|52|56) retry=true ;;
+      35)
+        if grep -Eiq 'connection (was )?reset' "$STAGING_DIR/curl-error"; then
+          retry=true
+        fi
+        ;;
+    esac
+    if [ "$retry" = false ] || [ "$attempt" -ge 3 ]; then
+      echo "Error: Failed to download $url (curl $status, $attempt attempt(s))" >&2
+      return "$status"
+    fi
+    echo "Retrying download after curl $status ($attempt/3)..." >&2
+    sleep "$attempt"
+    attempt=$((attempt + 1))
+  done
+}
+
 # Get latest release URL (prefer jq, then node; grep is last-resort)
 LATEST_URL="https://api.github.com/repos/${REPO}/releases/latest"
-RELEASE_DATA=$(curl -fsSL "$LATEST_URL")
+download "$LATEST_URL" "$STAGING_DIR/release.json"
+RELEASE_DATA=$(cat "$STAGING_DIR/release.json")
 
 extract_asset_url() {
   asset_name="$1"
@@ -67,45 +107,48 @@ if [ -z "$DOWNLOAD_URL" ]; then
   exit 1
 fi
 
+if [ -z "$CHECKSUM_URL" ]; then
+  echo "Error: Could not find checksums.txt for this release"
+  exit 1
+fi
+
 echo "Downloading from: $DOWNLOAD_URL"
+STAGED_BINARY="$STAGING_DIR/$BINARY_NAME"
+download "$DOWNLOAD_URL" "$STAGED_BINARY"
+download "$CHECKSUM_URL" "$STAGING_DIR/checksums.txt"
 
-# Create install directory
-mkdir -p "$INSTALL_DIR"
-
-# Download binary
-curl -fsSL "$DOWNLOAD_URL" -o "${INSTALL_DIR}/${BINARY_NAME}"
-
-# Verify checksum if available
-if [ -n "$CHECKSUM_URL" ]; then
-  echo "Verifying checksum..."
-  CHECKSUMS=$(curl -fsSL "$CHECKSUM_URL")
-  EXPECTED=$(echo "$CHECKSUMS" | grep "$ARTIFACT" | head -n 1 | awk '{print $1}')
-
-  if [ -n "$EXPECTED" ]; then
-    if command -v sha256sum >/dev/null 2>&1; then
-      ACTUAL=$(sha256sum "${INSTALL_DIR}/${BINARY_NAME}" | awk '{print $1}')
-    elif command -v shasum >/dev/null 2>&1; then
-      ACTUAL=$(shasum -a 256 "${INSTALL_DIR}/${BINARY_NAME}" | awk '{print $1}')
-    else
-      echo "Warning: No sha256sum or shasum found, skipping verification"
-      ACTUAL="$EXPECTED"
-    fi
-
-    if [ "$EXPECTED" != "$ACTUAL" ]; then
-      echo "Error: Checksum verification failed!"
-      echo "Expected: $EXPECTED"
-      echo "Actual:   $ACTUAL"
-      rm -f "${INSTALL_DIR}/${BINARY_NAME}"
-      exit 1
-    fi
-    echo "Checksum verified ✓"
-  fi
+echo "Verifying checksum..."
+EXPECTED=$(awk -v name="$ARTIFACT" '$2 == name { print $1; exit }' "$STAGING_DIR/checksums.txt")
+if [ "${#EXPECTED}" -ne 64 ] || printf '%s' "$EXPECTED" | grep -q '[^0-9a-f]'; then
+  echo "Error: Missing or invalid SHA-256 checksum for $ARTIFACT"
+  exit 1
 fi
 
-if [ "$IS_WINDOWS" = false ]; then
-  chmod +x "${INSTALL_DIR}/${BINARY_NAME}"
+if command -v sha256sum >/dev/null 2>&1; then
+  ACTUAL=$(sha256sum "$STAGED_BINARY" | awk '{print $1}')
+elif command -v shasum >/dev/null 2>&1; then
+  ACTUAL=$(shasum -a 256 "$STAGED_BINARY" | awk '{print $1}')
+else
+  echo "Error: sha256sum or shasum is required to verify the download"
+  exit 1
 fi
 
+if [ "$EXPECTED" != "$ACTUAL" ]; then
+  echo "Error: Checksum verification failed!"
+  echo "Expected: $EXPECTED"
+  echo "Actual:   $ACTUAL"
+  exit 1
+fi
+echo "Checksum verified ✓"
+
+chmod +x "$STAGED_BINARY"
+if ! "$STAGED_BINARY" --version; then
+  echo "Error: Downloaded executable failed its --version check"
+  exit 1
+fi
+
+# Never delete the old binary first: a failed move must leave it in place.
+mv -f "$STAGED_BINARY" "${INSTALL_DIR}/${BINARY_NAME}"
 echo "✓ Installed $BINARY_NAME to ${INSTALL_DIR}/${BINARY_NAME}"
 
 # Check if in PATH (POSIX-compliant)
